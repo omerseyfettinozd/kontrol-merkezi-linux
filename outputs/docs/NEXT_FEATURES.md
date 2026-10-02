@@ -3,7 +3,9 @@
 Bu liste araştırma sonucudur. 0.7.0 ile 1, 2, 4 ve 7 numaralı özellikler uygulandı; 0.8.0 ile 3 numara da uygulandı; 0.9.0 ile 5 numara da uygulandı; 0.10.0 ile 6 numara da uygulandı; diğerleri adaydır. Mevcut 0.6.1
 özelliklerini yeniden yapılacak iş olarak saymaz. Bu incelemede donanım ayarı değiştirilmedi.
 
-## Cihazdan doğrulanan yeni bulgular
+## Araştırma sırasında cihazdan doğrulanan bulgular
+
+Aşağıdaki cihaz değerleri araştırma anının kaydıdır; güncel canlı ölçüm değildir.
 
 - AMD P-State active; policy0 EPP seçenekleri: default, performance,
   balance_performance, balance_power, power, custom. Mevcut değer power.
@@ -18,10 +20,15 @@ Bu liste araştırma sonucudur. 0.7.0 ile 1, 2, 4 ve 7 numaralı özellikler uyg
 - WirePlumber/PipeWire ve wpctl mevcut; hoparlör çıkışı ve mikrofon kaynağı okunuyor.
 - /sys/power/mem_sleep yalnız [s2idle]. NVIDIA S0ix platform support Supported,
   status Disabled. Uyku tüketimi ölçülmeden ayar değiştirilmez; deep seçeneği sunulmaz.
-- Fan denetleyicisi sıcaklığı doğrudan eğri hedeflerine çeviriyor; hız değişimi
-  sınırı ve histerezis mevcut değil.
+- Fan eğrisinde 0.7.0'dan beri 2°C soğuma histerezisi ve 6 saniye bekleme
+  uygulanır; fan hızı her 2 saniyede en fazla 2 yüzde puanı düşer. Isınmada
+  hedef artışı hemen uygulanır; kernel sıcaklık koruması önceliklidir.
 
-## Önerilen sıra
+## Özellik listesi ve güncel durum
+
+1–7 numaralı özellikler uygulandı; ayrıntılı kabul kayıtları ve doğrulama
+sınırları [uygulama durumunda](IMPLEMENTATION_STATUS.md) yer alır. Tamamlanma,
+yük altında performansın veya tüm donanım davranışlarının doğrulandığı anlamına gelmez.
 
 | Sıra | Özellik | Uygulama / kabul kanıtı |
 |---|---|---|
@@ -38,8 +45,10 @@ Bu liste araştırma sonucudur. 0.7.0 ile 1, 2, 4 ve 7 numaralı özellikler uyg
 | 11 | Ses/mikrofon kontrolleri | Ses düzeyi, mikrofon susturma, giriş/çıkış seçimi; WirePlumber geri okuması. Susturma donanım mikrofon bağlantısını kesmek değildir. |
 | 12 | Uyku ve pil kaybı tanılaması | Uyku öncesi/sonrası pil enerjisi, süre, yeniden başlayan aygıtlar ve servis sağlığı; fiziksel uyku testi gerekir. |
 
-İlk teslim için öneri: 1 + 2; ardından 4 + 7. Bunlar çalışan donanım yollarından
-ilerler ve mevcut kontrolün kalitesini ölçülebilir biçimde artırır.
+İlk teslim önerisindeki 1 + 2 ve ardından 4 + 7, 0.7.0 ile tamamlandı.
+Kalan yeni özellik adayları 8–12'dir; sıradaki aday görsel RGB düzenleyicidir.
+Yeni özelliklerden önce fiziksel uyku/uyanma, priz/pil geçişi ve aynı iş yükünde
+sıcaklık/performans karşılaştırması için eksik kabul kanıtları tamamlanmalıdır.
 
 ## Kaynaklar
 
