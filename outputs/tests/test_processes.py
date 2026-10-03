@@ -9,9 +9,11 @@ from slayer_r9t import processes as pr
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 
-def stat_line(comm, ticks, pid=1):
+def stat_line(comm, ticks, pid=1, starttime=1):
     # fields after comm: state ppid ... utime(idx11) stime(idx12)
-    rest = ['S'] + ['0'] * 11 + [str(ticks), '0'] + ['0'] * 10
+    rest = ['S'] + ['0'] * 23
+    rest[11] = str(ticks)
+    rest[19] = str(starttime)
     return f'{pid} ({comm}) ' + ' '.join(rest)
 
 
@@ -26,10 +28,10 @@ class Fake:
         self.pci.mkdir()
         self.now = 0.0
 
-    def add(self, pid, comm, ticks, rss_pages):
+    def add(self, pid, comm, ticks, rss_pages, starttime=1):
         d = self.proc / str(pid)
         d.mkdir(exist_ok=True)
-        (d / 'stat').write_text(stat_line(comm, ticks, pid))
+        (d / 'stat').write_text(stat_line(comm, ticks, pid, starttime))
         (d / 'statm').write_text(f'100 {rss_pages} 0 0 0 0 0')
         (d / 'comm').write_text(comm + '\n')
         (d / 'cmdline').write_text('SECRET-ARG\0')
@@ -48,11 +50,18 @@ class Fake:
 
 class ParseTests(unittest.TestCase):
     def test_comm_with_spaces_and_parens(self):
-        self.assertEqual(pr.parse_stat(stat_line('my (odd) app', 30)), ('my (odd) app', 30))
+        self.assertEqual(pr.parse_stat(stat_line('my (odd) app', 30, 1)), ('my (odd) app', 30, 1))
 
     def test_bad_input(self):
         self.assertIsNone(pr.parse_stat('garbage'))
         self.assertIsNone(pr.parse_statm_rss('x', 4096))
+
+    def test_invalid_or_missing_starttime_is_rejected(self):
+        for starttime in ('broken', -1):
+            with self.subTest(starttime=starttime):
+                self.assertIsNone(pr.parse_stat(stat_line('app', 30, starttime=starttime)))
+        incomplete = '1 (app) ' + ' '.join(['S'] + ['0'] * 13)
+        self.assertIsNone(pr.parse_stat(incomplete))
 
 
 class SamplerTests(unittest.TestCase):
@@ -107,6 +116,20 @@ class SamplerTests(unittest.TestCase):
         f.add(1, 'new', 600, 1)
         self.assertEqual(s.sample()['cpu'], [])
 
+    def test_same_name_pid_reuse_discards_old_cpu_baseline(self):
+        f = Fake(self)
+        f.add(42, 'same-app', 10, 1, starttime=100)
+        sampler = f.sampler()
+        sampler.sample()
+        f.now = 1.0
+        f.add(42, 'same-app', 110, 1, starttime=200)
+        reused = sampler.sample()
+        self.assertEqual(reused['cpu'], [])
+        self.assertEqual(reused['memory'][0]['name'], 'same-app')
+        f.now = 2.0
+        f.add(42, 'same-app', 110 + pr._clk_tck(), 1, starttime=200)
+        self.assertAlmostEqual(sampler.sample()['cpu'][0]['cpu_percent'], 100.0)
+
 
 class GpuTests(unittest.TestCase):
     def test_sleeping_gpu_not_queried(self):
@@ -149,6 +172,13 @@ class GpuTests(unittest.TestCase):
 
 
 class WidgetTests(unittest.TestCase):
+    def wait_for(self,condition):
+        from PySide6.QtTest import QTest
+        for _ in range(100):
+            if condition():return
+            QTest.qWait(10)
+        self.assertTrue(condition(),'Timed out waiting for worker')
+
     def test_panel_refreshes_only_when_visible(self):
         from PySide6.QtWidgets import QApplication
         from slayer_r9t.processes_widget import ProcessesPanel
@@ -161,7 +191,11 @@ class WidgetTests(unittest.TestCase):
         panel._tick()  # hidden: no refresh
         self.assertEqual(panel.refreshes, 0)
         panel.show()
-        app.processEvents()
+        from PySide6.QtTest import QTest
+        for _ in range(100):
+            app.processEvents()
+            if panel.refreshes:break
+            QTest.qWait(10)
         self.assertEqual(panel.refreshes, 1)
         self.assertTrue(panel.timer.isActive())
         self.assertIn('busy', panel.lists['memory'].text())
@@ -170,6 +204,70 @@ class WidgetTests(unittest.TestCase):
         app.processEvents()
         self.assertFalse(panel.timer.isActive())
         panel.close()
+
+    def test_slow_sample_keeps_gui_responsive_and_single_flight(self):
+        import threading
+        from PySide6.QtCore import QTimer,QThreadPool
+        from PySide6.QtWidgets import QApplication
+        from slayer_r9t.processes_widget import ProcessesPanel
+        app=QApplication.instance() or QApplication([])
+        entered=threading.Event();release=threading.Event();calls=[]
+        f=Fake(self);f.add(1,'busy',0,10);data=f.sampler().sample()
+        def sample():
+            calls.append(threading.get_ident());entered.set()
+            if not release.wait(2):raise RuntimeError('release timeout')
+            return data
+        panel=ProcessesPanel(sampler=SimpleNamespace(sample=sample))
+        try:
+            panel.show();self.wait_for(entered.is_set)
+            ticks=[];QTimer.singleShot(0,lambda:ticks.append(True))
+            self.wait_for(lambda:bool(ticks))
+            panel.refresh();panel._tick()
+            self.assertEqual(len(calls),1)
+            self.assertNotEqual(calls[0],threading.get_ident())
+            self.assertEqual(panel.refreshes,0)
+            release.set();self.wait_for(lambda:panel.refreshes==1)
+            self.assertIn('busy',panel.lists['memory'].text())
+        finally:release.set();panel.close();QThreadPool.globalInstance().waitForDone(2000)
+
+    def test_close_during_sample_discards_result_and_can_reopen(self):
+        import threading
+        from PySide6.QtCore import QThreadPool
+        from PySide6.QtWidgets import QApplication
+        from slayer_r9t.processes_widget import ProcessesPanel
+        app=QApplication.instance() or QApplication([])
+        entered=threading.Event();release=threading.Event();f=Fake(self)
+        data=f.sampler().sample()
+        def sample():
+            entered.set()
+            if not release.wait(2):raise RuntimeError('release timeout')
+            return data
+        panel=ProcessesPanel(sampler=SimpleNamespace(sample=sample))
+        try:
+            panel.refresh();self.assertFalse(entered.is_set())
+            panel.show();self.wait_for(entered.is_set)
+            panel.close();self.assertFalse(panel.timer.isActive())
+            release.set();self.wait_for(lambda:panel._worker is None)
+            self.assertEqual(panel.refreshes,0)
+            self.assertIsNone(panel.last)
+            panel.show();self.wait_for(lambda:panel.refreshes==1)
+        finally:release.set();panel.close();QThreadPool.globalInstance().waitForDone(2000)
+
+    def test_sample_failure_reports_error_and_allows_retry(self):
+        from PySide6.QtWidgets import QApplication
+        from slayer_r9t.processes_widget import ProcessesPanel
+        app=QApplication.instance() or QApplication([])
+        f=Fake(self);data=f.sampler().sample();results=[RuntimeError('sample denied'),data]
+        def sample():
+            value=results.pop(0)
+            if isinstance(value,Exception):raise value
+            return value
+        panel=ProcessesPanel(sampler=SimpleNamespace(sample=sample))
+        try:
+            panel.show();self.wait_for(lambda:'sample denied' in panel.status.text())
+            panel.refresh();self.wait_for(lambda:panel.refreshes==1)
+            self.assertEqual(panel.last,data)
+        finally:panel.close()
 
 
 if __name__ == '__main__':

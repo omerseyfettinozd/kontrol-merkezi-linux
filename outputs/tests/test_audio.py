@@ -131,19 +131,30 @@ class WidgetTests(unittest.TestCase):
         from PySide6.QtWidgets import QApplication
         cls.app = QApplication.instance() or QApplication([])
 
+    def wait_idle(self, panel):
+        import time
+        deadline = time.monotonic() + 3
+        while panel._busy and time.monotonic() < deadline:
+            self.app.processEvents()
+            time.sleep(0.001)
+        self.assertFalse(panel._busy, 'Audio worker did not finish')
+
     def test_panel_enabled(self):
         from slayer_r9t.audio_widget import AudioPanel
         f = FakeWpctl()
         p = AudioPanel(AudioBackend(f))
+        self.wait_idle(p)
         from PySide6.QtWidgets import QLabel
         self.assertEqual(p.rows['sink']['slider'].value(), 50)
         self.assertEqual(p.rows['source']['combo'].count(), 2)
         self.assertTrue(p.rows['sink']['slider'].isEnabled())
         p.rows['source']['mute'].setChecked(True)
         p.apply_mute('source', True)
+        self.wait_idle(p)
         self.assertTrue(f.mute['source'])
         p.rows['sink']['slider'].setValue(80)
         p.apply_volume('sink')
+        self.wait_idle(p)
         self.assertEqual(f.vol['sink'], 0.8)
         texts = ' '.join(l.text() for l in p.findChildren(QLabel))
         self.assertIn('donanım bağlantısını kesmez', texts)
@@ -151,6 +162,7 @@ class WidgetTests(unittest.TestCase):
     def test_panel_disabled_with_reason(self):
         from slayer_r9t.audio_widget import AudioPanel
         p = AudioPanel(AudioBackend(lambda a: (1, '', 'x')))
+        self.wait_idle(p)
         self.assertFalse(p.rows['sink']['slider'].isEnabled())
         self.assertFalse(p.rows['source']['mute'].isEnabled())
         self.assertIn('kapalı', p.status_label.text())
@@ -158,8 +170,10 @@ class WidgetTests(unittest.TestCase):
     def test_readback_error_shown(self):
         from slayer_r9t.audio_widget import AudioPanel
         p = AudioPanel(AudioBackend(FakeWpctl(lie=True)))
+        self.wait_idle(p)
         p.rows['sink']['slider'].setValue(90)
         p.apply_volume('sink')
+        self.wait_idle(p)
         self.assertIn('doğrulanamadı', p.status_label.text())
 
 
