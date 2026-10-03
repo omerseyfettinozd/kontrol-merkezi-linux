@@ -25,9 +25,10 @@ Güncelleme: 3 Ekim 2026. Bu liste tekrar eden geliştirme oturumlarının devam
 | 1 / KML-07 | Yeni kodun fiziksel cihaz kabulü | Cihaz oturumu gerekiyor: uyku/uyanma, gerçek priz/pil geçişi, servis kapanması/yeniden başlatma ve normal yükte geri dönüş. Donanım ayarlarını değiştiren testler otomatik gözetimsiz çalıştırılmaz. |
 | 2 / KML-08 | Temiz kurulum/kaldırma ve sürücü güncellemesi | Ayrı uygun R9T ortamı gerekiyor. Sistem Python/Qt/KF6/TUXEDO/DKMS ön koşulları, hata temizliği ve kaldırma sınırları doğrulanmalı. |
 | 3 / KML-09 | Görsel statik RGB düzenleyici | Yazılım dilimi olarak hazır: mevcut 6×21/126 kanalı ve bölgeleri boyama, önizleme, profil kaydı/iptal. Fiziksel tuş adları kanıt olmadan eklenmez. Donanım animasyonları ayrı araştırma. |
-| 4 / KML-10 | Kaynak kullanan uygulamalar paneli | Salt okunur CPU/RAM/GPU süreç gösterimi; yetki/tarama sınırları, kişisel komut satırı toplamama ve örnek tazeliği. Otomatik işlem sonlandırma kapsam dışı. |
-| 5 / KML-11 | Profil karşılaştırma | Kullanıcının başlattığı aynı yükte önce/sonra sıcaklık/RPM/güç; değişen iş yükü ve eksik ölçüm görünür olmalı. Ölçülmeyen FPS sonucu sunulmaz. |
-| 6 / KML-12 | Ses/mikrofon ve uyku-pil tanılaması | Ayrı küçük dilimler: PipeWire/WirePlumber geri okuması; fiziksel uyku enerji karşılaştırması için cihaz kanıtı. |
+| 4 / KML-10 | Kaynak kullanan uygulamalar paneli | Yazılım olarak uygulandı: 13 test; salt okunur CPU/RAM/GPU süreç paneli, yetki sınırları görünür, cmdline toplanmaz. Fiziksel cihaz/yük altında kabul bekliyor. |
+| 5 / KML-11 | Profil karşılaştırma | Yazılım olarak uygulandı: 6 test; A/B pencereleri, ort./tepe fark tablosu, CSV dışa aktarımı. Kontrolsüz iş yükü uyarısı mevcut, FPS ölçülmez. |
+| 6 / KML-12a | Ses ve mikrofon paneli | Yazılım olarak uygulandı: 10 test; WirePlumber wpctl ses/mute/varsayılan aygıt seçimi ve geri okuma doğrulaması. Yazılımsal susturma uyarısı mevcut. |
+| 7 / KML-12b | Uyku ve pil kaybı tanılaması | Yazılım olarak uygulandı: 8 test; salt okunur enerji ve suspend_stats öncesi/sonrası anlık görüntüsü. Fiziksel uyku testi henüz yapılmadı. |
 
 ## Donanım araştırması ve kararlar
 

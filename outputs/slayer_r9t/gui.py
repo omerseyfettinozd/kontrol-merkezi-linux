@@ -18,6 +18,10 @@ from . import telemetry
 from .lighting import pattern, validate_map, ROWS, COLUMNS
 from .widgets import Card, MetricCard, STYLE, HistoryPlot
 from .history import History,METRICS
+from .processes_widget import ProcessesPanel
+from .audio_widget import AudioPanel
+from .compare_widget import ComparePanelWidget
+from .sleepdiag_widget import SleepDiagPanel
 
 CLIENT = Path(__file__).resolve().parent.parent/'r9t-client.py'
 DESKTOP_CLIENT=CLIENT.with_name('r9t-desktop-client.py')
@@ -298,7 +302,11 @@ class ControlCenter(QMainWindow):
         self.build_devices()
         self.build_diagnostics()
         self.build_history()
+        self.build_compare()
         self.build_sensors()
+        self.build_processes()
+        self.build_audio()
+        self.build_sleepdiag()
         self.build_tray()
         self.tabs.currentChanged.connect(lambda _: self.poll())
         self.timer = QTimer(self)
@@ -483,6 +491,31 @@ class ControlCenter(QMainWindow):
         box.addWidget(self.label('Geçmiş bu arayüz açıkken yaklaşık 3 saniyede bir toplanır; kapatıldığında silinir. Eksik veya eski sensör verisi grafikte boşluk bırakır. CPU frekansı tüm politikaların ortalamasıdır; pil gücü şarj veya deşarj akışıdır. GPU tüketimi ile güç tavanı ayrı değerlerdir.'))
         self.history_metric.currentIndexChanged.connect(self.render_history)
         self.history_window.currentIndexChanged.connect(self.render_history)
+        page.addStretch()
+
+
+    def build_compare(self):
+        page = self.tab('Karşılaştırma')
+        self.compare_panel = ComparePanelWidget(self.history)
+        page.addWidget(self.compare_panel)
+        page.addStretch()
+
+    def build_processes(self):
+        page = self.tab('Kaynaklar')
+        self.processes_panel = ProcessesPanel()
+        page.addWidget(self.processes_panel)
+        page.addStretch()
+
+    def build_audio(self):
+        page = self.tab('Ses')
+        self.audio_panel = AudioPanel()
+        page.addWidget(self.audio_panel)
+        page.addStretch()
+
+    def build_sleepdiag(self):
+        page = self.tab('Uyku ve pil')
+        self.sleepdiag_panel = SleepDiagPanel()
+        page.addWidget(self.sleepdiag_panel)
         page.addStretch()
 
     def build_sensors(self):
