@@ -15,7 +15,7 @@ def run():
     original={'fan':fan_snapshot(before),'cpu_epp':before['cooling']['epp']['value']}
     report={'version':before['version'],'epp':[],'fan_samples':[]}
     try:
-        assert before['version'] in ('0.7.0','0.8.0','0.9.0','0.10.0')
+        assert before['version'] in ('0.7.0','0.8.0','0.9.0','0.10.0', '0.11.0')
         for value in before['cooling']['epp']['choices']:
             result=request({'op':'profile','settings':{'cpu_epp':value}})
             assert result['verified']

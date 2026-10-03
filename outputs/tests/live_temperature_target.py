@@ -11,7 +11,7 @@ def run():
     if os.environ.get('R9T_LIVE_CHECK') != '1':
         raise RuntimeError('Canlı ayar testi için R9T_LIVE_CHECK=1 gerekli.')
     before=request({'op':'status'})
-    if before['version'] not in ('0.8.0','0.9.0','0.10.0'): raise RuntimeError('Önce 0.8.0 veya üstü kurulmalı.')
+    if before['version'] not in ('0.8.0','0.9.0','0.10.0', '0.11.0'): raise RuntimeError('Önce 0.8.0 veya üstü kurulmalı.')
     if before['cooling']['temperature_target']['active']: raise RuntimeError('Mevcut hedef önce elle durdurulmalı.')
     original={p.parent.name:v.strip() for p,v in cpu_snapshot()}
     report={'version':before['version'],'samples':[],'gpu_independent_readback':False}

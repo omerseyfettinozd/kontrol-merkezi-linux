@@ -12,7 +12,7 @@ from unittest.mock import patch
 def run():
     installed=Path('/usr/local/lib/slayer-r9t')
     version=runpy.run_path(str(installed/'slayer_r9t/__init__.py'))['__version__']
-    if version not in ('0.9.0','0.10.0'): raise RuntimeError('Önce 0.9.0 veya üstü kurulmalı.')
+    if version not in ('0.9.0','0.10.0', '0.11.0'): raise RuntimeError('Önce 0.9.0 veya üstü kurulmalı.')
     worker=installed/'r9t-gpu-diagnostics.py'
     from slayer_r9t.gpu_diagnostics import DRM,read
     controls={str(p):read(p) for p in DRM.glob('card*/device/power/control')}
