@@ -217,6 +217,59 @@ class InstallerTests(unittest.TestCase):
         self.assertFalse(self.old_launcher.exists())
         self.assertTrue(all(state == {'active': True, 'enabled': 'enabled'} for state in self.states.values()))
 
+    def test_clean_install_success_deploys_assets_and_both_services(self):
+        self.deploy()
+        for source in self.source.glob('*.py'):
+            self.assertEqual((self.target / source.name).read_bytes(), source.read_bytes())
+        self.assertEqual((self.target / 'slayer_r9t/__init__.py').read_bytes(),
+                         (self.source / 'slayer_r9t/__init__.py').read_bytes())
+        self.assertEqual((self.target / 'r9t-idle').stat().st_mode & 0o777, 0o755)
+        self.assertEqual((self.target / 'r9t-service.py').stat().st_mode & 0o777, 0o644)
+        self.assertIn('Environment=R9T_UID=1234', self.unit.read_text())
+        self.assertIn('r9t-control-center.py', self.desktop.read_text())
+        self.assertIn('r9t-session.py', self.session_unit.read_text())
+        self.assertFalse(self.target.with_name('.slayer-r9t-previous').exists())
+        self.assertFalse(list(self.target.parent.glob('.slayer-r9t-stage-*')))
+        self.assertTrue(all(state == {'active': True, 'enabled': 'enabled'}
+                            for state in self.states.values()))
+
+    def test_staging_dependency_failure_preserves_existing_installation(self):
+        originals = self.existing_installation(active=True, enabled='enabled')
+        fake = self.run_command
+        for step in ('compiler', 'import'):
+            with self.subTest(step=step):
+                self.calls.clear()
+                def fail_dependency(command, **kwargs):
+                    matches = command[0] == 'c++' if step == 'compiler' else '-c' in command
+                    if matches:
+                        self.calls.append(command)
+                        raise subprocess.CalledProcessError(1, command)
+                    return fake(command, **kwargs)
+                with patch.object(installer.subprocess, 'run', side_effect=fail_dependency):
+                    with self.assertRaises(subprocess.CalledProcessError):
+                        self.deploy()
+                self.assert_restored(originals, active=True, enabled='enabled')
+                self.assertFalse(any('/usr/bin/systemctl' in command for command in self.calls))
+                self.assertFalse(any(command[0] in ('/usr/bin/modprobe', '/usr/bin/rmmod')
+                                     for command in self.calls))
+
+    def test_root_activation_failure_restores_existing_installation(self):
+        originals = self.existing_installation(active=True, enabled='enabled-runtime')
+        self.failure = ('root', 'start')
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.deploy()
+        self.assert_restored(originals, active=True, enabled='enabled-runtime')
+
+    def test_clean_install_root_activation_failure_removes_new_files(self):
+        self.failure = ('root', 'start')
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.deploy()
+        for path in (self.target, self.unit, self.desktop, self.session_unit):
+            self.assertFalse(path.exists())
+        self.assertFalse(list(self.target.parent.glob('.slayer-r9t-stage-*')))
+        self.assertTrue(all(state == {'active': False, 'enabled': 'disabled'}
+                            for state in self.states.values()))
+
 
 if __name__ == '__main__':
     unittest.main()

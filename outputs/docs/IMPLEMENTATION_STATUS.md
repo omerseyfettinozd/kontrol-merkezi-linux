@@ -132,3 +132,21 @@ Windows ile tam eşitlik veya bütün planın tamamlandığı anlamına gelmez.
 - **Ses ve Mikrofon Kontrolleri (KML-12a):** PipeWire/WirePlumber `wpctl` ile çıkış ve mikrofon ses düzeyi, yazılımsal sessize alma ve varsayılan aygıt seçimi; her yazma sonrası geri okuma doğrulaması. Mikrofon susturmanın donanımsal devre kesici olmadığı belirtilir.
 - **Uyku ve Pil Kaybı Tanılaması (KML-12b):** Salt okunur öncesi/sonrası anlık görüntüsü, saat farkı, enerji kaybı/saat ve `suspend_stats` sayaç analizi. Fiziksel uyku testi henüz yapılmadı.
 - **Doğrulama:** 202 birim ve CLI regresyon testi offscreen ortamda geçti. C acil durum fan köprüsü geri dönüş simülasyonu geçti.
+
+
+## 4 Ekim 2026 kabul araçları ve kaynak güvenilirliği
+
+- Dynamic Boost canlı kabul betiğinin sürüm koşulu ve rapor literalindeki sözdizimi hatası giderildi. Kurulu uygulama ve servis sürümü kaynak sürümüyle eşleşmelidir; çalıştırılmayan birim testleri için sabit test sayısı raporlanmaz.
+- Canlı GUI kontrolleri 19 sekmenin adını ve sırasını ortak sözleşmeyle doğrular; geçmiş ve sensör ekranları sekme adına göre seçilir. Donanıma erişmeden tüm canlı betikleri derleyen regresyon ve gerçek GUI ile offscreen sözleşme kontrolü eklendi.
+- Uyku tanılamasında bozuk veya sonsuz snapshot değerleri reddedilir; eksik enerji/priz/uyku kanıtı sonuçta geçerli uyku ölçümü gibi gösterilmez.
+- İlk güvenilirlik diliminde **215 Python/Qt testi** ve 74 Python dosyasının AST/derleme kontrolü geçti; son bütünleşik devam sonucu aşağıdadır. Bu sonuçlar fiziksel cihaz kabulü veya uzak CI sonucu değildir.
+- Salt okunur cihaz önkontrolünde kaynak **0.11.0**, kurulu uygulama ve servis **0.10.0** bulundu. Servis/sürüm ve tanılama önkontrolü yeni kaynak kurulumunun veya donanım kabulünün yerine geçmez. Gerçek kurulum, uyku/uyanma, priz/pil geçişi ve donanım ayarı değişikliği yapılmadı; KML-07/KML-08 açık kalır.
+
+## 4 Ekim 2026 devam dilimleri — arayüz ve ölçüm dayanıklılığı
+
+- Süreç örneklemesi ve ses komutları Qt işçi havuzunda çalışır; yavaş sorguda ana arayüz yanıt verir. Tek işlem sınırı, hata sonrası tekrar deneme ve kapanış sonrası geç sonuçların bırakılması doğrulandı. Ses yazımı ve geri okuması aynı işçi işleminde sürer; bozuk wpctl çıktısı hata olarak döner.
+- A/B pencereleri altı ölçümün toplam/sayı/tepe değerlerini sınırlı bellekte toplar. Uzun aktif pencere 30 dakika/1200 satır geçmiş sınırından etkilenmez; durdurulan özetler korunur, yeniden başlatılan pencere sıfırlanır. CSV atomik kaydedilir; hata önceki dosyayı ve ölçümleri korur, arayüz hata/başarı mesajı gösterir.
+- CPU fark hesabı PID, süreç adı ve `/proc` başlangıç zamanı eşleşmesi gerektirir; yeniden kullanılan PID eski CPU sayacını kullanmaz. Komut satırı toplanmaz.
+- Profil silme kaydı başarısızsa hem kayıtlı belge hem kaydedilmemiş uygulama kuralı taslağı geri döner. Otomasyon bütün Mains/USB kaynaklarını değerlendirir; doğrulanmış bağlı kaynak priz seçer, belirsiz/hatalı okuma pil profili sayılmaz.
+- Kamera, aydınlatma ve genişletilmiş donanım betikleri açık `R9T_LIVE_CHECK=1` olmadan başlamaz. Kabul testi çok renkli başlangıç haritasını geri yükler; donanım geri dönüşü hata verse bile başlangıç otomasyon durumuna dönmeyi dener. Geçici kökte kurulum testleri ilk kurulum, bağımlılık önkontrolü ve root servis aktivasyon hatasının uygulama geri almasını kapsar; gerçek DKMS/kaldırma kabulü değildir.
+- Son bütünleşik yerel doğrulama: **247 Python/Qt testi**, ayrı **1 gerçek fan C hata simülasyonu** ve **79 Python dosyasında AST/bellekte derleme** geçti; `git diff --check` temiz. Kontrollü yavaş sorgu/hata testleri donanım ayarı değiştirmez. Uzak CI sonucu, yeni kaynak kurulumu ve fiziksel cihaz kabulü ayrıca doğrulanmalıdır.
