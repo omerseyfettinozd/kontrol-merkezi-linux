@@ -7,23 +7,24 @@ import subprocess
 import sys
 import time
 from unittest.mock import patch
+from slayer_r9t import __version__
 from slayer_r9t.protocol import request
 from slayer_r9t.history import History
 
 
 def run():
     installed=Path('/usr/local/lib/slayer-r9t')
-    if runpy.run_path(str(installed/'slayer_r9t/__init__.py'))['__version__']not in ('0.10.0', '0.11.0'), '0.11.0':
-        raise RuntimeError('Önce 0.10.0 kurulmalı.')
+    if runpy.run_path(str(installed/'slayer_r9t/__init__.py'))['__version__'] != __version__:
+        raise RuntimeError(f'Önce kaynakla aynı {__version__} sürümü kurulmalı.')
     worker=installed/'r9t-dynamic-boost.py'
-    report={'version':'0.10.0', '0.11.0','unit_tests':112,'samples':[],'behavior_verified':False,'synthetic_load_applied':False}
+    report={'version':__version__,'samples':[],'behavior_verified':False,'synthetic_load_applied':False}
     history=History()
     for _ in range(5):
         support=json.loads(subprocess.check_output([sys.executable,str(worker)],text=True,timeout=4))
         assert support['devices'] and support['devices'][0]['supported'] is True
         assert support['daemon']['healthy'] is True
         state=request({'op':'status'})
-        assert state['version']=='0.10.0', '0.11.0'
+        assert state['version'] == __version__, state['version']
         cpu=state['cooling']['cpu_power']
         gpu_fields=subprocess.check_output(['/usr/bin/nvidia-smi','--id='+support['devices'][0]['pci'],
              '--query-gpu=temperature.gpu,utilization.gpu,power.draw','--format=csv,noheader,nounits'],text=True,timeout=3).strip().split(',')
