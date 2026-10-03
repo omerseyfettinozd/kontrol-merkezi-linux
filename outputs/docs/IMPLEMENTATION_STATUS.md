@@ -123,3 +123,12 @@ Windows ile tam eşitlik veya bütün planın tamamlandığı anlamına gelmez.
 - TUXEDO 4.24.0 `uniwill_keyboard.h`, `tuxedo_nb02_nvidia_power_ctrl.c`, `uniwill_interfaces.h`.
 - [KDE KScreen](https://github.com/KDE/libkscreen/blob/master/src/doctor/doctor.cpp).
 - Kurulu KDE D-Bus arayüzleri ve KF6 KIdleTime başlıkları.
+
+## 0.11.0 ekleri (Yazılım Adayı)
+
+- **Görsel Statik RGB Düzenleyici (KML-09):** 6×21 kanal matrisi (126 sürücü kanalı), tekil hücre, satır ve sütun boyama, tümünü boya/kapat, sürücüden yükleme. Önizleme ve profil kaydıyla entegre. Hücreler donanım kanallarıdır; kasa yerleşimi bağımsız doğrulanmadan tuş adı atanmaz.
+- **Kaynak Kullanan Uygulamalar Paneli (KML-10):** Salt okunur CPU/RAM/GPU süreç listesi. Yalnızca `/proc/[pid]/comm`, `stat` ve `statm` okunur; gizlilik için `cmdline` toplanmaz. GPU compute süreçleri nvidia-smi ile yalnız runtime_status active iken taranır; uyuyan GPU uyandırılmaz.
+- **Profil Karşılaştırma Paneli (KML-11):** Kullanıcı kontrollü A ve B ölçüm pencereleri; ortalama, tepe değerler ve fark matrisi. CSV dışa aktarımı. Kontrolsüz iş yükü ve FPS uyarısı arayüzde kalıcıdır.
+- **Ses ve Mikrofon Kontrolleri (KML-12a):** PipeWire/WirePlumber `wpctl` ile çıkış ve mikrofon ses düzeyi, yazılımsal sessize alma ve varsayılan aygıt seçimi; her yazma sonrası geri okuma doğrulaması. Mikrofon susturmanın donanımsal devre kesici olmadığı belirtilir.
+- **Uyku ve Pil Kaybı Tanılaması (KML-12b):** Salt okunur öncesi/sonrası anlık görüntüsü, saat farkı, enerji kaybı/saat ve `suspend_stats` sayaç analizi. Fiziksel uyku testi henüz yapılmadı.
+- **Doğrulama:** 202 birim ve CLI regresyon testi offscreen ortamda geçti. C acil durum fan köprüsü geri dönüş simülasyonu geçti.

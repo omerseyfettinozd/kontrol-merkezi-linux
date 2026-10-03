@@ -39,16 +39,15 @@ yük altında performansın veya tüm donanım davranışlarının doğrulandı�
 | 5 | GPU neden açık paneli | Ekran bağlantısı, runtime durumu, GPU kullanan süreçler. İzlemenin GPU'yu uyandırıp uyandırmadığı ayrıca karşılaştırılır. |
 | 6 | Dynamic Boost durum paneli | Donanım desteği, daemon sağlığı, yük altında CPU/GPU güç paylaşımı; destek ve etkin davranış ayrı gösterilir. |
 | 7 | SSD/RAM sıcaklıkları | hwmon değerleri ve sensör etiketleri; SMART sağlık varsa salt okunur sınırlı adapter. SMART yetkisi/desteği ayrıca kontrol edilir. |
-| 8 | Görsel RGB düzenleyici | 6×21 renk haritasını düzenle, bölge boya, kaydet; fiziksel tuş isimleri yerleşim doğrulandıktan sonra eklenir. |
-| 9 | Kaynak kullanan uygulamalar | CPU/RAM tüketen süreçler, GPU süreçleri; işlem sonlandırma varsayılan otomasyon değildir. |
-| 10 | Profil karşılaştırma | Aynı iş yükünde sıcaklık/RPM/tüketim grafikleri; FPS entegrasyonu varsa ölçülen veri. Kullanıcı başlatır. |
-| 11 | Ses/mikrofon kontrolleri | Ses düzeyi, mikrofon susturma, giriş/çıkış seçimi; WirePlumber geri okuması. Susturma donanım mikrofon bağlantısını kesmek değildir. |
-| 12 | Uyku ve pil kaybı tanılaması | Uyku öncesi/sonrası pil enerjisi, süre, yeniden başlayan aygıtlar ve servis sağlığı; fiziksel uyku testi gerekir. |
+| 8 | Görsel RGB düzenleyici | Uygulandı: 6×21 kanal haritası düzenleme, bölge boyama, profil kaydı ve önizleme. |
+| 9 | Kaynak kullanan uygulamalar | Uygulandı: Salt okunur /proc CPU/RAM/GPU süreç paneli, yetki/tazelik görünür, cmdline toplanmaz. |
+| 10 | Profil karşılaştırma | Uygulandı: A/B pencereleri, ortalama/tepe/fark tablosu, CSV dışa aktarımı, kontrolsüz iş yükü uyarısı. |
+| 11 | Ses/mikrofon kontrolleri | Uygulandı: WirePlumber wpctl ses düzeyi, yazılımsal susturma, varsayılan aygıt seçimi ve geri okuma. |
+| 12 | Uyku ve pil kaybı tanılaması | Uygulandı: Salt okunur uyku öncesi/sonrası anlık görüntüsü, enerji kaybı ve suspend_stats sayacı. |
 
-İlk teslim önerisindeki 1 + 2 ve ardından 4 + 7, 0.7.0 ile tamamlandı.
-Kalan yeni özellik adayları 8–12'dir; sıradaki aday görsel RGB düzenleyicidir.
-Yeni özelliklerden önce fiziksel uyku/uyanma, priz/pil geçişi ve aynı iş yükünde
-sıcaklık/performans karşılaştırması için eksik kabul kanıtları tamamlanmalıdır.
+8–12 numaralı özelliklerin tamamı yazılımsal olarak uygulandı ve GUI sekme sistemine entegre edildi.
+Tüm birim ve regresyon testleri (202 test) offscreen ortamda geçmektedir.
+Sıradaki aşama: Fiziksel donanım kabulü (uyku/uyanma, priz/pil geçişi) ve temiz kurulum/dağıtım doğrulamasıdır.
 
 ## Kaynaklar
 
