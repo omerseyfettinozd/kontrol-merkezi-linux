@@ -32,7 +32,7 @@ Güncelleme: 4 Ekim 2026. Bu liste tekrar eden geliştirme oturumlarının devam
 
 ## 4 Ekim 2026 kaynak doğrulaması ve devam noktası
 
-- 247 Python/Qt testi, ayrı gerçek fan C hata simülasyonu ve 79 Python dosyasının AST/derleme kontrolü geçti. Canlı betikler çalıştırılmadan derlenir; isimli GUI sekme sözleşmesi offscreen doğrulanır.
+- 268 Python/Qt testi, ayrı gerçek fan C hata simülasyonu ve 84 Python dosyasının AST/derleme kontrolü geçti. Canlı betikler çalıştırılmadan derlenir; isimli GUI sekme sözleşmesi offscreen doğrulanır.
 - Dynamic Boost canlı betiğinin bozuk sürüm/rapor ifadeleri giderildi; kurulu uygulama ve servis sürümü kaynakla eşleşmeden bu kabul çalışmaz. Eski 0.10.0 kurulumu 0.11.0 kabulü sayılmaz.
 - KML-07 için kurulu sürüm/servis durumu ve salt okunur tanılama önkontrolü yapıldı; fiziksel uyku, priz/pil geçişi, donanım ayarı yazımı ve yeniden kurulum yapılmadı.
 - Sıradaki kabul adımı: uygun cihaz oturumunda 0.11.0 kurulumunu ve kaynak/kurulum eşitliğini doğrulamak, ardından gözetimli fiziksel kabul. Gerçek kurulum ve donanım ayarı değiştiren testler gözetimsiz çalıştırılmaz.
@@ -40,6 +40,8 @@ Güncelleme: 4 Ekim 2026. Bu liste tekrar eden geliştirme oturumlarının devam
 ## Tamamlanan 4 Ekim devam işleri
 
 Ses/süreç işçileri, PID başlangıç zamanı kontrolü, uzun ve durdurulmuş A/B ölçümleri, atomik CSV ve hata geri bildirimi, profil silme taslak geri dönüşü, çoklu Mains/USB ve belirsiz güç kaynağı ayrımı, canlı betik izin/RGB/otomasyon geri dönüşü ve geçici kök kurulum regresyonları tamamlandı. Ayrıntılı kapsam `IMPLEMENTATION_STATUS.md` içindedir. Bunlar KML-07/KML-08 fiziksel kabulünü kapatmaz.
+
+Derleme araçlarında grep/toolchain önkontrolleri, driver öncesi uygulama/servis önkontrol sırası ve atomik geçmiş CSV tamamlandı. Kaynak-only `r9t-uninstall-plan.py --dry-run` salt okunur kaldırma envanteri sunar; executor yoktur, ownership manifest eksik olduğu için hiçbir yol silinebilir ilan edilmez. Gerçek temiz kurulum/kaldırma ve sürücü kabulü KML-08 kapsamında açık kalır.
 
 ## Donanım araştırması ve kararlar
 

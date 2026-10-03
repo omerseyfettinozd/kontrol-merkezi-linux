@@ -106,7 +106,7 @@ fan işlemlerinin reddi, arayüz, kalıcı işlem sonucu ve işlem kayıtları
 kontrol edildi. Uzun süreli kullanım, uyku/uyanma ve farklı BIOS sürümleri bu
 sürümde doğrulanmadı.
 
-4 Ekim 2026 bütünleşik kaynak kontrolünde 247 Python/Qt testi, ayrı fan C hata simülasyonu ve 79 Python dosyasının sözdizimi kontrolü geçti. Kurulu uygulama/servis salt okunur önkontrolde 0.10.0, kaynak 0.11.0 olarak görüldü; fiziksel kabul sınırları ve tarihli önceki sonuçlar [durum belgesinde](docs/IMPLEMENTATION_STATUS.md) izlenir.
+4 Ekim 2026 bütünleşik kaynak kontrolünde 268 Python/Qt testi, ayrı fan C hata simülasyonu ve 84 Python dosyasının sözdizimi kontrolü geçti. Kurulu uygulama/servis salt okunur önkontrolde 0.10.0, kaynak 0.11.0 olarak görüldü; fiziksel kabul sınırları ve tarihli önceki sonuçlar [durum belgesinde](docs/IMPLEMENTATION_STATUS.md) izlenir.
 
 Modüller ve tasarım: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -124,3 +124,5 @@ yeni paket sürümünde uyumluluk tekrar kontrol edilmelidir.
 Soğutma profillerinin değerleri ve sınırları: [docs/COOLING.md](docs/COOLING.md).
 
 Güncel kapsam, kalıcı fan profilleri, otomasyon kuralları ve donanım kanıtı bekleyen özellikler: [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md). Windows ile tam özellik eşitliği henüz sağlanmadı.
+
+Kaynak dizininden `PYTHONPATH=. python r9t-uninstall-plan.py --dry-run` yalnız JSON kaldırma envanteri üretir. Executor yoktur; kullanıcı/politika verileri ve sürücüler korunur. Ownership manifest olmadığı için eşleşen dosyalar da silinebilir sayılmaz. Bu kaynak CLI mevcut kurucu tarafından kurulu uygulamaya dağıtılmaz; gerçek kaldırma kabulü ayrıca gerekir.

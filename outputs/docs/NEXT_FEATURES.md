@@ -58,3 +58,5 @@ Sıradaki aşama: Fiziksel donanım kabulü (uyku/uyanma, priz/pil geçişi) ve 
 
 Kaynaklar genel arayüz anlamını açıklar; yukarıdaki cihaz bulguları bu bilgisayardaki
 salt okunur sysfs/procfs, sistem servisi ve wpctl incelemesinden gelir.
+
+4 Ekim dağıtım araçları devamında 268 Python/Qt testi, ayrı fan C hata simülasyonu ve 84 Python dosyasının AST/derleme kontrolü geçti. Derleme betiği/kurulum önkontrolü, atomik geçmiş CSV ve yalnız kaynakta salt okunur kaldırma envanteri tamamlandı; gerçek kaldırma executor'ı yoktur. KML-07/KML-08 fiziksel kabulü açık kalır.
