@@ -3,7 +3,7 @@ import copy
 import os
 from pathlib import Path
 import time
-from .settings import validate_document,atomic_json,default_automation
+from .settings import validate_document,atomic_json,default_automation,parse_document_json
 
 POLICY=Path('/var/lib/slayer-r9t/policy.json')
 
@@ -41,10 +41,9 @@ class Automation:
         self.source=None;self.candidate=None;self.changed=0;self.last_tick=0;self.startup_done=False
         self.applied_settings=None
         try:
-            import json
             if self.path.exists():
                 if self.path.stat().st_size>131072:raise ValueError('Politika çok büyük.')
-                self.document=validate_document(json.loads(self.path.read_text()))
+                self.document=validate_document(parse_document_json(self.path.read_text()))
         except (OSError,ValueError,TypeError) as exc:self.error=str(exc)
 
     def configure(self,document):
