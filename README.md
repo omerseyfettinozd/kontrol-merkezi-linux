@@ -33,8 +33,8 @@ Başka model için R9T kurucusunu çalıştırmadan önce [yapay zekâ ile lapto
 | Fanlar | EC otomatik mod, maksimum soğutma, ayrı CPU/GPU %50–100 hedefleri, hazır ve dört noktalı kullanıcı eğrileri; soğumada histerezis ve kademeli düşüş |
 | Sıcaklık hedefi | İsteğe bağlı yazılım kontrolü: CPU 60–85°C, GPU 60–80°C; fanları ve frekans tavanlarını sıcaklığa göre yönetir |
 | RGB klavye | Tek renk/parlaklık; 126 kanallı statik gökkuşağı, üç bölge ve renk/parlaklık geçiş düzenleri; profil kaydı |
-| Profiller | Güç, boost, frekans, EPP, RGB ve isteğe bağlı fan ayarlarını birlikte kaydetme/uygulama; silme ve JSON içe/dışa aktarma |
-| Otomasyon | Açılış, priz/pil ve yürütülebilir dosya eşleşmesine göre profil; elle seçimde duraklatma; varsayılan kapalı |
+| Profiller | Güç, boost, frekans, EPP, RGB ve isteğe bağlı fan ayarlarını birlikte kaydetme/uygulama; kayıtlı profili ayrı taslakta düzenleme, kopyalama, silme ve JSON içe/dışa aktarma |
+| Otomasyon | Açılış, priz/pil ve yürütülebilir dosya eşleşmesine göre profil; uygulama kuralını düzenleme ve ilk eşleşme önceliğini değiştirme; elle seçimde duraklatma; varsayılan kapalı |
 | Ekran / oturum | Mevcut ekran modları ve Hz, parlaklık, KDE gece rengi, ICC dosyası; isteğe bağlı dahili ekran düşük Hz ve klavye ışığı zaman aşımı |
 | Cihazlar / klavye | Wi-Fi, Bluetooth, uçak modu, touchpad, Fn Lock ve KDE Caps Lock / Control / Escape eşlemeleri; modele özel dahili FHD/IR kamera erişim kontrolü |
 | Pil / SSD / RAM | Pil sağlık, döngü, voltaj, akım ve güç; mevcut NVMe ve `spd5118` sıcaklık sensörleri |
@@ -45,6 +45,8 @@ Başka model için R9T kurucusunu çalıştırmadan önce [yapay zekâ ile lapto
 
 Eksik sensörler `—` / veri yok olarak gösterilir. Arayüz seçilen ayarı ve sistemden geri okunan etkin değeri ayırır. Profillerin başarısız uygulanmasında önceki ayarlara dönüş denenir ve eksik geri dönüş bildirilir.
 
+Profil düzenleyicisi yalnız işaretli alanları saklar; özel RGB haritası ve fan eğrisi korunabilir. İptal kayıtlı ayarları değiştirmez, kopyalama mevcut profilin üzerine yazmaz. Etkin otomasyonun kullandığı bir profil kaydedilirse yeni ayarlar sonraki uygun yenilemede otomatik uygulanabilir. Uygulama kuralları taslak olarak düzenlenir; sıra değişikliği ancak **Otomasyonu kaydet** ile kalıcı olur. Aynı yürütülebilir dosya yeniden eklenirse mevcut kural güncellenir ve önceliği korunur.
+
 ## Sınırlar ve henüz açılmayan özellikler
 
 - **GPU watt/TGP yazımı, MUX, OEM Office/Gaming/Turbo modları, undervolt ve overclock açılmadı.** Komut adlarının veya register değerlerinin bulunması bu BIOS'ta çalışan bir kontrol kanıtı değildir.
@@ -54,9 +56,9 @@ Eksik sensörler `—` / veri yok olarak gösterilir. Arayüz seçilen ayarı ve
 - Dynamic Boost destek bilgisi ve çalışan daemon, gerçek yük altında CPU → GPU güç aktarımını kanıtlamaz. CPU paket + NVIDIA tüketimi de toplam priz tüketimi değildir.
 - GPU neden açık? paneli GPU'yu uyutmaz ve MUX değiştirmez. Açık aygıt bağlantısı tek başına gerçek GPU iş yükü kanıtı değildir.
 - Fan zaman aşımı ve sıcaklık korumaları vardır; EC erişim hatası veya kernel kilitlenmesi altında başarılı geri dönüş garanti edilemez. Firmware korumalarının yerine geçmez.
-- Fiziksel uyku/uyanma, prizden pile geçiş, uzun kullanım ve yük altında FPS/ısı karşılaştırması ayrı kabul işi olarak duruyor. Otomasyon geri dönüşleri ve kurulumun tüm adımlarında geri alma da ek doğrulama gerektirir.
+- Fiziksel uyku/uyanma, prizden pile geçiş, uzun kullanım ve yük altında FPS/ısı karşılaştırması ayrı kabul işi olarak duruyor. Yeni otomasyon/kurulum geri dönüşleri kaynak testleriyle kontrol edildi; fiziksel cihazda yeniden kurulum ve kabul ayrıca gerekiyor.
 
-Güncel kapsam ve kanıtlar: [IMPLEMENTATION_STATUS.md](outputs/docs/IMPLEMENTATION_STATUS.md). Sıradaki çalışmalar: [NEXT_FEATURES.md](outputs/docs/NEXT_FEATURES.md).
+Güncel kapsam ve kanıtlar: [IMPLEMENTATION_STATUS.md](outputs/docs/IMPLEMENTATION_STATUS.md). Öncelikli açık işler: [WORK_QUEUE.md](outputs/docs/WORK_QUEUE.md); yeni özellik adayları: [NEXT_FEATURES.md](outputs/docs/NEXT_FEATURES.md).
 
 ## Kurulum
 
@@ -90,7 +92,7 @@ Program menüde **Slayer R9T Kontrol Merkezi** adıyla açılır. Terminalden:
 /usr/bin/python /usr/local/lib/slayer-r9t/r9t-control-center.py
 ```
 
-Kurucu fan köprüsünü DKMS ile derler, root donanım servisini ve kullanıcı oturumu servisini kurar. Uygulama dosyaları `/usr/local/lib/slayer-r9t/` altındadır. Root servis güncellemesi hata verirse önceki uygulama ve root servis tanımına dönüş yolu vardır; **DKMS, menü girdisi ve sonraki kullanıcı-servisi adımlarının tamamı tek atomik işlemle geri alınmaz**. Önceki uygulama yedeği `/usr/local/lib/.slayer-r9t-previous` altında tutulur.
+Kurucu fan köprüsünü DKMS ile derler, root donanım servisini ve kullanıcı oturumu servisini kurar. Uygulama dosyaları `/usr/local/lib/slayer-r9t/` altındadır. Uygulama, root servis, masaüstü başlatıcısı ve kullanıcı servisinin son aktivasyon adımları aynı geri alma kapsamındadır: hata halinde önceki dosyalar ile servislerin aktif/açılış durumları geri getirilir; eksik geri alma bildirilir. **DKMS kaynakları/derlemesi ve yüklenmiş kernel modülü bu kapsamın dışındadır.** `linked` / `indirect` veya maskelenmiş servis düzenleri değişiklikten önce reddedilir. Önceki uygulama yedeği `/usr/local/lib/.slayer-r9t-previous` altında tutulur.
 
 Günlükler ve servisi durdurma:
 
@@ -117,7 +119,7 @@ Kaynak kod: [`outputs/slayer_r9t/`](outputs/slayer_r9t/), testler: [`outputs/tes
 
 ## Doğrulama ve geliştirme
 
-3 Ekim 2026 tarihli son kaynak doğrulamasında **127 birim testi geçti**. Fan köprüsünün gerçek C kodunu kullanan ayrı hata simülasyonu geçti ve kernel **7.2.8-2-cachyos** başlıklarıyla LLVM nesne derlemesi başarılı oldu. Bu sonuçlar gerçek donanım yükü, modül yükleme, temiz kurulum veya farklı laptop desteği anlamına gelmez. Özel canlı kontrollerin kapsamı ve sonuçları [durum belgesinde](outputs/docs/IMPLEMENTATION_STATUS.md) ayrı tutulur.
+3 Ekim 2026 tarihli son kaynak doğrulamasında **150 birim testi geçti**; kayıtlı profil/otomasyon düzenleme için 14 Qt offscreen ve 9 kural testi dahil. Fan köprüsünün gerçek C kodunu kullanan ayrı hata simülasyonu geçti. Önceki güvenilirlik diliminde kernel **7.2.8-2-cachyos** başlıklarıyla LLVM nesne derlemesi başarılı oldu; bu dilimde sürücü değiştirilmedi. Bu sonuçlar gerçek donanım yükü, modül yükleme, temiz kurulum veya farklı laptop desteği anlamına gelmez. Özel canlı kontrollerin kapsamı ve sonuçları [durum belgesinde](outputs/docs/IMPLEMENTATION_STATUS.md) ayrı tutulur.
 
 Son güvenilirlik düzeltmeleri oyun sonrası GPU frekans sınırını geri alır, etkin profil düzenlemelerini yeniden uygular ve fanın otomatik kontrole dönüşü başarısız olduğunda yeniden denemeyi sürdürür. Uygulama/kullanıcı-servisi kurulumu son adımda hata verse de önceki dosyaları ve servis durumlarını geri alır; DKMS sürücü kurulumu bu geri alma kapsamının dışındadır. Yeni kaynak henüz fiziksel cihazda yeniden kurulup doğrulanmadı.
 
@@ -129,6 +131,8 @@ PYTHONPATH=. PYTHONDONTWRITEBYTECODE=1 QT_QPA_PLATFORM=offscreen python -m unitt
 ```
 
 Donanıma erişmeyen ayrı fan hata simülasyonu, C derleyicisi bulunan ortamda depo kökünden `python outputs/fan-driver/test_fallback.py` ile çalıştırılır.
+
+[Headless regression iş akışı](.github/workflows/regression.yml), `main` push'larında ve pull request'lerde Ubuntu 24.04 / Python 3.14.7 / PySide6 6.11.2 ile bu iki kontrolü çalıştırır. Qt testleri `offscreen` kullanır; fan C kodu bellekte simüle edilmiş EC hatalarıyla sınanır. İş akışı uygulamayı veya kernel modülünü kurmaz, canlı donanım testlerini çalıştırmaz. Kaynakta iş akışının bulunması GitHub koşusunun geçtiği anlamına gelmez; uzak koşu sonucu ayrıca kontrol edilir.
 
 `tests/live_*.py` kontrolleri ayrıca çalıştırılır; bazıları gerçek fan, frekans, ekran, RGB veya kamera durumunu kısa süre değiştirir. Her betiğin model/izin koşullarını ve başlangıç durumuna dönüşünü okuyun; bu kontroller rutin birim testi komutunun parçası değildir.
 

@@ -1,6 +1,7 @@
 """Desktop control center with separate drafts, actual state and durable feedback."""
 from datetime import datetime
 import json
+import copy
 import platform
 import time
 from pathlib import Path
@@ -10,9 +11,9 @@ from PySide6.QtGui import QColor, QFont
 from PySide6.QtGui import QAction,QIcon
 from PySide6.QtWidgets import (QApplication, QCheckBox, QColorDialog, QComboBox,
     QFileDialog, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QMainWindow,
-    QPushButton, QScrollArea, QSpinBox, QTabWidget, QTextEdit, QVBoxLayout, QWidget,QListWidget,QSystemTrayIcon,QMenu)
+    QPushButton, QScrollArea, QDialog, QDialogButtonBox, QLineEdit, QSpinBox, QTabWidget, QTextEdit, QVBoxLayout, QWidget,QListWidget,QSystemTrayIcon,QMenu)
 from . import __version__
-from .settings import Settings, atomic_json
+from .settings import Settings, atomic_json, edit_app_rule, move_app_rule, upsert_app_rule
 from . import telemetry
 from .lighting import pattern
 from .widgets import Card, MetricCard, STYLE, HistoryPlot
@@ -22,6 +23,125 @@ CLIENT = Path(__file__).resolve().parent.parent/'r9t-client.py'
 DESKTOP_CLIENT=CLIENT.with_name('r9t-desktop-client.py')
 EPP_NAMES={'performance':'Performans öncelikli','balance_performance':'Dengeli · performans','balance_power':'Dengeli · tasarruf','power':'Tasarruf öncelikli'}
 POWER_NAMES = {'power-saver': 'Güç tasarrufu', 'balanced': 'Dengeli', 'performance': 'Performans'}
+
+
+class ProfileEditor(QDialog):
+    """A separate draft: opening or cancelling never changes the main controls."""
+    def __init__(self, name, settings, parent=None, copying=False):
+        super().__init__(parent)
+        from .hardware import validate_profile
+        from .fans import PRESETS
+        self.original = copy.deepcopy(validate_profile(settings))
+        self.setWindowTitle('Profili kopyala' if copying else 'Profili düzenle')
+        self.resize(580, 700)
+        page = QVBoxLayout(self)
+        note = QLabel('İşaretli alanlar profile eklenir. Bu profil etkin otomasyonda kullanılıyorsa kaydedilen değişiklikler otomatik uygulanabilir.')
+        note.setWordWrap(True);page.addWidget(note)
+        self.name = QLineEdit(name+' kopyası' if copying else name)
+        self.name.setReadOnly(not copying)
+        page.addWidget(QLabel('Profil adı'))
+        page.addWidget(self.name)
+        scroll = QScrollArea();scroll.setWidgetResizable(True)
+        content = QWidget();box = QVBoxLayout(content);scroll.setWidget(content);page.addWidget(scroll)
+        self.includes = {};self.fields = {}
+        for key,title,options in [('power_profile','Güç profili',POWER_NAMES),('cpu_epp','CPU enerji tercihi',EPP_NAMES)]:
+            combo = QComboBox()
+            for value,label in options.items():combo.addItem(label,value)
+            if key in settings:combo.setCurrentIndex(combo.findData(settings[key]))
+            self.add_field(box,key,title,combo)
+        self.boost = QCheckBox('CPU boost açık');self.boost.setChecked(settings.get('boost_enabled',False))
+        self.add_field(box,'boost_enabled','CPU boost',self.boost)
+        for key,title,upper in [('cpu_max_mhz','CPU üst sınırı',6000),('gpu_max_mhz','GPU üst sınırı',4000)]:
+            spin = QSpinBox();spin.setRange(0,upper);spin.setSuffix(' MHz');spin.setSpecialValueText('Otomatik')
+            spin.setValue(settings.get(key,0));self.add_field(box,key,title,spin)
+        self.light_include = QCheckBox('Klavye aydınlatmasını ekle')
+        self.light_include.setChecked('brightness' in settings);box.addWidget(self.light_include)
+        self.light_pattern = QComboBox()
+        if 'rgb_map' in settings:self.light_pattern.addItem('Kayıtlı renk düzenini koru','stored')
+        for title,key in [('Tek renk','uniform'),('Gökkuşağı geçişi','rainbow'),('Üç renk bölgesi','zones'),('Parlaklık geçişi','gradient')]:self.light_pattern.addItem(title,key)
+        box.addWidget(self.light_pattern)
+        self.color = QColor(*settings.get('rgb',[255,255,255]))
+        self.color_button = QPushButton('Renk seç: '+self.color.name());self.color_button.clicked.connect(self.pick_color);box.addWidget(self.color_button)
+        self.brightness = QSpinBox();self.brightness.setRange(0,100);self.brightness.setSuffix(' % parlaklık');self.brightness.setValue(settings.get('brightness',100));box.addWidget(self.brightness)
+        box.addWidget(QLabel('Kayıtlı renk düzenini koru seçimi, özel renkleri değiştirmeden saklar.'))
+        box.addWidget(QLabel('Fan ayarı'))
+        self.fan_mode = QComboBox()
+        for title,key in [('Fan ayarı ekleme',None),('EC otomatik','auto'),('Manuel','manual'),('Özel eğri','curve'),('Hazır fan profili','preset'),('Maksimum soğutma','boost')]:self.fan_mode.addItem(title,key)
+        fan = settings.get('fan',{})
+        self.fan_mode.setCurrentIndex(max(0,self.fan_mode.findData(fan.get('mode'))));box.addWidget(self.fan_mode)
+        self.fan_manual = QWidget();row = QHBoxLayout(self.fan_manual)
+        self.fan_cpu = QSpinBox();self.fan_gpu = QSpinBox()
+        for key,spin in [('cpu',self.fan_cpu),('gpu',self.fan_gpu)]:
+            spin.setRange(50,100);spin.setValue(fan.get(key,70));spin.setSuffix(' % '+key.upper());row.addWidget(spin)
+        box.addWidget(self.fan_manual)
+        self.fan_preset = QComboBox()
+        for key,value in PRESETS.items():self.fan_preset.addItem(value['name'],key)
+        if fan.get('preset'):self.fan_preset.setCurrentIndex(self.fan_preset.findData(fan['preset']))
+        box.addWidget(self.fan_preset)
+        self.curve = QWidget();curve_box = QVBoxLayout(self.curve)
+        self.point_count = QSpinBox();self.point_count.setRange(2,10);self.point_count.setSuffix(' eğri noktası');curve_box.addWidget(self.point_count)
+        points = fan.get('points',[[45,50],[60,60],[75,80],[85,100]])
+        self.point_rows = [];self.fan_points = []
+        for i in range(10):
+            widget = QWidget();row = QHBoxLayout(widget);t = QSpinBox();p = QSpinBox()
+            t.setRange(40,95);p.setRange(50,100);t.setSuffix(' °C');p.setSuffix(' % fan')
+            t.setValue(points[i][0] if i<len(points) else 85);p.setValue(points[i][1] if i<len(points) else 100)
+            row.addWidget(t);row.addWidget(p);curve_box.addWidget(widget)
+            self.point_rows.append(widget);self.fan_points.append((t,p))
+        self.point_count.setValue(len(points));self.point_count.valueChanged.connect(self.show_points);self.show_points()
+        box.addWidget(self.curve)
+        self.fan_mode.currentIndexChanged.connect(self.show_fan);self.show_fan()
+        self.error = QLabel();self.error.setWordWrap(True);page.addWidget(self.error)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save|QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText('Kaydet')
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText('İptal')
+        buttons.accepted.connect(self.accept);buttons.rejected.connect(self.reject);page.addWidget(buttons)
+
+    def add_field(self, box, key, title, widget):
+        include = QCheckBox(title+' ayarını ekle');include.setChecked(key in self.original)
+        widget.setEnabled(include.isChecked());include.toggled.connect(widget.setEnabled)
+        box.addWidget(include);box.addWidget(widget);self.includes[key] = include;self.fields[key] = widget
+
+    def show_points(self, *_):
+        for i,row in enumerate(self.point_rows):row.setVisible(i<self.point_count.value())
+
+    def show_fan(self, *_):
+        mode = self.fan_mode.currentData()
+        self.fan_manual.setVisible(mode=='manual');self.fan_preset.setVisible(mode=='preset');self.curve.setVisible(mode=='curve')
+
+    def pick_color(self):
+        color = QColorDialog.getColor(self.color,self,'Profil klavye rengi')
+        if color.isValid():self.color = color;self.color_button.setText('Renk seç: '+color.name())
+
+    def profile_settings(self):
+        from .hardware import validate_profile
+        settings = {}
+        for key,include in self.includes.items():
+            if not include.isChecked():continue
+            widget = self.fields[key]
+            settings[key] = widget.currentData() if isinstance(widget,QComboBox) else widget.isChecked() if isinstance(widget,QCheckBox) else widget.value()
+        if self.light_include.isChecked():
+            key = self.light_pattern.currentData();rgb = [self.color.red(),self.color.green(),self.color.blue()]
+            settings['brightness'] = self.brightness.value()
+            if key=='stored':settings['rgb_map'] = copy.deepcopy(self.original['rgb_map'])
+            elif key=='uniform':settings['rgb'] = rgb
+            else:settings['rgb_map'] = pattern(key,rgb)
+        mode = self.fan_mode.currentData()
+        if mode:
+            fan = {'mode':mode}
+            if mode=='manual':fan.update(cpu=self.fan_cpu.value(),gpu=self.fan_gpu.value())
+            elif mode=='curve':fan['points'] = [[t.value(),p.value()] for t,p in self.fan_points[:self.point_count.value()]]
+            elif mode=='preset':fan['preset'] = self.fan_preset.currentData()
+            settings['fan'] = fan
+        return validate_profile(settings)
+
+    def accept(self):
+        try:
+            name = self.name.text().strip()
+            if not name or len(name)>80:raise ValueError('Profil adı 1–80 karakter olmalı.')
+            self.profile_settings()
+        except ValueError as exc:self.error.setText(str(exc));return
+        super().accept()
 
 
 class ControlCenter(QMainWindow):
@@ -566,6 +686,8 @@ class ControlCenter(QMainWindow):
         box.addWidget(self.profile_fan)
         self.profile_combo.currentTextChanged.connect(self.preview_profile)
         self.button(box, 'Seçimleri yeni profil olarak kaydet', self.save_profile)
+        self.button(box, 'Seçilen profili düzenle', self.edit_profile)
+        self.button(box, 'Seçilen profili kopyala', self.copy_profile)
         self.button(box, 'Seçilen profili uygula', self.apply_profile, 'profile')
         self.button(box, 'Seçilen profili sil', self.delete_profile)
         row = QHBoxLayout()
@@ -628,6 +750,11 @@ class ControlCenter(QMainWindow):
         box.addWidget(self.app_list)
         self.button(box,'Uygulama kuralı ekle',self.add_app_rule)
         self.button(box,'Çalışan programdan kural ekle',self.add_running_rule)
+        self.button(box,'Seçili uygulama kuralını düzenle',self.edit_selected_app_rule)
+        row=QHBoxLayout()
+        self.button(row,'Önceliği yükselt',lambda:self.move_selected_app_rule(-1))
+        self.button(row,'Önceliği düşür',lambda:self.move_selected_app_rule(1))
+        box.addLayout(row)
         self.button(box,'Seçili uygulama kuralını sil',self.remove_app_rule)
         self.low_hz=QCheckBox('Pilde dahili ekranı düşük Hz’ye geçir');self.low_hz.setChecked(self.store.data['automation']['low_hz_on_battery']);box.addWidget(self.low_hz)
         self.light_timeout=QSpinBox();self.light_timeout.setRange(0,3600);self.light_timeout.setSpecialValueText('Klavye ışığı zaman aşımı kapalı');self.light_timeout.setSuffix(' saniye boşta kalınca ışığı kapat');self.light_timeout.setValue(self.store.data['automation']['lighting_timeout']);box.addWidget(self.light_timeout)
@@ -635,15 +762,17 @@ class ControlCenter(QMainWindow):
         self.button(box,'Otomasyonu yeniden etkinleştir',lambda:self.command('automation_resume'))
         self.automation_initialized=False;self.refresh_rules();page.addStretch()
 
-    def refresh_rules(self):
+    def refresh_rules(self, selected=None):
         if not hasattr(self,'rule_combos'):return
         for key,combo in self.rule_combos.items():
-            selected=combo.currentData() if combo.count() else self.store.data['automation'][key]
+            selected_profile=combo.currentData() if combo.count() else self.store.data['automation'][key]
             combo.clear();combo.addItem('Kapalı',None)
             for name in self.store.profiles:combo.addItem(name,name)
-            combo.setCurrentIndex(max(0,combo.findData(selected)))
+            combo.setCurrentIndex(max(0,combo.findData(selected_profile)))
+        if selected is None:selected=self.app_list.currentRow()
         self.app_list.clear()
         for rule in self.app_rules:self.app_list.addItem(Path(rule['executable']).name+' → '+rule['profile']+'\n'+rule['executable'])
+        if self.app_rules:self.app_list.setCurrentRow(min(max(0,selected),len(self.app_rules)-1))
 
     def add_app_rule(self):
         path,_=QFileDialog.getOpenFileName(self,'Çalışan programın gerçek yürütülebilir dosyası')
@@ -651,8 +780,38 @@ class ControlCenter(QMainWindow):
         profile,ok=QInputDialog.getItem(self,'Uygulama profili','Kayıtlı profil:',list(self.store.profiles),0,False)
         if ok:
             executable=str(Path(path).resolve())
-            self.app_rules=[r for r in self.app_rules if r['executable']!=executable]+[{'executable':executable,'profile':profile}]
-            self.refresh_rules()
+            self.guarded(lambda:self.upsert_rule(executable,profile))
+
+    def rule_draft(self):
+        return dict(self.store.data['automation'],apps=self.app_rules)
+
+    def upsert_rule(self, executable, profile):
+        updated = upsert_app_rule(self.rule_draft(),self.store.profiles,executable,profile)
+        self.app_rules = updated['apps']
+        selected = next(i for i,rule in enumerate(self.app_rules) if rule['executable']==executable)
+        self.refresh_rules(selected)
+
+    def edit_selected_app_rule(self):
+        index = self.app_list.currentRow()
+        if not 0<=index<len(self.app_rules):return
+        rule = self.app_rules[index]
+        executable,ok = QInputDialog.getText(self,'Uygulama kuralı','Gerçek yürütülebilir dosyanın tam yolu:',text=rule['executable'])
+        if not ok:return
+        names = list(self.store.profiles)
+        profile,ok = QInputDialog.getItem(self,'Uygulama profili','Kayıtlı profil:',names,names.index(rule['profile']) if rule['profile'] in names else 0,False)
+        if not ok:return
+        def edit():
+            updated = edit_app_rule(self.rule_draft(),self.store.profiles,index,executable,profile)
+            self.app_rules = updated['apps'];self.refresh_rules(index)
+        self.guarded(edit)
+
+    def move_selected_app_rule(self, step):
+        index = self.app_list.currentRow();destination = index+step
+        if not 0<=index<len(self.app_rules) or not 0<=destination<len(self.app_rules):return
+        def move():
+            updated = move_app_rule(self.rule_draft(),self.store.profiles,index,destination)
+            self.app_rules = updated['apps'];self.refresh_rules(destination)
+        self.guarded(move)
 
     def remove_app_rule(self):
         index=self.app_list.currentRow()
@@ -666,8 +825,7 @@ class ControlCenter(QMainWindow):
         if not ok:return
         profile,ok=QInputDialog.getItem(self,'Uygulama profili','Kayıtlı profil:',list(self.store.profiles),0,False)
         if ok:
-            self.app_rules=[r for r in self.app_rules if r['executable']!=executable]+[{'executable':executable,'profile':profile}]
-            self.refresh_rules()
+            self.guarded(lambda:self.upsert_rule(executable,profile))
 
     def save_automation(self):
         def save():
@@ -1079,6 +1237,33 @@ class ControlCenter(QMainWindow):
             self.reload_profiles(name_key)
             self.command('configure',json.dumps(self.store.data))
         self.guarded(save)
+
+    def edit_profile(self):
+        self.open_profile_editor(copying=False)
+
+    def copy_profile(self):
+        self.open_profile_editor(copying=True)
+
+    def open_profile_editor(self, copying=False):
+        source = self.profile_combo.currentText()
+        settings = self.store.profiles.get(source)
+        if not settings:
+            self.feedback('Önce bir profil seçin.',error=True);return
+        def edit():
+            dialog = ProfileEditor(source,settings,self,copying)
+            try:
+                if dialog.exec()!=QDialog.DialogCode.Accepted:return
+                name = dialog.name.text().strip() if copying else source
+                if copying and name in self.store.profiles:raise ValueError('Bu ad zaten kayıtlı; yeni bir profil adı kullanın.')
+                updated = dialog.profile_settings()
+                previous = copy.deepcopy(self.store.data)
+                self.store.profiles[name] = updated
+                try:self.store.save()
+                except Exception:self.store.data = previous;raise
+                self.reload_profiles(name)
+                self.command('configure',json.dumps(self.store.data))
+            finally:dialog.deleteLater()
+        self.guarded(edit)
 
     def apply_profile(self):
         settings = self.store.profiles.get(self.profile_combo.currentText())

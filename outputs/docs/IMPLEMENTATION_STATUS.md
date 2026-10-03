@@ -67,6 +67,16 @@
 - Son kaynak doğrulaması: 127 birim testi geçti (25 otomasyon, 11 kurulum testi dahil). Gerçek fan C kodunu içeren ayrı hata simülasyonu geçti; durum alanlarının mevcut Python okuyucuyla uyumluluğu da kontrol edildi. Kernel `7.2.8-2-cachyos` başlıklarıyla LLVM `r9t_fan.o` derlemesi geçti; tam modül paketleme/yükleme yapılmadı.
 - Bu düzeltmelerin fiziksel cihazda yeniden kurulumu, gerçek uyku/uyanma ve EC iletişim hatası altında kabul testi yapılmadı. Önceki sürümlerin canlı raporları bu yeni kodun donanım doğrulaması sayılmaz.
 
+## 3 Ekim 2026 profil/kural düzenleme ve CI dilimi
+
+- Kayıtlı profil ayrı bir taslak penceresinde düzenlenir veya yeni adla kopyalanır. Güç/boost/EPP/frekans, tek renk veya mevcut özel RGB haritası ve 2–10 noktalı fan eğrisi dahil geçerli alanlar yüklenir; işaretlenmeyen alanlar kendiliğinden eklenmez. Özel renk haritası ve eğri tek alan değişirken korunur.
+- İptal kayıtlı dosyayı/donanımı değiştirmez; kopya adının mevcut olması üzerine yazmayı engeller. Yerel atomik kayıt hata verirse önceki bellek belgesi de geri getirilir ve servis yapılandırması gönderilmez. Başarılı kayıt servisin profil deposunu günceller; bu profil etkin otomasyonda kullanılıyorsa yeni içerik bir sonraki uygun yenilemede otomatik uygulanabilir. Fiziksel donanım kabulü yapılmadı.
+- Uygulama kuralları artık seçili kuralı düzenleme ve önceliği yükseltme/düşürme kontrollerine sahiptir. Aynı gerçek yürütülebilir dosyayı yeniden eklemek mevcut sırayı koruyarak günceller. İlk eşleşme kuralı çalışmaya devam eder. Taslak değişiklikleri açık kaydetme adımına kadar dosyaya veya servise yazılmaz; hatalı/çakışan yollar ve bilinmeyen profil adları belgeyi değiştirmeden reddedilir.
+- `test_gui_profiles.py`: 14 Qt offscreen testi; tüm alanların ve kısmi profillerin roundtrip'i, özel harita/eğri korunması, iptal, kopya çakışması, kayıt hatası, kural taslağı/sırası ve profil seçimleri. `test_rule_editing.py`: 9 test; geçerli/atomik düzenleme, kural sınırı ve etkin uygulama önceliği değişirken başlangıç snapshot'ının korunması.
+- Son bütünleşik yerel kontrol: **150 birim testi geçti**, ayrı gerçek fan C hata simülasyonu geçti, `git diff --check` temiz. Python 3.14.7 / PySide6 6.11.2 kullanıldı. Yeni sürücü değişikliği veya donanım yazımı yapılmadı; önceki yerel kernel nesne derlemesi bu dilimde tekrar edilmedi.
+- `.github/workflows/regression.yml`: `main` push ve `pull_request`, Ubuntu 24.04, sabit Python 3.14.7 / PySide6 6.11.2, `QT_QPA_PLATFORM=offscreen`; Python keşfi ve fan C hata simülasyonu. GitHub action sürümleri doğrulanmış v7 commit SHA'larına sabitlendi, token yalnız `contents: read`, checkout kimlik bilgilerini kalıcı saklamaz. İş akışı gerçek kurucuyu, DKMS'i, modül yüklemeyi veya `live_*.py` kontrollerini çalıştırmaz. Kernel derlemesi için hosted CI işi eklenmedi; TUXEDO kaynak/symbol ön koşulları bu ortamda hazır değildir.
+- İş akışının yerel YAML/komut kontrolleri ve bağımsız incelemesi geçti. GitHub hosted koşusunun sonucu aynı teslim commit'i için ayrıca kontrol edilmelidir; yerel geçiş uzak CI sonucu sayılmaz. Devam eden cihaz kabulü ve sıradaki yazılım işleri [WORK_QUEUE.md](WORK_QUEUE.md) içindedir.
+
 ## Donanım kanıtı bekleyenler
 
 | Özellik | Bulgular / eksik kanıt |

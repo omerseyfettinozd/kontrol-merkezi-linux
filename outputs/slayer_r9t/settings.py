@@ -1,5 +1,6 @@
 """Validated user profiles with atomic writes and legacy fan-profile preservation."""
 import json
+import copy
 import os
 from pathlib import Path
 import tempfile
@@ -24,9 +25,37 @@ def validate_automation(value,profiles):
         if not isinstance(rule,dict) or set(rule)!={'executable','profile'}:raise ValueError('Uygulama kuralı geçersiz.')
         executable=rule['executable']
         if not isinstance(executable,str) or not executable.startswith('/') or len(executable)>4096 or '\x00' in executable or executable in seen:raise ValueError('Tekil tam uygulama yolu gerekli.')
-        if rule['profile'] not in profiles:raise ValueError('Uygulama profili bulunamadı.')
+        if not isinstance(rule['profile'],str) or rule['profile'] not in profiles:raise ValueError('Uygulama profili bulunamadı.')
         seen.add(executable)
     return value
+
+
+def edit_app_rule(automation, profiles, index, executable, profile):
+    """Replace one draft rule without changing its priority or saving it."""
+    candidate=copy.deepcopy(validate_automation(automation, profiles))
+    if type(index) is not int or not 0<=index<len(candidate['apps']):
+        raise ValueError('Seçili uygulama kuralı bulunamadı.')
+    candidate['apps'][index]={'executable':executable,'profile':profile}
+    return validate_automation(candidate, profiles)
+
+
+def move_app_rule(automation, profiles, index, destination):
+    """Move one draft rule to an explicit first-match priority position."""
+    candidate=copy.deepcopy(validate_automation(automation, profiles))
+    if any(type(position) is not int or not 0<=position<len(candidate['apps']) for position in (index,destination)):
+        raise ValueError('Uygulama kuralı sırası geçersiz.')
+    candidate['apps'].insert(destination,candidate['apps'].pop(index))
+    return candidate
+
+
+def upsert_app_rule(automation, profiles, executable, profile):
+    """Adding the same executable updates its existing slot, never its priority."""
+    candidate=copy.deepcopy(validate_automation(automation, profiles))
+    for index,rule in enumerate(candidate['apps']):
+        if rule['executable']==executable:
+            return edit_app_rule(candidate,profiles,index,executable,profile)
+    candidate['apps'].append({'executable':executable,'profile':profile})
+    return validate_automation(candidate,profiles)
 
 
 def validate_document(value):
