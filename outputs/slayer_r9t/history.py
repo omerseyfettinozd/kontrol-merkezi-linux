@@ -1,6 +1,9 @@
 """Bounded session telemetry with real timestamps and missing-value gaps."""
 import csv
 import math
+import os
+from pathlib import Path
+import tempfile
 import time
 from collections import deque
 from datetime import datetime,timezone
@@ -38,8 +41,17 @@ class History:
 
     def export(self,path,seconds,now=None):
         rows=self.window(seconds,now)
-        with open(path,'w',newline='',encoding='utf-8') as stream:
-            writer=csv.DictWriter(stream,fieldnames=['utc',*METRICS])
-            writer.writeheader()
-            writer.writerows({k:r.get(k) for k in ['utc',*METRICS]} for r in rows)
+        target=Path(path)
+        fd,temporary=tempfile.mkstemp(prefix='.'+target.name+'.',dir=target.parent)
+        try:
+            with os.fdopen(fd,'w',newline='',encoding='utf-8') as stream:
+                writer=csv.DictWriter(stream,fieldnames=['utc',*METRICS])
+                writer.writeheader()
+                writer.writerows({k:r.get(k) for k in ['utc',*METRICS]} for r in rows)
+                stream.flush();os.fsync(stream.fileno())
+            os.replace(temporary,target)
+        except BaseException:
+            try:os.unlink(temporary)
+            except FileNotFoundError:pass
+            raise
         return len(rows)
