@@ -1,0 +1,25 @@
+{
+  "version": "0.6.1",
+  "patterns": [
+    {
+      "name": "zones",
+      "channels": 126,
+      "readback": true,
+      "idle_restore": true
+    },
+    {
+      "name": "rainbow",
+      "channels": 126,
+      "readback": true,
+      "idle_restore": true
+    },
+    {
+      "name": "gradient",
+      "channels": 126,
+      "readback": true,
+      "idle_restore": true
+    }
+  ],
+  "restored": true,
+  "passed": true
+}

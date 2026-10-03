@@ -1,0 +1,356 @@
+{
+  "before": "0",
+  "samples": [
+    {
+      "requested": 0,
+      "raw": 0,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 172,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 0,
+      "raw": 0,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 367,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 0,
+      "raw": 0,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 210,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 0,
+      "raw": 0,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1012,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 0,
+      "raw": 0,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1012,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 0,
+      "raw": 0,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1155,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 0,
+      "raw": 0,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1012,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 0,
+      "raw": 0,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1012,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 5,
+      "raw": 5,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1020,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 5,
+      "raw": 5,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1020,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 5,
+      "raw": 5,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1012,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 5,
+      "raw": 5,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1020,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 5,
+      "raw": 5,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1117,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 5,
+      "raw": 5,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1042,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 5,
+      "raw": 5,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1012,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 5,
+      "raw": 5,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1020,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 10,
+      "raw": 10,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1110,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 10,
+      "raw": 10,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1020,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 10,
+      "raw": 10,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1012,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 10,
+      "raw": 10,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1005,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 10,
+      "raw": 10,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1080,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 10,
+      "raw": 10,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1012,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 10,
+      "raw": 10,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1012,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    },
+    {
+      "requested": 10,
+      "raw": 10,
+      "gpu": {
+        "available": true,
+        "requested_max_mhz": null,
+        "limit_readback_available": false,
+        "error": "",
+        "max_mhz": 3090,
+        "current_mhz": 1117,
+        "enforced_power_w": 105.0,
+        "power_limit_supported": false
+      }
+    }
+  ],
+  "restored": {
+    "raw": 0,
+    "gpu": {
+      "available": true,
+      "requested_max_mhz": null,
+      "limit_readback_available": false,
+      "error": "",
+      "max_mhz": 3090,
+      "current_mhz": 1005,
+      "enforced_power_w": 105.0,
+      "power_limit_supported": false
+    }
+  },
+  "load_test": false,
+  "interpretation": "EC write/readback succeeds; NVML enforced power stays 105 W in desktop operation. No load-effect conclusion."
+}

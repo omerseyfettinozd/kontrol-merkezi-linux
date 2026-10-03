@@ -1,0 +1,19 @@
+{
+  "before": {
+    "power_profile": "power-saver",
+    "boost_enabled": false,
+    "rgb": [
+      23,
+      255,
+      255
+    ],
+    "brightness": 100
+  },
+  "checks": [
+    "Combined profile: power, all CPU boost policies, RGB quantization verified",
+    "Manual fan and curve rejected by root service",
+    "Five-tab GUI: asynchronous action, actual state, persistent feedback passed",
+    "Successful and rejected actions recorded in diagnostics"
+  ],
+  "restored": true
+}

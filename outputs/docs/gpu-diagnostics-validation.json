@@ -1,0 +1,1853 @@
+{
+  "version": "0.9.0",
+  "unit_tests": 98,
+  "samples": [
+    {
+      "duration_ms": 96,
+      "data": {
+        "time": "2000-01-01T00:00:05+00:00",
+        "cards": [
+          {
+            "card": "card1",
+            "pci": "0000:01:00.0",
+            "vendor": "0x10de",
+            "nodes": [
+              "/dev/dri/card1",
+              "/dev/dri/renderD128",
+              "/dev/nvidia0"
+            ],
+            "connectors": [
+              {
+                "name": "DP-1",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "HDMI-A-1",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "eDP-1",
+                "status": "connected",
+                "enabled": "enabled"
+              }
+            ],
+            "power_before": {
+              "runtime_status": "active",
+              "control": "auto",
+              "runtime_active_time": 3900,
+              "runtime_suspended_time": 0
+            },
+            "driver_power": {
+              "Runtime D3 status": "Enabled (fine-grained)",
+              "Tegra iGPU Rail-Gating": "Disabled",
+              "Video Memory": "Active",
+              "Video Memory Self Refresh": "Supported",
+              "Video Memory Off": "Supported",
+              "S0ix Platform Support": "Supported",
+              "S0ix Status": "Disabled",
+              "Notebook Dynamic Boost": "Supported"
+            },
+            "siblings": [
+              {
+                "address": "0000:01:00.1",
+                "class": "0x040300",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1300,
+                "runtime_suspended_time": 2200
+              }
+            ],
+            "users": [
+              {
+                "pid": 1001,
+                "name": "example-process-01",
+                "nodes": [
+                  "/dev/dri/card1",
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1002,
+                "name": "example-process-02",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1003,
+                "name": "example-process-03",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1004,
+                "name": "example-process-04",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1005,
+                "name": "example-process-05",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1006,
+                "name": "example-process-06",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1007,
+                "name": "example-process-07",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1008,
+                "name": "example-process-08",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1009,
+                "name": "example-process-09",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1010,
+                "name": "example-process-10",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1012,
+                "name": "example-process-12",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1014,
+                "name": "example-process-14",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              }
+            ],
+            "power_after": {
+              "runtime_status": "active",
+              "control": "auto",
+              "runtime_active_time": 4000,
+              "runtime_suspended_time": 0
+            },
+            "evidence": [
+              "Etkin ekran bağlantısı: eDP-1.",
+              "Bu GPU aygıtını açık tutan süreçler var; açık dosya tek başına GPU iş yükü kanıtı değildir."
+            ],
+            "observation": "GPU zaten etkin veya durum belirsiz; uyandırma etkisi bu örnekten kanıtlanamaz."
+          },
+          {
+            "card": "card0",
+            "pci": "0000:07:00.0",
+            "vendor": "0x1002",
+            "nodes": [
+              "/dev/dri/card0",
+              "/dev/dri/renderD129"
+            ],
+            "connectors": [
+              {
+                "name": "DP-2",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "DP-3",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "Writeback-1",
+                "status": "unknown",
+                "enabled": "disabled"
+              }
+            ],
+            "power_before": {
+              "runtime_status": "active",
+              "control": "on",
+              "runtime_active_time": 3800,
+              "runtime_suspended_time": 0
+            },
+            "driver_power": {},
+            "siblings": [
+              {
+                "address": "0000:07:00.1",
+                "class": "0x040300",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1200,
+                "runtime_suspended_time": 2700
+              },
+              {
+                "address": "0000:07:00.2",
+                "class": "0x108000",
+                "runtime_status": "active",
+                "control": "on",
+                "runtime_active_time": 3900,
+                "runtime_suspended_time": 0
+              },
+              {
+                "address": "0000:07:00.3",
+                "class": "0x0c0330",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1000,
+                "runtime_suspended_time": 3700
+              },
+              {
+                "address": "0000:07:00.4",
+                "class": "0x0c0330",
+                "runtime_status": "active",
+                "control": "auto",
+                "runtime_active_time": 3900,
+                "runtime_suspended_time": 0
+              },
+              {
+                "address": "0000:07:00.5",
+                "class": "0x048000",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1100,
+                "runtime_suspended_time": 3200
+              },
+              {
+                "address": "0000:07:00.6",
+                "class": "0x040300",
+                "runtime_status": "active",
+                "control": "auto",
+                "runtime_active_time": 3900,
+                "runtime_suspended_time": 0
+              }
+            ],
+            "users": [
+              {
+                "pid": 1001,
+                "name": "example-process-01",
+                "nodes": [
+                  "/dev/dri/card0"
+                ]
+              },
+              {
+                "pid": 1008,
+                "name": "example-process-08",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1009,
+                "name": "example-process-09",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1011,
+                "name": "example-process-11",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1013,
+                "name": "example-process-13",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              }
+            ],
+            "power_after": {
+              "runtime_status": "active",
+              "control": "on",
+              "runtime_active_time": 4000,
+              "runtime_suspended_time": 0
+            },
+            "evidence": [
+              "Runtime güç politikası on: otomatik askıya alma kapalı.",
+              "Bu GPU aygıtını açık tutan süreçler var; açık dosya tek başına GPU iş yükü kanıtı değildir."
+            ],
+            "observation": "GPU zaten etkin veya durum belirsiz; uyandırma etkisi bu örnekten kanıtlanamaz."
+          }
+        ],
+        "shared_users": [
+          {
+            "pid": 1001,
+            "name": "example-process-01",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1002,
+            "name": "example-process-02",
+            "nodes": [
+              "/dev/nvidia-uvm",
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1007,
+            "name": "example-process-07",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1008,
+            "name": "example-process-08",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1009,
+            "name": "example-process-09",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1010,
+            "name": "example-process-10",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1012,
+            "name": "example-process-12",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1014,
+            "name": "example-process-14",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          }
+        ],
+        "coverage": {
+          "permission_denied": 366,
+          "vanished": 0,
+          "fd_truncated": 0,
+          "process_truncated": false,
+          "timed_out": false
+        },
+        "method": "sysfs/procfs; GPU device nodes are not opened; no NVML or nvidia-smi",
+        "wake_effect_verified": false
+      }
+    },
+    {
+      "duration_ms": 93,
+      "data": {
+        "time": "2000-01-01T00:00:10+00:00",
+        "cards": [
+          {
+            "card": "card1",
+            "pci": "0000:01:00.0",
+            "vendor": "0x10de",
+            "nodes": [
+              "/dev/dri/card1",
+              "/dev/dri/renderD128",
+              "/dev/nvidia0"
+            ],
+            "connectors": [
+              {
+                "name": "DP-1",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "HDMI-A-1",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "eDP-1",
+                "status": "connected",
+                "enabled": "enabled"
+              }
+            ],
+            "power_before": {
+              "runtime_status": "active",
+              "control": "auto",
+              "runtime_active_time": 4300,
+              "runtime_suspended_time": 0
+            },
+            "driver_power": {
+              "Runtime D3 status": "Enabled (fine-grained)",
+              "Tegra iGPU Rail-Gating": "Disabled",
+              "Video Memory": "Active",
+              "Video Memory Self Refresh": "Supported",
+              "Video Memory Off": "Supported",
+              "S0ix Platform Support": "Supported",
+              "S0ix Status": "Disabled",
+              "Notebook Dynamic Boost": "Supported"
+            },
+            "siblings": [
+              {
+                "address": "0000:01:00.1",
+                "class": "0x040300",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1300,
+                "runtime_suspended_time": 2300
+              }
+            ],
+            "users": [
+              {
+                "pid": 1001,
+                "name": "example-process-01",
+                "nodes": [
+                  "/dev/dri/card1",
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1002,
+                "name": "example-process-02",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1003,
+                "name": "example-process-03",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1004,
+                "name": "example-process-04",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1005,
+                "name": "example-process-05",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1006,
+                "name": "example-process-06",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1007,
+                "name": "example-process-07",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1008,
+                "name": "example-process-08",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1009,
+                "name": "example-process-09",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1010,
+                "name": "example-process-10",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1012,
+                "name": "example-process-12",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1014,
+                "name": "example-process-14",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              }
+            ],
+            "power_after": {
+              "runtime_status": "active",
+              "control": "auto",
+              "runtime_active_time": 4400,
+              "runtime_suspended_time": 0
+            },
+            "evidence": [
+              "Etkin ekran bağlantısı: eDP-1.",
+              "Bu GPU aygıtını açık tutan süreçler var; açık dosya tek başına GPU iş yükü kanıtı değildir."
+            ],
+            "observation": "GPU zaten etkin veya durum belirsiz; uyandırma etkisi bu örnekten kanıtlanamaz."
+          },
+          {
+            "card": "card0",
+            "pci": "0000:07:00.0",
+            "vendor": "0x1002",
+            "nodes": [
+              "/dev/dri/card0",
+              "/dev/dri/renderD129"
+            ],
+            "connectors": [
+              {
+                "name": "DP-2",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "DP-3",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "Writeback-1",
+                "status": "unknown",
+                "enabled": "disabled"
+              }
+            ],
+            "power_before": {
+              "runtime_status": "active",
+              "control": "on",
+              "runtime_active_time": 4200,
+              "runtime_suspended_time": 0
+            },
+            "driver_power": {},
+            "siblings": [
+              {
+                "address": "0000:07:00.1",
+                "class": "0x040300",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1200,
+                "runtime_suspended_time": 2800
+              },
+              {
+                "address": "0000:07:00.2",
+                "class": "0x108000",
+                "runtime_status": "active",
+                "control": "on",
+                "runtime_active_time": 4300,
+                "runtime_suspended_time": 0
+              },
+              {
+                "address": "0000:07:00.3",
+                "class": "0x0c0330",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1000,
+                "runtime_suspended_time": 4100
+              },
+              {
+                "address": "0000:07:00.4",
+                "class": "0x0c0330",
+                "runtime_status": "active",
+                "control": "auto",
+                "runtime_active_time": 4300,
+                "runtime_suspended_time": 0
+              },
+              {
+                "address": "0000:07:00.5",
+                "class": "0x048000",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1100,
+                "runtime_suspended_time": 3300
+              },
+              {
+                "address": "0000:07:00.6",
+                "class": "0x040300",
+                "runtime_status": "active",
+                "control": "auto",
+                "runtime_active_time": 4300,
+                "runtime_suspended_time": 0
+              }
+            ],
+            "users": [
+              {
+                "pid": 1001,
+                "name": "example-process-01",
+                "nodes": [
+                  "/dev/dri/card0"
+                ]
+              },
+              {
+                "pid": 1008,
+                "name": "example-process-08",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1009,
+                "name": "example-process-09",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1011,
+                "name": "example-process-11",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1013,
+                "name": "example-process-13",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              }
+            ],
+            "power_after": {
+              "runtime_status": "active",
+              "control": "on",
+              "runtime_active_time": 4400,
+              "runtime_suspended_time": 0
+            },
+            "evidence": [
+              "Runtime güç politikası on: otomatik askıya alma kapalı.",
+              "Bu GPU aygıtını açık tutan süreçler var; açık dosya tek başına GPU iş yükü kanıtı değildir."
+            ],
+            "observation": "GPU zaten etkin veya durum belirsiz; uyandırma etkisi bu örnekten kanıtlanamaz."
+          }
+        ],
+        "shared_users": [
+          {
+            "pid": 1001,
+            "name": "example-process-01",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1002,
+            "name": "example-process-02",
+            "nodes": [
+              "/dev/nvidia-uvm",
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1007,
+            "name": "example-process-07",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1008,
+            "name": "example-process-08",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1009,
+            "name": "example-process-09",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1010,
+            "name": "example-process-10",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1012,
+            "name": "example-process-12",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1014,
+            "name": "example-process-14",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          }
+        ],
+        "coverage": {
+          "permission_denied": 366,
+          "vanished": 0,
+          "fd_truncated": 0,
+          "process_truncated": false,
+          "timed_out": false
+        },
+        "method": "sysfs/procfs; GPU device nodes are not opened; no NVML or nvidia-smi",
+        "wake_effect_verified": false
+      }
+    },
+    {
+      "duration_ms": 93,
+      "data": {
+        "time": "2000-01-01T00:00:15+00:00",
+        "cards": [
+          {
+            "card": "card1",
+            "pci": "0000:01:00.0",
+            "vendor": "0x10de",
+            "nodes": [
+              "/dev/dri/card1",
+              "/dev/dri/renderD128",
+              "/dev/nvidia0"
+            ],
+            "connectors": [
+              {
+                "name": "DP-1",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "HDMI-A-1",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "eDP-1",
+                "status": "connected",
+                "enabled": "enabled"
+              }
+            ],
+            "power_before": {
+              "runtime_status": "active",
+              "control": "auto",
+              "runtime_active_time": 4800,
+              "runtime_suspended_time": 0
+            },
+            "driver_power": {
+              "Runtime D3 status": "Enabled (fine-grained)",
+              "Tegra iGPU Rail-Gating": "Disabled",
+              "Video Memory": "Active",
+              "Video Memory Self Refresh": "Supported",
+              "Video Memory Off": "Supported",
+              "S0ix Platform Support": "Supported",
+              "S0ix Status": "Disabled",
+              "Notebook Dynamic Boost": "Supported"
+            },
+            "siblings": [
+              {
+                "address": "0000:01:00.1",
+                "class": "0x040300",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1300,
+                "runtime_suspended_time": 2400
+              }
+            ],
+            "users": [
+              {
+                "pid": 1001,
+                "name": "example-process-01",
+                "nodes": [
+                  "/dev/dri/card1",
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1002,
+                "name": "example-process-02",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1003,
+                "name": "example-process-03",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1004,
+                "name": "example-process-04",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1005,
+                "name": "example-process-05",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1006,
+                "name": "example-process-06",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1007,
+                "name": "example-process-07",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1008,
+                "name": "example-process-08",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1009,
+                "name": "example-process-09",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1010,
+                "name": "example-process-10",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1012,
+                "name": "example-process-12",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1014,
+                "name": "example-process-14",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              }
+            ],
+            "power_after": {
+              "runtime_status": "active",
+              "control": "auto",
+              "runtime_active_time": 4900,
+              "runtime_suspended_time": 0
+            },
+            "evidence": [
+              "Etkin ekran bağlantısı: eDP-1.",
+              "Bu GPU aygıtını açık tutan süreçler var; açık dosya tek başına GPU iş yükü kanıtı değildir."
+            ],
+            "observation": "GPU zaten etkin veya durum belirsiz; uyandırma etkisi bu örnekten kanıtlanamaz."
+          },
+          {
+            "card": "card0",
+            "pci": "0000:07:00.0",
+            "vendor": "0x1002",
+            "nodes": [
+              "/dev/dri/card0",
+              "/dev/dri/renderD129"
+            ],
+            "connectors": [
+              {
+                "name": "DP-2",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "DP-3",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "Writeback-1",
+                "status": "unknown",
+                "enabled": "disabled"
+              }
+            ],
+            "power_before": {
+              "runtime_status": "active",
+              "control": "on",
+              "runtime_active_time": 4600,
+              "runtime_suspended_time": 0
+            },
+            "driver_power": {},
+            "siblings": [
+              {
+                "address": "0000:07:00.1",
+                "class": "0x040300",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1200,
+                "runtime_suspended_time": 2900
+              },
+              {
+                "address": "0000:07:00.2",
+                "class": "0x108000",
+                "runtime_status": "active",
+                "control": "on",
+                "runtime_active_time": 4700,
+                "runtime_suspended_time": 0
+              },
+              {
+                "address": "0000:07:00.3",
+                "class": "0x0c0330",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1000,
+                "runtime_suspended_time": 4500
+              },
+              {
+                "address": "0000:07:00.4",
+                "class": "0x0c0330",
+                "runtime_status": "active",
+                "control": "auto",
+                "runtime_active_time": 4700,
+                "runtime_suspended_time": 0
+              },
+              {
+                "address": "0000:07:00.5",
+                "class": "0x048000",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1100,
+                "runtime_suspended_time": 3400
+              },
+              {
+                "address": "0000:07:00.6",
+                "class": "0x040300",
+                "runtime_status": "active",
+                "control": "auto",
+                "runtime_active_time": 4800,
+                "runtime_suspended_time": 0
+              }
+            ],
+            "users": [
+              {
+                "pid": 1001,
+                "name": "example-process-01",
+                "nodes": [
+                  "/dev/dri/card0"
+                ]
+              },
+              {
+                "pid": 1008,
+                "name": "example-process-08",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1009,
+                "name": "example-process-09",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1011,
+                "name": "example-process-11",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1013,
+                "name": "example-process-13",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              }
+            ],
+            "power_after": {
+              "runtime_status": "active",
+              "control": "on",
+              "runtime_active_time": 4900,
+              "runtime_suspended_time": 0
+            },
+            "evidence": [
+              "Runtime güç politikası on: otomatik askıya alma kapalı.",
+              "Bu GPU aygıtını açık tutan süreçler var; açık dosya tek başına GPU iş yükü kanıtı değildir."
+            ],
+            "observation": "GPU zaten etkin veya durum belirsiz; uyandırma etkisi bu örnekten kanıtlanamaz."
+          }
+        ],
+        "shared_users": [
+          {
+            "pid": 1001,
+            "name": "example-process-01",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1002,
+            "name": "example-process-02",
+            "nodes": [
+              "/dev/nvidia-uvm",
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1007,
+            "name": "example-process-07",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1008,
+            "name": "example-process-08",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1009,
+            "name": "example-process-09",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1010,
+            "name": "example-process-10",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1012,
+            "name": "example-process-12",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1014,
+            "name": "example-process-14",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          }
+        ],
+        "coverage": {
+          "permission_denied": 366,
+          "vanished": 0,
+          "fd_truncated": 0,
+          "process_truncated": false,
+          "timed_out": false
+        },
+        "method": "sysfs/procfs; GPU device nodes are not opened; no NVML or nvidia-smi",
+        "wake_effect_verified": false
+      }
+    },
+    {
+      "duration_ms": 92,
+      "data": {
+        "time": "2000-01-01T00:00:20+00:00",
+        "cards": [
+          {
+            "card": "card1",
+            "pci": "0000:01:00.0",
+            "vendor": "0x10de",
+            "nodes": [
+              "/dev/dri/card1",
+              "/dev/dri/renderD128",
+              "/dev/nvidia0"
+            ],
+            "connectors": [
+              {
+                "name": "DP-1",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "HDMI-A-1",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "eDP-1",
+                "status": "connected",
+                "enabled": "enabled"
+              }
+            ],
+            "power_before": {
+              "runtime_status": "active",
+              "control": "auto",
+              "runtime_active_time": 5300,
+              "runtime_suspended_time": 0
+            },
+            "driver_power": {
+              "Runtime D3 status": "Enabled (fine-grained)",
+              "Tegra iGPU Rail-Gating": "Disabled",
+              "Video Memory": "Active",
+              "Video Memory Self Refresh": "Supported",
+              "Video Memory Off": "Supported",
+              "S0ix Platform Support": "Supported",
+              "S0ix Status": "Disabled",
+              "Notebook Dynamic Boost": "Supported"
+            },
+            "siblings": [
+              {
+                "address": "0000:01:00.1",
+                "class": "0x040300",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1300,
+                "runtime_suspended_time": 2500
+              }
+            ],
+            "users": [
+              {
+                "pid": 1001,
+                "name": "example-process-01",
+                "nodes": [
+                  "/dev/dri/card1",
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1002,
+                "name": "example-process-02",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1003,
+                "name": "example-process-03",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1004,
+                "name": "example-process-04",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1005,
+                "name": "example-process-05",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1006,
+                "name": "example-process-06",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1007,
+                "name": "example-process-07",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1008,
+                "name": "example-process-08",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1009,
+                "name": "example-process-09",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1010,
+                "name": "example-process-10",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1012,
+                "name": "example-process-12",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1014,
+                "name": "example-process-14",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              }
+            ],
+            "power_after": {
+              "runtime_status": "active",
+              "control": "auto",
+              "runtime_active_time": 5400,
+              "runtime_suspended_time": 0
+            },
+            "evidence": [
+              "Etkin ekran bağlantısı: eDP-1.",
+              "Bu GPU aygıtını açık tutan süreçler var; açık dosya tek başına GPU iş yükü kanıtı değildir."
+            ],
+            "observation": "GPU zaten etkin veya durum belirsiz; uyandırma etkisi bu örnekten kanıtlanamaz."
+          },
+          {
+            "card": "card0",
+            "pci": "0000:07:00.0",
+            "vendor": "0x1002",
+            "nodes": [
+              "/dev/dri/card0",
+              "/dev/dri/renderD129"
+            ],
+            "connectors": [
+              {
+                "name": "DP-2",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "DP-3",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "Writeback-1",
+                "status": "unknown",
+                "enabled": "disabled"
+              }
+            ],
+            "power_before": {
+              "runtime_status": "active",
+              "control": "on",
+              "runtime_active_time": 5100,
+              "runtime_suspended_time": 0
+            },
+            "driver_power": {},
+            "siblings": [
+              {
+                "address": "0000:07:00.1",
+                "class": "0x040300",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1200,
+                "runtime_suspended_time": 3000
+              },
+              {
+                "address": "0000:07:00.2",
+                "class": "0x108000",
+                "runtime_status": "active",
+                "control": "on",
+                "runtime_active_time": 5200,
+                "runtime_suspended_time": 0
+              },
+              {
+                "address": "0000:07:00.3",
+                "class": "0x0c0330",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1000,
+                "runtime_suspended_time": 5000
+              },
+              {
+                "address": "0000:07:00.4",
+                "class": "0x0c0330",
+                "runtime_status": "active",
+                "control": "auto",
+                "runtime_active_time": 5300,
+                "runtime_suspended_time": 0
+              },
+              {
+                "address": "0000:07:00.5",
+                "class": "0x048000",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1100,
+                "runtime_suspended_time": 3500
+              },
+              {
+                "address": "0000:07:00.6",
+                "class": "0x040300",
+                "runtime_status": "active",
+                "control": "auto",
+                "runtime_active_time": 5300,
+                "runtime_suspended_time": 0
+              }
+            ],
+            "users": [
+              {
+                "pid": 1001,
+                "name": "example-process-01",
+                "nodes": [
+                  "/dev/dri/card0"
+                ]
+              },
+              {
+                "pid": 1008,
+                "name": "example-process-08",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1009,
+                "name": "example-process-09",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1011,
+                "name": "example-process-11",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1013,
+                "name": "example-process-13",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              }
+            ],
+            "power_after": {
+              "runtime_status": "active",
+              "control": "on",
+              "runtime_active_time": 5400,
+              "runtime_suspended_time": 0
+            },
+            "evidence": [
+              "Runtime güç politikası on: otomatik askıya alma kapalı.",
+              "Bu GPU aygıtını açık tutan süreçler var; açık dosya tek başına GPU iş yükü kanıtı değildir."
+            ],
+            "observation": "GPU zaten etkin veya durum belirsiz; uyandırma etkisi bu örnekten kanıtlanamaz."
+          }
+        ],
+        "shared_users": [
+          {
+            "pid": 1001,
+            "name": "example-process-01",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1002,
+            "name": "example-process-02",
+            "nodes": [
+              "/dev/nvidia-uvm",
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1007,
+            "name": "example-process-07",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1008,
+            "name": "example-process-08",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1009,
+            "name": "example-process-09",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1010,
+            "name": "example-process-10",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1012,
+            "name": "example-process-12",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1014,
+            "name": "example-process-14",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          }
+        ],
+        "coverage": {
+          "permission_denied": 366,
+          "vanished": 0,
+          "fd_truncated": 0,
+          "process_truncated": false,
+          "timed_out": false
+        },
+        "method": "sysfs/procfs; GPU device nodes are not opened; no NVML or nvidia-smi",
+        "wake_effect_verified": false
+      }
+    },
+    {
+      "duration_ms": 92,
+      "data": {
+        "time": "2000-01-01T00:00:25+00:00",
+        "cards": [
+          {
+            "card": "card1",
+            "pci": "0000:01:00.0",
+            "vendor": "0x10de",
+            "nodes": [
+              "/dev/dri/card1",
+              "/dev/dri/renderD128",
+              "/dev/nvidia0"
+            ],
+            "connectors": [
+              {
+                "name": "DP-1",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "HDMI-A-1",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "eDP-1",
+                "status": "connected",
+                "enabled": "enabled"
+              }
+            ],
+            "power_before": {
+              "runtime_status": "active",
+              "control": "auto",
+              "runtime_active_time": 5800,
+              "runtime_suspended_time": 0
+            },
+            "driver_power": {
+              "Runtime D3 status": "Enabled (fine-grained)",
+              "Tegra iGPU Rail-Gating": "Disabled",
+              "Video Memory": "Active",
+              "Video Memory Self Refresh": "Supported",
+              "Video Memory Off": "Supported",
+              "S0ix Platform Support": "Supported",
+              "S0ix Status": "Disabled",
+              "Notebook Dynamic Boost": "Supported"
+            },
+            "siblings": [
+              {
+                "address": "0000:01:00.1",
+                "class": "0x040300",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1300,
+                "runtime_suspended_time": 2600
+              }
+            ],
+            "users": [
+              {
+                "pid": 1001,
+                "name": "example-process-01",
+                "nodes": [
+                  "/dev/dri/card1",
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1002,
+                "name": "example-process-02",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1003,
+                "name": "example-process-03",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1004,
+                "name": "example-process-04",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1005,
+                "name": "example-process-05",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1006,
+                "name": "example-process-06",
+                "nodes": [
+                  "/dev/dri/renderD128"
+                ]
+              },
+              {
+                "pid": 1007,
+                "name": "example-process-07",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1008,
+                "name": "example-process-08",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1009,
+                "name": "example-process-09",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1010,
+                "name": "example-process-10",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1012,
+                "name": "example-process-12",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              },
+              {
+                "pid": 1014,
+                "name": "example-process-14",
+                "nodes": [
+                  "/dev/dri/renderD128",
+                  "/dev/nvidia0"
+                ]
+              }
+            ],
+            "power_after": {
+              "runtime_status": "active",
+              "control": "auto",
+              "runtime_active_time": 5900,
+              "runtime_suspended_time": 0
+            },
+            "evidence": [
+              "Etkin ekran bağlantısı: eDP-1.",
+              "Bu GPU aygıtını açık tutan süreçler var; açık dosya tek başına GPU iş yükü kanıtı değildir."
+            ],
+            "observation": "GPU zaten etkin veya durum belirsiz; uyandırma etkisi bu örnekten kanıtlanamaz."
+          },
+          {
+            "card": "card0",
+            "pci": "0000:07:00.0",
+            "vendor": "0x1002",
+            "nodes": [
+              "/dev/dri/card0",
+              "/dev/dri/renderD129"
+            ],
+            "connectors": [
+              {
+                "name": "DP-2",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "DP-3",
+                "status": "disconnected",
+                "enabled": "disabled"
+              },
+              {
+                "name": "Writeback-1",
+                "status": "unknown",
+                "enabled": "disabled"
+              }
+            ],
+            "power_before": {
+              "runtime_status": "active",
+              "control": "on",
+              "runtime_active_time": 5600,
+              "runtime_suspended_time": 0
+            },
+            "driver_power": {},
+            "siblings": [
+              {
+                "address": "0000:07:00.1",
+                "class": "0x040300",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1200,
+                "runtime_suspended_time": 3100
+              },
+              {
+                "address": "0000:07:00.2",
+                "class": "0x108000",
+                "runtime_status": "active",
+                "control": "on",
+                "runtime_active_time": 5700,
+                "runtime_suspended_time": 0
+              },
+              {
+                "address": "0000:07:00.3",
+                "class": "0x0c0330",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1000,
+                "runtime_suspended_time": 5500
+              },
+              {
+                "address": "0000:07:00.4",
+                "class": "0x0c0330",
+                "runtime_status": "active",
+                "control": "auto",
+                "runtime_active_time": 5700,
+                "runtime_suspended_time": 0
+              },
+              {
+                "address": "0000:07:00.5",
+                "class": "0x048000",
+                "runtime_status": "suspended",
+                "control": "auto",
+                "runtime_active_time": 1100,
+                "runtime_suspended_time": 3600
+              },
+              {
+                "address": "0000:07:00.6",
+                "class": "0x040300",
+                "runtime_status": "active",
+                "control": "auto",
+                "runtime_active_time": 5800,
+                "runtime_suspended_time": 0
+              }
+            ],
+            "users": [
+              {
+                "pid": 1001,
+                "name": "example-process-01",
+                "nodes": [
+                  "/dev/dri/card0"
+                ]
+              },
+              {
+                "pid": 1008,
+                "name": "example-process-08",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1009,
+                "name": "example-process-09",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1011,
+                "name": "example-process-11",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              },
+              {
+                "pid": 1013,
+                "name": "example-process-13",
+                "nodes": [
+                  "/dev/dri/renderD129"
+                ]
+              }
+            ],
+            "power_after": {
+              "runtime_status": "active",
+              "control": "on",
+              "runtime_active_time": 5900,
+              "runtime_suspended_time": 0
+            },
+            "evidence": [
+              "Runtime güç politikası on: otomatik askıya alma kapalı.",
+              "Bu GPU aygıtını açık tutan süreçler var; açık dosya tek başına GPU iş yükü kanıtı değildir."
+            ],
+            "observation": "GPU zaten etkin veya durum belirsiz; uyandırma etkisi bu örnekten kanıtlanamaz."
+          }
+        ],
+        "shared_users": [
+          {
+            "pid": 1001,
+            "name": "example-process-01",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1002,
+            "name": "example-process-02",
+            "nodes": [
+              "/dev/nvidia-uvm",
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1007,
+            "name": "example-process-07",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1008,
+            "name": "example-process-08",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1009,
+            "name": "example-process-09",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1010,
+            "name": "example-process-10",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1012,
+            "name": "example-process-12",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          },
+          {
+            "pid": 1014,
+            "name": "example-process-14",
+            "nodes": [
+              "/dev/nvidiactl"
+            ]
+          }
+        ],
+        "coverage": {
+          "permission_denied": 367,
+          "vanished": 0,
+          "fd_truncated": 0,
+          "process_truncated": false,
+          "timed_out": false
+        },
+        "method": "sysfs/procfs; GPU device nodes are not opened; no NVML or nvidia-smi",
+        "wake_effect_verified": false
+      }
+    }
+  ],
+  "wake_effect_verified": false,
+  "gui_worker_passed": true,
+  "source_matches_installed": true,
+  "service_active": true,
+  "session_service_active": true,
+  "passed": true,
+  "power_controls_unchanged": true,
+  "privacy": {
+    "anonymized": true,
+    "synthetic_fields": [
+      "process names",
+      "process IDs",
+      "timestamps",
+      "runtime duration counters"
+    ],
+    "note": "Published example: session-identifying fields are synthetic. Hardware topology, diagnostic observations and validation result flags are retained; do not use the synthetic fields as measurement evidence."
+  }
+}

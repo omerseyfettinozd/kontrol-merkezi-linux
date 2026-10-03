@@ -1,0 +1,42 @@
+{
+  "checks": [
+    "Combined profile and sustained fan targets/RPM for 40 samples",
+    "Fn Lock toggled, read back and restored",
+    "KDE screen mode changed and restored",
+    "Screen brightness readback and restore",
+    "KDE night light toggled and restored",
+    "Touchpad toggled and restored",
+    "wifi current value command/readback (no disconnection)",
+    "bluetooth current value command/readback (no disconnection)",
+    "Real executable detection and previous hardware snapshot restoration",
+    "Manual override pauses automation"
+  ],
+  "restored": true,
+  "physical_suspend_tested": false,
+  "load_benchmark": false,
+  "unit_tests_passed": 48,
+  "gui_tabs": 11,
+  "gui_supported_controls_checked": true,
+  "lighting_timeout": {
+    "idle_dimmed": true,
+    "restored": true
+  },
+  "oem_read_only": {
+    "read_only": true,
+    "registers": {
+      "0740": 26,
+      "0741": 132,
+      "0742": 34,
+      "0743": 7,
+      "0744": 0,
+      "0745": 255,
+      "0746": 25,
+      "0751": 128,
+      "0766": 160,
+      "078e": 236,
+      "07b9": 0,
+      "07d0": 0
+    }
+  },
+  "passed": true
+}

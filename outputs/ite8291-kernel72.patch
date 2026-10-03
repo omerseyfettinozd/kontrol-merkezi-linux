@@ -1,0 +1,15 @@
+--- work/ite_8291.before.c	2026-10-03 13:19:44.582245783 +0300
++++ /usr/src/tuxedo-drivers-4.24.0/ite_8291/ite_8291.c	2026-10-03 13:23:20.339368736 +0300
+@@ -504,6 +504,12 @@
+ 			device_data->mcled_cdevs[i][j].led_cdev.brightness_set = &leds_set_brightness_mc;
+ 			device_data->mcled_cdevs[i][j].led_cdev.brightness = ITE8291_KBD_BRIGHTNESS_DEFAULT;
+ 			device_data->mcled_cdevs[i][j].num_colors = 3;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
++			/* R9T_RGB_INTENSITY_FIX: RGB channels have 8-bit hardware
++			 * intensity independent of the global 0..50 brightness. */
++			for (k = 0; k < 3; ++k)
++				device_data->mcled_cdevs_subleds[i][j][k].max_intensity = 255;
++#endif
+ 			device_data->mcled_cdevs[i][j].subled_info = device_data->mcled_cdevs_subleds[i][j];
+ 			device_data->mcled_cdevs[i][j].subled_info[0].color_index = LED_COLOR_ID_RED;
+ 			device_data->mcled_cdevs[i][j].subled_info[0].intensity = ITE8291_KB_COLOR_DEFAULT_RED;

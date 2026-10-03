@@ -1,0 +1,501 @@
+{
+  "checks": [
+    {
+      "operation": {
+        "op": "manual",
+        "cpu": 80,
+        "gpu": 70
+      },
+      "fan_state": {
+        "available": true,
+        "mode": "manual",
+        "targets": [
+          80,
+          70
+        ],
+        "points": null,
+        "verified": true,
+        "error": "",
+        "measured": {
+          "mode": 1,
+          "cpu_target": 80,
+          "gpu_target": 70,
+          "cpu_rpm": 4718,
+          "gpu_rpm": 4219,
+          "cpu_temp": 67,
+          "gpu_temp": 59,
+          "mode_byte": 192,
+          "cpu_pwm": 160,
+          "gpu_pwm": 140,
+          "lease_ms": 13826,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        }
+      }
+    },
+    {
+      "operation": {
+        "op": "manual",
+        "cpu": 60,
+        "gpu": 90
+      },
+      "fan_state": {
+        "available": true,
+        "mode": "manual",
+        "targets": [
+          60,
+          90
+        ],
+        "points": null,
+        "verified": true,
+        "error": "",
+        "measured": {
+          "mode": 1,
+          "cpu_target": 60,
+          "gpu_target": 90,
+          "cpu_rpm": 3737,
+          "gpu_rpm": 5097,
+          "cpu_temp": 66,
+          "gpu_temp": 58,
+          "mode_byte": 192,
+          "cpu_pwm": 120,
+          "gpu_pwm": 180,
+          "lease_ms": 13837,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        }
+      }
+    },
+    {
+      "operation": {
+        "op": "fan_preset",
+        "preset": "cool"
+      },
+      "fan_state": {
+        "available": true,
+        "mode": "curve",
+        "targets": [
+          80,
+          72
+        ],
+        "points": [
+          [
+            45,
+            60
+          ],
+          [
+            60,
+            75
+          ],
+          [
+            75,
+            90
+          ],
+          [
+            85,
+            100
+          ]
+        ],
+        "verified": true,
+        "error": "",
+        "measured": {
+          "mode": 1,
+          "cpu_target": 80,
+          "gpu_target": 72,
+          "cpu_rpm": 4739,
+          "gpu_rpm": 4303,
+          "cpu_temp": 65,
+          "gpu_temp": 57,
+          "mode_byte": 192,
+          "cpu_pwm": 160,
+          "gpu_pwm": 144,
+          "lease_ms": 13842,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        }
+      }
+    },
+    {
+      "operation": {
+        "op": "fan_boost"
+      },
+      "fan_state": {
+        "available": true,
+        "mode": "boost",
+        "targets": [
+          100,
+          100
+        ],
+        "points": null,
+        "verified": true,
+        "error": "",
+        "measured": {
+          "mode": 2,
+          "cpu_target": 100,
+          "gpu_target": 100,
+          "cpu_rpm": 5704,
+          "gpu_rpm": 5557,
+          "cpu_temp": 63,
+          "gpu_temp": 55,
+          "mode_byte": 192,
+          "cpu_pwm": 200,
+          "gpu_pwm": 200,
+          "lease_ms": 13846,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        }
+      }
+    }
+  ],
+  "ended_in_auto": true,
+  "stress_test": false,
+  "kernel_lease_expiry": {
+    "lease_expiry_passed": true,
+    "samples": [
+      {
+        "mode": "1",
+        "cpu_target": "70",
+        "gpu_target": "70",
+        "cpu_rpm": "2464",
+        "gpu_rpm": "2504",
+        "cpu_temp": "64",
+        "gpu_temp": "56",
+        "mode_byte": "192",
+        "cpu_pwm": "140",
+        "gpu_pwm": "140",
+        "lease_ms": "14063",
+        "error": "0",
+        "thermal": "0"
+      },
+      {
+        "mode": "1",
+        "cpu_target": "70",
+        "gpu_target": "70",
+        "cpu_rpm": "4295",
+        "gpu_rpm": "4244",
+        "cpu_temp": "64",
+        "gpu_temp": "56",
+        "mode_byte": "192",
+        "cpu_pwm": "140",
+        "gpu_pwm": "140",
+        "lease_ms": "11370",
+        "error": "0",
+        "thermal": "0"
+      },
+      {
+        "mode": "1",
+        "cpu_target": "70",
+        "gpu_target": "70",
+        "cpu_rpm": "4252",
+        "gpu_rpm": "4227",
+        "cpu_temp": "64",
+        "gpu_temp": "56",
+        "mode_byte": "192",
+        "cpu_pwm": "140",
+        "gpu_pwm": "140",
+        "lease_ms": "8677",
+        "error": "0",
+        "thermal": "0"
+      },
+      {
+        "mode": "1",
+        "cpu_target": "70",
+        "gpu_target": "70",
+        "cpu_rpm": "4261",
+        "gpu_rpm": "4227",
+        "cpu_temp": "64",
+        "gpu_temp": "56",
+        "mode_byte": "192",
+        "cpu_pwm": "140",
+        "gpu_pwm": "140",
+        "lease_ms": "5989",
+        "error": "0",
+        "thermal": "0"
+      },
+      {
+        "mode": "1",
+        "cpu_target": "70",
+        "gpu_target": "70",
+        "cpu_rpm": "4252",
+        "gpu_rpm": "4227",
+        "cpu_temp": "64",
+        "gpu_temp": "56",
+        "mode_byte": "192",
+        "cpu_pwm": "140",
+        "gpu_pwm": "140",
+        "lease_ms": "3309",
+        "error": "0",
+        "thermal": "0"
+      },
+      {
+        "mode": "1",
+        "cpu_target": "70",
+        "gpu_target": "70",
+        "cpu_rpm": "4261",
+        "gpu_rpm": "4244",
+        "cpu_temp": "64",
+        "gpu_temp": "56",
+        "mode_byte": "192",
+        "cpu_pwm": "140",
+        "gpu_pwm": "140",
+        "lease_ms": "614",
+        "error": "0",
+        "thermal": "0"
+      },
+      {
+        "mode": "0",
+        "cpu_target": "70",
+        "gpu_target": "70",
+        "cpu_rpm": "4269",
+        "gpu_rpm": "4227",
+        "cpu_temp": "64",
+        "gpu_temp": "56",
+        "mode_byte": "128",
+        "cpu_pwm": "100",
+        "gpu_pwm": "100",
+        "lease_ms": "0",
+        "error": "-110",
+        "thermal": "0"
+      },
+      {
+        "mode": "0",
+        "cpu_target": "70",
+        "gpu_target": "70",
+        "cpu_rpm": "3032",
+        "gpu_rpm": "3062",
+        "cpu_temp": "64",
+        "gpu_temp": "56",
+        "mode_byte": "128",
+        "cpu_pwm": "93",
+        "gpu_pwm": "92",
+        "lease_ms": "0",
+        "error": "-110",
+        "thermal": "0"
+      },
+      {
+        "mode": "0",
+        "cpu_target": "70",
+        "gpu_target": "70",
+        "cpu_rpm": "2840",
+        "gpu_rpm": "2878",
+        "cpu_temp": "64",
+        "gpu_temp": "56",
+        "mode_byte": "128",
+        "cpu_pwm": "84",
+        "gpu_pwm": "84",
+        "lease_ms": "0",
+        "error": "-110",
+        "thermal": "0"
+      },
+      {
+        "mode": "0",
+        "cpu_target": "70",
+        "gpu_target": "70",
+        "cpu_rpm": "2591",
+        "gpu_rpm": "2629",
+        "cpu_temp": "64",
+        "gpu_temp": "56",
+        "mode_byte": "128",
+        "cpu_pwm": "80",
+        "gpu_pwm": "80",
+        "lease_ms": "0",
+        "error": "-110",
+        "thermal": "0"
+      }
+    ]
+  },
+  "fan_panel_button_check": true,
+  "unit_tests_passed": 27
+}

@@ -1,0 +1,788 @@
+{
+  "version": "0.8.0",
+  "samples": [
+    {
+      "target": {
+        "active": true,
+        "targets": [
+          85,
+          80
+        ],
+        "limits_mhz": [
+          2400,
+          3090
+        ],
+        "error": "",
+        "restore_pending": false,
+        "temperature_guaranteed": false,
+        "gpu_limit_readback_available": false
+      },
+      "fan": {
+        "available": true,
+        "mode": "manual",
+        "targets": [
+          50,
+          50
+        ],
+        "points": null,
+        "verified": false,
+        "error": "",
+        "measured": {
+          "mode": 1,
+          "cpu_target": 50,
+          "gpu_target": 50,
+          "cpu_rpm": 3185,
+          "gpu_rpm": 3223,
+          "cpu_temp": 74,
+          "gpu_temp": 66,
+          "mode_byte": 192,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "lease_ms": 12629,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        },
+        "curve_smoothing": {
+          "cooling_hysteresis_c": 2,
+          "cooling_hold_seconds": 6,
+          "down_step_percent": 2,
+          "refresh_seconds": 2
+        }
+      }
+    },
+    {
+      "target": {
+        "active": true,
+        "targets": [
+          85,
+          80
+        ],
+        "limits_mhz": [
+          2400,
+          3090
+        ],
+        "error": "",
+        "restore_pending": false,
+        "temperature_guaranteed": false,
+        "gpu_limit_readback_available": false
+      },
+      "fan": {
+        "available": true,
+        "mode": "manual",
+        "targets": [
+          50,
+          50
+        ],
+        "points": null,
+        "verified": true,
+        "error": "",
+        "measured": {
+          "mode": 1,
+          "cpu_target": 50,
+          "gpu_target": 50,
+          "cpu_rpm": 3213,
+          "gpu_rpm": 3232,
+          "cpu_temp": 74,
+          "gpu_temp": 66,
+          "mode_byte": 192,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "lease_ms": 13225,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        },
+        "curve_smoothing": {
+          "cooling_hysteresis_c": 2,
+          "cooling_hold_seconds": 6,
+          "down_step_percent": 2,
+          "refresh_seconds": 2
+        }
+      }
+    },
+    {
+      "target": {
+        "active": true,
+        "targets": [
+          85,
+          80
+        ],
+        "limits_mhz": [
+          2400,
+          3090
+        ],
+        "error": "",
+        "restore_pending": false,
+        "temperature_guaranteed": false,
+        "gpu_limit_readback_available": false
+      },
+      "fan": {
+        "available": true,
+        "mode": "manual",
+        "targets": [
+          50,
+          50
+        ],
+        "points": null,
+        "verified": true,
+        "error": "",
+        "measured": {
+          "mode": 1,
+          "cpu_target": 50,
+          "gpu_target": 50,
+          "cpu_rpm": 3208,
+          "gpu_rpm": 3223,
+          "cpu_temp": 74,
+          "gpu_temp": 66,
+          "mode_byte": 192,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "lease_ms": 13232,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        },
+        "curve_smoothing": {
+          "cooling_hysteresis_c": 2,
+          "cooling_hold_seconds": 6,
+          "down_step_percent": 2,
+          "refresh_seconds": 2
+        }
+      }
+    },
+    {
+      "target": {
+        "active": true,
+        "targets": [
+          85,
+          80
+        ],
+        "limits_mhz": [
+          2400,
+          3090
+        ],
+        "error": "",
+        "restore_pending": false,
+        "temperature_guaranteed": false,
+        "gpu_limit_readback_available": false
+      },
+      "fan": {
+        "available": true,
+        "mode": "manual",
+        "targets": [
+          50,
+          50
+        ],
+        "points": null,
+        "verified": true,
+        "error": "",
+        "measured": {
+          "mode": 1,
+          "cpu_target": 50,
+          "gpu_target": 50,
+          "cpu_rpm": 3208,
+          "gpu_rpm": 3227,
+          "cpu_temp": 74,
+          "gpu_temp": 67,
+          "mode_byte": 192,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "lease_ms": 13240,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        },
+        "curve_smoothing": {
+          "cooling_hysteresis_c": 2,
+          "cooling_hold_seconds": 6,
+          "down_step_percent": 2,
+          "refresh_seconds": 2
+        }
+      }
+    },
+    {
+      "target": {
+        "active": true,
+        "targets": [
+          85,
+          80
+        ],
+        "limits_mhz": [
+          2400,
+          3090
+        ],
+        "error": "",
+        "restore_pending": false,
+        "temperature_guaranteed": false,
+        "gpu_limit_readback_available": false
+      },
+      "fan": {
+        "available": true,
+        "mode": "manual",
+        "targets": [
+          50,
+          50
+        ],
+        "points": null,
+        "verified": true,
+        "error": "",
+        "measured": {
+          "mode": 1,
+          "cpu_target": 50,
+          "gpu_target": 50,
+          "cpu_rpm": 3213,
+          "gpu_rpm": 3223,
+          "cpu_temp": 74,
+          "gpu_temp": 67,
+          "mode_byte": 192,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "lease_ms": 12630,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        },
+        "curve_smoothing": {
+          "cooling_hysteresis_c": 2,
+          "cooling_hold_seconds": 6,
+          "down_step_percent": 2,
+          "refresh_seconds": 2
+        }
+      }
+    },
+    {
+      "target": {
+        "active": true,
+        "targets": [
+          85,
+          80
+        ],
+        "limits_mhz": [
+          2400,
+          3090
+        ],
+        "error": "",
+        "restore_pending": false,
+        "temperature_guaranteed": false,
+        "gpu_limit_readback_available": false
+      },
+      "fan": {
+        "available": true,
+        "mode": "manual",
+        "targets": [
+          50,
+          50
+        ],
+        "points": null,
+        "verified": true,
+        "error": "",
+        "measured": {
+          "mode": 1,
+          "cpu_target": 50,
+          "gpu_target": 50,
+          "cpu_rpm": 3218,
+          "gpu_rpm": 3227,
+          "cpu_temp": 74,
+          "gpu_temp": 67,
+          "mode_byte": 192,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "lease_ms": 13234,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        },
+        "curve_smoothing": {
+          "cooling_hysteresis_c": 2,
+          "cooling_hold_seconds": 6,
+          "down_step_percent": 2,
+          "refresh_seconds": 2
+        }
+      }
+    },
+    {
+      "target": {
+        "active": true,
+        "targets": [
+          85,
+          80
+        ],
+        "limits_mhz": [
+          2400,
+          3090
+        ],
+        "error": "",
+        "restore_pending": false,
+        "temperature_guaranteed": false,
+        "gpu_limit_readback_available": false
+      },
+      "fan": {
+        "available": true,
+        "mode": "manual",
+        "targets": [
+          50,
+          50
+        ],
+        "points": null,
+        "verified": true,
+        "error": "",
+        "measured": {
+          "mode": 1,
+          "cpu_target": 50,
+          "gpu_target": 50,
+          "cpu_rpm": 3199,
+          "gpu_rpm": 3223,
+          "cpu_temp": 75,
+          "gpu_temp": 67,
+          "mode_byte": 192,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "lease_ms": 12621,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        },
+        "curve_smoothing": {
+          "cooling_hysteresis_c": 2,
+          "cooling_hold_seconds": 6,
+          "down_step_percent": 2,
+          "refresh_seconds": 2
+        }
+      }
+    },
+    {
+      "target": {
+        "active": true,
+        "targets": [
+          85,
+          80
+        ],
+        "limits_mhz": [
+          2400,
+          3090
+        ],
+        "error": "",
+        "restore_pending": false,
+        "temperature_guaranteed": false,
+        "gpu_limit_readback_available": false
+      },
+      "fan": {
+        "available": true,
+        "mode": "manual",
+        "targets": [
+          50,
+          50
+        ],
+        "points": null,
+        "verified": true,
+        "error": "",
+        "measured": {
+          "mode": 1,
+          "cpu_target": 50,
+          "gpu_target": 50,
+          "cpu_rpm": 3203,
+          "gpu_rpm": 3218,
+          "cpu_temp": 75,
+          "gpu_temp": 67,
+          "mode_byte": 192,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "lease_ms": 12628,
+          "error": 0,
+          "thermal": 0
+        },
+        "presets": {
+          "balanced": {
+            "name": "Dengeli fan eğrisi",
+            "points": [
+              [
+                45,
+                50
+              ],
+              [
+                60,
+                60
+              ],
+              [
+                75,
+                80
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "cool": {
+            "name": "Serin fan eğrisi",
+            "points": [
+              [
+                45,
+                60
+              ],
+              [
+                60,
+                75
+              ],
+              [
+                75,
+                90
+              ],
+              [
+                85,
+                100
+              ]
+            ]
+          },
+          "maximum": {
+            "name": "Maksimum soğutma",
+            "boost": true
+          }
+        },
+        "curve_smoothing": {
+          "cooling_hysteresis_c": 2,
+          "cooling_hold_seconds": 6,
+          "down_step_percent": 2,
+          "refresh_seconds": 2
+        }
+      }
+    }
+  ],
+  "gpu_independent_readback": false,
+  "passed": true,
+  "restored": true,
+  "unit_tests": 86,
+  "source_matches_installed": true,
+  "service_active": true,
+  "session_service_active": true
+}

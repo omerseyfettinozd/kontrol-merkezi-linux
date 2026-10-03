@@ -1,0 +1,669 @@
+{
+  "version": "0.10.0",
+  "unit_tests": 112,
+  "samples": [
+    {
+      "support": {
+        "time": "2026-10-03T15:48:36+00:00",
+        "devices": [
+          {
+            "pci": "0000:01:00.0",
+            "supported": true,
+            "raw_support": "Supported",
+            "reason": ""
+          }
+        ],
+        "daemon": {
+          "healthy": true,
+          "properties": {
+            "LoadState": "loaded",
+            "ActiveState": "active",
+            "SubState": "running",
+            "UnitFileState": "enabled",
+            "MainPID": 748,
+            "Result": "success",
+            "NRestarts": 0,
+            "ExecMainStatus": 0
+          },
+          "error": ""
+        },
+        "cpu_policies": [
+          {
+            "name": "policy0",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy1",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy10",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy11",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy12",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy13",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy14",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy15",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy2",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy3",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy4",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy5",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy6",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy7",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy8",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy9",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          }
+        ],
+        "behavior_verified": false,
+        "behavior_reason": "Firmware desteği ve çalışan servis, yük altında güç aktarımının kanıtı değildir."
+      },
+      "cpu_power": {
+        "watts": 30.932182374238685,
+        "interval_seconds": 2.260530995001318,
+        "sample_monotonic": 21067.457574483,
+        "age_seconds": 1.2543154900013178,
+        "zones": [
+          {
+            "name": "package-0",
+            "path": "intel-rapl:0"
+          }
+        ],
+        "source": "CPU package energy_uj delta (RAPL)",
+        "error": ""
+      },
+      "gpu_values": [
+        62.0,
+        45.0,
+        29.11
+      ],
+      "gpu_enforced_power_w": 105.0
+    },
+    {
+      "support": {
+        "time": "2026-10-03T15:48:40+00:00",
+        "devices": [
+          {
+            "pci": "0000:01:00.0",
+            "supported": true,
+            "raw_support": "Supported",
+            "reason": ""
+          }
+        ],
+        "daemon": {
+          "healthy": true,
+          "properties": {
+            "LoadState": "loaded",
+            "ActiveState": "active",
+            "SubState": "running",
+            "UnitFileState": "enabled",
+            "MainPID": 748,
+            "Result": "success",
+            "NRestarts": 0,
+            "ExecMainStatus": 0
+          },
+          "error": ""
+        },
+        "cpu_policies": [
+          {
+            "name": "policy0",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy1",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy10",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy11",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy12",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy13",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy14",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy15",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy2",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy3",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy4",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy5",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy6",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy7",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy8",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy9",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          }
+        ],
+        "behavior_verified": false,
+        "behavior_reason": "Firmware desteği ve çalışan servis, yük altında güç aktarımının kanıtı değildir."
+      },
+      "cpu_power": {
+        "watts": 31.402210327484827,
+        "interval_seconds": 1.9975903080012358,
+        "sample_monotonic": 21070.709654627,
+        "age_seconds": 1.3327085950004403,
+        "zones": [
+          {
+            "name": "package-0",
+            "path": "intel-rapl:0"
+          }
+        ],
+        "source": "CPU package energy_uj delta (RAPL)",
+        "error": ""
+      },
+      "gpu_values": [
+        62.0,
+        28.0,
+        24.51
+      ],
+      "gpu_enforced_power_w": 105.0
+    },
+    {
+      "support": {
+        "time": "2026-10-03T15:48:43+00:00",
+        "devices": [
+          {
+            "pci": "0000:01:00.0",
+            "supported": true,
+            "raw_support": "Supported",
+            "reason": ""
+          }
+        ],
+        "daemon": {
+          "healthy": true,
+          "properties": {
+            "LoadState": "loaded",
+            "ActiveState": "active",
+            "SubState": "running",
+            "UnitFileState": "enabled",
+            "MainPID": 748,
+            "Result": "success",
+            "NRestarts": 0,
+            "ExecMainStatus": 0
+          },
+          "error": ""
+        },
+        "cpu_policies": [
+          {
+            "name": "policy0",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy1",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy10",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy11",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy12",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy13",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy14",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy15",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy2",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy3",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy4",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy5",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy6",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy7",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy8",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy9",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          }
+        ],
+        "behavior_verified": false,
+        "behavior_reason": "Firmware desteği ve çalışan servis, yük altında güç aktarımının kanıtı değildir."
+      },
+      "cpu_power": {
+        "watts": 30.057134241636792,
+        "interval_seconds": 1.9279524300000048,
+        "sample_monotonic": 21073.970482764,
+        "age_seconds": 1.399252108996734,
+        "zones": [
+          {
+            "name": "package-0",
+            "path": "intel-rapl:0"
+          }
+        ],
+        "source": "CPU package energy_uj delta (RAPL)",
+        "error": ""
+      },
+      "gpu_values": [
+        62.0,
+        30.0,
+        24.45
+      ],
+      "gpu_enforced_power_w": 105.0
+    },
+    {
+      "support": {
+        "time": "2026-10-03T15:48:47+00:00",
+        "devices": [
+          {
+            "pci": "0000:01:00.0",
+            "supported": true,
+            "raw_support": "Supported",
+            "reason": ""
+          }
+        ],
+        "daemon": {
+          "healthy": true,
+          "properties": {
+            "LoadState": "loaded",
+            "ActiveState": "active",
+            "SubState": "running",
+            "UnitFileState": "enabled",
+            "MainPID": 748,
+            "Result": "success",
+            "NRestarts": 0,
+            "ExecMainStatus": 0
+          },
+          "error": ""
+        },
+        "cpu_policies": [
+          {
+            "name": "policy0",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy1",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy10",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy11",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy12",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy13",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy14",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy15",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy2",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy3",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy4",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy5",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy6",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy7",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy8",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy9",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          }
+        ],
+        "behavior_verified": false,
+        "behavior_reason": "Firmware desteği ve çalışan servis, yük altında güç aktarımının kanıtı değildir."
+      },
+      "cpu_power": {
+        "watts": 29.17647321300061,
+        "interval_seconds": 1.852013285002613,
+        "sample_monotonic": 21077.221914008,
+        "age_seconds": 1.4759813099990424,
+        "zones": [
+          {
+            "name": "package-0",
+            "path": "intel-rapl:0"
+          }
+        ],
+        "source": "CPU package energy_uj delta (RAPL)",
+        "error": ""
+      },
+      "gpu_values": [
+        61.0,
+        18.0,
+        24.72
+      ],
+      "gpu_enforced_power_w": 105.0
+    },
+    {
+      "support": {
+        "time": "2026-10-03T15:48:50+00:00",
+        "devices": [
+          {
+            "pci": "0000:01:00.0",
+            "supported": true,
+            "raw_support": "Supported",
+            "reason": ""
+          }
+        ],
+        "daemon": {
+          "healthy": true,
+          "properties": {
+            "LoadState": "loaded",
+            "ActiveState": "active",
+            "SubState": "running",
+            "UnitFileState": "enabled",
+            "MainPID": 748,
+            "Result": "success",
+            "NRestarts": 0,
+            "ExecMainStatus": 0
+          },
+          "error": ""
+        },
+        "cpu_policies": [
+          {
+            "name": "policy0",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy1",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy10",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy11",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy12",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy13",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy14",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy15",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy2",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy3",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy4",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy5",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy6",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy7",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy8",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          },
+          {
+            "name": "policy9",
+            "driver": "amd-pstate-epp",
+            "max_mhz": 2400.0
+          }
+        ],
+        "behavior_verified": false,
+        "behavior_reason": "Firmware desteği ve çalışan servis, yük altında güç aktarımının kanıtı değildir."
+      },
+      "cpu_power": {
+        "watts": 29.42099892765298,
+        "interval_seconds": 1.7821496179967653,
+        "sample_monotonic": 21080.480229331,
+        "age_seconds": 1.5280020280006283,
+        "zones": [
+          {
+            "name": "package-0",
+            "path": "intel-rapl:0"
+          }
+        ],
+        "source": "CPU package energy_uj delta (RAPL)",
+        "error": ""
+      },
+      "gpu_values": [
+        61.0,
+        11.0,
+        18.37
+      ],
+      "gpu_enforced_power_w": 105.0
+    }
+  ],
+  "behavior_verified": false,
+  "synthetic_load_applied": false,
+  "gui_worker_passed": true,
+  "source_matches_installed": true,
+  "service_active": true,
+  "session_service_active": true,
+  "passed": true,
+  "csv_cpu_power_included": true
+}

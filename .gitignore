@@ -1,0 +1,22 @@
+# Yerel OEM araştırması, araç indirmeleri ve eski kaynak kopyaları
+/work/
+# Python ve test önbellekleri
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+# Kernel derleme çıktıları
+*.o
+*.ko
+*.mod
+*.mod.c
+*.cmd
+Module.symvers
+modules.order
+# Eski paketler ve geçici dosyalar
+/outputs/releases/
+*.tmp
+*.log
+.env
+.env.*

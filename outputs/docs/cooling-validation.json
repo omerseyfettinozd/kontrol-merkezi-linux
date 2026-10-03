@@ -1,0 +1,34 @@
+{
+  "checks": [
+    {
+      "preset": "quiet",
+      "cpu_max_mhz": 1800,
+      "gpu_requested_mhz": 1200,
+      "gpu_measured_mhz": 660,
+      "gpu_limit_readback": false
+    },
+    {
+      "preset": "balanced_cool",
+      "cpu_max_mhz": 2400,
+      "gpu_requested_mhz": 1800,
+      "gpu_measured_mhz": 1087,
+      "gpu_limit_readback": false
+    },
+    {
+      "preset": "gaming_cool",
+      "cpu_max_mhz": 3500,
+      "gpu_requested_mhz": 2100,
+      "gpu_measured_mhz": 1042,
+      "gpu_limit_readback": false
+    },
+    {
+      "preset": "stock",
+      "cpu_max_mhz": 5386,
+      "gpu_requested_mhz": null,
+      "gpu_measured_mhz": 1477,
+      "gpu_limit_readback": false
+    }
+  ],
+  "restored": true,
+  "thermal_benchmark": false
+}
