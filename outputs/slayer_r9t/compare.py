@@ -1,6 +1,9 @@
 """Pure logic for A/B profile comparison over History samples (read-only, no hardware access)."""
 import csv
 import math
+import os
+from pathlib import Path
+import tempfile
 
 COMPARE_METRICS=[
     ('cpu_temp','CPU sıcaklığı','°C'),
@@ -13,6 +16,28 @@ COMPARE_METRICS=[
 PERMANENT_WARNING='Uyarı: İş yükü kontrol edilmez ve FPS ölçülmez; sonuçlar yalnız bilgi amaçlıdır, profil performansını kanıtlamaz.'
 DURATION_RATIO=1.5
 COUNT_RATIO=1.5
+
+class MeasurementWindow:
+    """Bounded streaming summary: keeps counters for metrics, never sample rows."""
+    def __init__(self,start):
+        self.start=start
+        self.samples=0
+        self.metrics={key:{'sum':0.0,'peak':None,'count':0} for key,_,_ in COMPARE_METRICS}
+
+    def record(self,row):
+        if row['monotonic']<self.start:return
+        self.samples+=1
+        for key,metric in self.metrics.items():
+            value=row.get(key)
+            if _valid(value):
+                metric['sum']+=value;metric['count']+=1
+                metric['peak']=value if metric['peak'] is None else max(metric['peak'],value)
+
+    def summary(self,end):
+        return {'duration':max(0.0,end-self.start),'samples':self.samples,
+                'metrics':{key:{'avg':metric['sum']/metric['count'] if metric['count'] else None,
+                                'peak':metric['peak'],'count':metric['count']}
+                           for key,metric in self.metrics.items()}}
 
 def _valid(v):
     return type(v) in (int,float) and math.isfinite(v)
@@ -61,12 +86,21 @@ def fmt(v,digits=1):
 def export_csv(path,a,b):
     """Write comparison table; empty cell for missing values. Returns written metric row count."""
     rows=compare(a,b)
-    with open(path,'w',newline='',encoding='utf-8') as s:
-        w=csv.writer(s)
-        w.writerow(['metric','unit','a_avg','b_avg','avg_diff','a_peak','b_peak','peak_diff'])
-        for r in rows:
-            w.writerow([r['title'],r['unit'],*[fmt(r[k],2) for k in ('a_avg','b_avg','avg_diff','a_peak','b_peak','peak_diff')]])
-        w.writerow([]);w.writerow(['window','duration_s','samples'])
-        w.writerow(['A',fmt(a['duration'],1),a['samples']]);w.writerow(['B',fmt(b['duration'],1),b['samples']])
-        w.writerow([]);w.writerow(['note',PERMANENT_WARNING])
+    target=Path(path)
+    fd,temporary=tempfile.mkstemp(prefix='.'+target.name+'.',dir=target.parent)
+    try:
+        with os.fdopen(fd,'w',newline='',encoding='utf-8') as s:
+            w=csv.writer(s)
+            w.writerow(['metric','unit','a_avg','b_avg','avg_diff','a_peak','b_peak','peak_diff'])
+            for r in rows:
+                w.writerow([r['title'],r['unit'],*[fmt(r[k],2) for k in ('a_avg','b_avg','avg_diff','a_peak','b_peak','peak_diff')]])
+            w.writerow([]);w.writerow(['window','duration_s','samples'])
+            w.writerow(['A',fmt(a['duration'],1),a['samples']]);w.writerow(['B',fmt(b['duration'],1),b['samples']])
+            w.writerow([]);w.writerow(['note',PERMANENT_WARNING])
+            s.flush();os.fsync(s.fileno())
+        os.replace(temporary,target)
+    except BaseException:
+        try:os.unlink(temporary)
+        except FileNotFoundError:pass
+        raise
     return len(rows)

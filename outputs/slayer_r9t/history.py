@@ -4,6 +4,7 @@ import math
 import time
 from collections import deque
 from datetime import datetime,timezone
+from weakref import WeakSet
 
 METRICS={
     'cpu_temp':('CPU sıcaklığı','°C','#50c9ba',110),
@@ -20,12 +21,15 @@ METRICS={
 }
 
 class History:
-    def __init__(self):self.rows=deque(maxlen=1200)
+    def __init__(self):
+        self.rows=deque(maxlen=1200)
+        self.observers=WeakSet()
 
     def add(self,values,now=None,utc=None):
         now=time.monotonic() if now is None else now
         clean={k:(float(v) if type(v) in (float,int) and math.isfinite(v) else None) for k,v in values.items() if k in METRICS}
         self.rows.append({'monotonic':now,'utc':utc or datetime.now(timezone.utc).isoformat(timespec='milliseconds'),**{k:clean.get(k) for k in METRICS}})
+        for observer in tuple(self.observers):observer.record(self.rows[-1])
         while self.rows and self.rows[0]['monotonic']<now-1800:self.rows.popleft()
 
     def window(self,seconds,now=None):
