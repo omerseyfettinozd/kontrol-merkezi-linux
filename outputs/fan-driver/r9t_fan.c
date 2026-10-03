@@ -6,6 +6,7 @@
 #include <linux/workqueue.h>
 #include <linux/mutex.h>
 #include <linux/suspend.h>
+#include <linux/delay.h>
 extern int uniwill_read_ec_ram(u16,u8 *);
 extern int uniwill_write_ec_ram(u16,u8);
 extern u32 uw_set_fan_auto(void);
@@ -15,15 +16,29 @@ static unsigned int targets[2]={100,100};
 static unsigned long deadline;
 static int last_error;
 static bool thermal_override;
+static bool auto_pending;
+static bool suspended;
+static bool stopping;
 static void worker(struct work_struct *);
 static DECLARE_DELAYED_WORK(work,worker);
 static int read_reg(u16 addr,u8 *value){return uniwill_read_ec_ram(addr,value);}
+/* Keep the lease state until the EC confirms firmware control. A failed
+ * fallback must never resume manual PWM writes or lose its retry worker. */
 static int automatic(void){
- u8 reg; int ret=read_reg(0x0751,&reg);
+ u8 reg;int ret;
+ auto_pending=true;
+ ret=(int)uw_set_fan_auto();
+ if(!ret)ret=read_reg(0x0751,&reg);
  if(!ret)ret=uniwill_write_ec_ram(0x0751,reg&~0x40);
- uw_set_fan_auto();
- mode=0;thermal_override=false;
- return ret;
+ if(!ret)ret=read_reg(0x0751,&reg);
+ if(!ret&&(reg&0x40))ret=-EIO;
+ if(ret){last_error=ret;return ret;}
+ mode=0;thermal_override=false;auto_pending=false;
+ return 0;
+}
+static void queue_retry(void){
+ if(!stopping&&!suspended&&(mode||auto_pending))
+  mod_delayed_work(system_wq,&work,msecs_to_jiffies(1000));
 }
 static int temperatures(u8 *cpu,u8 *gpu){
  int ret=read_reg(0x043e,cpu);
@@ -48,14 +63,17 @@ static int update(void){
 static void worker(struct work_struct *unused){
  int ret=0;
  mutex_lock(&lock);
- if(mode){
+ if(stopping||suspended)goto out;
+ if(auto_pending)automatic();
+ else if(mode){
   if(time_after_eq(jiffies,deadline)){last_error=-ETIMEDOUT;automatic();}
   else{
    ret=update();
    if(ret){last_error=ret;automatic();}
   }
  }
- if(mode)schedule_delayed_work(&work,msecs_to_jiffies(1000));
+ queue_retry();
+out:
  mutex_unlock(&lock);
 }
 static int control_set(const char *value,const struct kernel_param *kp){
@@ -65,7 +83,9 @@ static int control_set(const char *value,const struct kernel_param *kp){
  else if(sscanf(value,"manual %u %u %c",&cpu,&gpu,&extra)==2&&cpu>=50&&cpu<=100&&gpu>=50&&gpu<=100)wanted=1;
  else return -EINVAL;
  mutex_lock(&lock);
- if(!wanted){ret=automatic();goto out;}
+ if(stopping||suspended){ret=-EBUSY;goto out;}
+ if(!wanted){ret=automatic();queue_retry();goto out;}
+ if(auto_pending){ret=-EBUSY;goto out;}
  ret=temperatures(&t0,&t1);
  if(ret)goto out;
  ret=read_reg(0x0751,&reg);
@@ -75,7 +95,7 @@ static int control_set(const char *value,const struct kernel_param *kp){
  mode=wanted;targets[0]=cpu;targets[1]=gpu;deadline=jiffies+msecs_to_jiffies(15000);last_error=0;
  ret=update();
  if(ret){last_error=ret;automatic();}
- else mod_delayed_work(system_wq,&work,msecs_to_jiffies(1000));
+ queue_retry();
 out:
  mutex_unlock(&lock);
  return ret;
@@ -111,8 +131,18 @@ static const struct kernel_param_ops status_ops={.get=status_get};
 module_param_cb(control,&control_ops,NULL,0200);
 module_param_cb(status,&status_ops,NULL,0400);
 static int sleep_event(struct notifier_block *nb,unsigned long event,void *data){
+ int ret=0;
  if(event==PM_SUSPEND_PREPARE||event==PM_HIBERNATION_PREPARE||event==PM_RESTORE_PREPARE){
-  cancel_delayed_work_sync(&work);mutex_lock(&lock);if(mode)automatic();mutex_unlock(&lock);
+  /* Block controls and requeues before waiting for a running worker. */
+  mutex_lock(&lock);suspended=true;mutex_unlock(&lock);
+  cancel_delayed_work_sync(&work);
+  mutex_lock(&lock);
+  if(mode||auto_pending)ret=automatic();
+  if(ret){suspended=false;queue_retry();}
+  mutex_unlock(&lock);
+  if(ret){pr_err("r9t_fan: automatic fan restore failed before sleep: %d\n",ret);return NOTIFY_BAD;}
+ }else if(event==PM_POST_SUSPEND||event==PM_POST_HIBERNATION||event==PM_POST_RESTORE){
+  mutex_lock(&lock);suspended=false;queue_retry();mutex_unlock(&lock);
  }
  return NOTIFY_OK;
 }
@@ -125,8 +155,17 @@ static int __init fan_init(void){
  return register_pm_notifier(&sleep_notifier);
 }
 static void __exit fan_exit(void){
- unregister_pm_notifier(&sleep_notifier);cancel_delayed_work_sync(&work);
- mutex_lock(&lock);if(mode)automatic();mutex_unlock(&lock);
+ int ret=0,i;
+ unregister_pm_notifier(&sleep_notifier);
+ mutex_lock(&lock);stopping=true;mutex_unlock(&lock);
+ cancel_delayed_work_sync(&work);
+ mutex_lock(&lock);
+ for(i=0;(mode||auto_pending)&&i<3;i++){
+  ret=automatic();if(!ret)break;
+  if(i<2)msleep(100);
+ }
+ mutex_unlock(&lock);
+ if(ret)pr_err("r9t_fan: automatic fan restore failed on unload: %d; firmware control is unconfirmed\n",ret);
 }
 module_init(fan_init);module_exit(fan_exit);
 MODULE_LICENSE("GPL");

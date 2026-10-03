@@ -81,6 +81,48 @@ class Rules(unittest.TestCase):
         self.controller.document['automation']['ac']=None
         self.tick(10,apps=['/usr/bin/game']);self.tick(14)
         self.assertEqual(self.hardware.dispatch.call_args.args[0]['settings'],{'boost_enabled':False})
+    def gpu_snapshot(self,requested):
+        self.controller.snapshot=Automation.snapshot.__get__(self.controller)
+        self.hardware.status.return_value={
+            'capabilities':{'power':False,'boost':False,'cpu_limit':False,'gpu_limit':True,'rgb':False,'manual_fan':False},
+            'cooling':{'gpu':{'requested_max_mhz':requested}}}
+    def test_game_exit_resets_previously_unlimited_gpu(self):
+        self.controller.document['automation']['ac']=None
+        self.controller.document['profiles']['GAME']={'gpu_max_mhz':1200}
+        self.gpu_snapshot(None)
+        gpu=Mock();gpu.set_max.return_value=None
+        self.hardware.dispatch.side_effect=lambda command: (gpu.set_max(command['settings']['gpu_max_mhz']) or {'message':'applied'})
+        self.tick(10,apps=['/usr/bin/game']);self.tick(14)
+        self.assertEqual([call.args[0] for call in gpu.set_max.call_args_list],[1200,0])
+    def test_edit_active_app_reapplies_and_preserves_original_gpu_limit(self):
+        self.controller.document['automation']['ac']=None
+        self.controller.document['profiles']['GAME']={'gpu_max_mhz':1200}
+        self.gpu_snapshot(900)
+        gpu=Mock();gpu.set_max.return_value=None
+        self.hardware.dispatch.side_effect=lambda command: (gpu.set_max(command['settings']['gpu_max_mhz']) or {'message':'applied'})
+        self.tick(10,apps=['/usr/bin/game'])
+        document=json.loads(json.dumps(self.controller.document))
+        document['profiles']['GAME']['gpu_max_mhz']=1800
+        self.controller.configure(document)
+        self.tick(12,apps=['/usr/bin/game']);self.tick(14,apps=['/usr/bin/game']);self.tick(16)
+        self.assertEqual([call.args[0] for call in gpu.set_max.call_args_list],[1200,1800,900])
+    def test_edit_active_power_profile_reapplies_once(self):
+        self.tick(10);self.tick(13)
+        document=json.loads(json.dumps(self.controller.document))
+        document['profiles']['AC']['power_profile']='performance'
+        self.controller.configure(document)
+        self.tick(15);self.tick(17)
+        self.assertEqual(self.hardware.dispatch.call_count,2)
+        self.assertEqual(self.hardware.dispatch.call_args.args[0]['settings'],{'power_profile':'performance'})
+    def test_rule_edit_preserves_app_snapshot_until_exit(self):
+        self.controller.document['automation']['ac']=None
+        self.tick(10,apps=['/usr/bin/game'])
+        document=json.loads(json.dumps(self.controller.document))
+        document['automation']['apps']=[]
+        self.controller.configure(document)
+        self.tick(14)
+        self.controller.snapshot.assert_called_once()
+        self.assertEqual(self.hardware.dispatch.call_args.args[0]['settings'],{'boost_enabled':False})
     def test_pause_prevents_application_until_resume(self):
         self.controller.pause();self.tick(10);self.tick(14)
         self.hardware.dispatch.assert_not_called()

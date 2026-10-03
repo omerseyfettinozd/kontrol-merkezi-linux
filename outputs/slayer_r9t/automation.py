@@ -30,6 +30,7 @@ class Automation:
         self.pause_path=self.path.with_suffix('.paused')
         self.paused=self.pause_path.exists();self.session=False;self.active=None;self.error='';self.reason='';self.saved=None
         self.source=None;self.candidate=None;self.changed=0;self.last_tick=0;self.startup_done=False
+        self.applied_settings=None
         try:
             import json
             if self.path.exists():
@@ -42,7 +43,7 @@ class Automation:
         if len(__import__('json').dumps(document).encode())>131072:raise ValueError('Politika çok büyük.')
         atomic_json(self.path,document)
         if document['automation']!=self.document['automation']:
-            self.active=None;self.saved=None;self.startup_done=False
+            self.startup_done=False
         self.document=copy.deepcopy(document);self.error=''
         return {'verified':True,'message':'Profiller ve otomasyon kuralları servise kaydedildi.'}
 
@@ -64,7 +65,10 @@ class Automation:
         if caps.get('cpu_epp') and epp.get('value') in epp.get('choices',[]):value['cpu_epp']=epp['value']
         if caps['boost']:value['boost_enabled']=state['boost_enabled']
         if caps['cpu_limit']:value['cpu_max_mhz']=state['cooling']['cpu']['max_mhz']
-        if caps['gpu_limit'] and state['cooling']['gpu'].get('requested_max_mhz') is not None:value['gpu_max_mhz']=state['cooling']['gpu']['requested_max_mhz']
+        if caps['gpu_limit']:
+            # No limit requested through this controller means reset to automatic.
+            requested=state['cooling']['gpu'].get('requested_max_mhz')
+            value['gpu_max_mhz']=0 if requested is None else requested
         if caps['rgb']:
             rgb=dict(state['rgb_state'])
             if 'rgb_map' in rgb:rgb.pop('rgb',None)
@@ -93,17 +97,19 @@ class Automation:
                 measured=self.hardware.fans.status().get('measured') or {}
                 if not measured.get('thermal'):raise RuntimeError('Otomatik profil fan doğrulaması: '+self.hardware.fans.error)
             target=self.decide(executables(self.uid) if running is None else running)
-            if target==self.active:return
+            settings=self.document['profiles'][target[1]] if target else None
+            if target==self.active and settings==self.applied_settings:return
             if target:
                 if target[0].startswith('app:') and not (self.active and self.active[0].startswith('app:')):self.saved=self.snapshot()
                 elif not target[0].startswith('app:'):self.saved=None
-                result=self.hardware.dispatch({'op':'profile','settings':self.document['profiles'][target[1]]})
+                result=self.hardware.dispatch({'op':'profile','settings':settings})
+                self.applied_settings=copy.deepcopy(settings)
                 self.active=target;self.error='';self.reason=f'{target[0]} → {target[1]}: '+result['message']
                 if target[0]=='startup':self.startup_done=True
             else:
                 if self.active and self.active[0].startswith('app:') and self.saved:
                     self.hardware.dispatch({'op':'profile','settings':self.saved})
                     self.reason='Uygulama kapandı; önceki ayarlar geri yüklendi.'
-                self.active=None;self.saved=None
+                self.active=None;self.saved=None;self.applied_settings=None
         except (OSError,RuntimeError,ValueError,KeyError) as exc:
             self.pause();self.error=str(exc);self.reason='Otomasyon hatası; yeniden etkinleştirme gerekli.'

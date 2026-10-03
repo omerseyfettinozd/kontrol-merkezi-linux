@@ -117,14 +117,18 @@ Kaynak kod: [`outputs/slayer_r9t/`](outputs/slayer_r9t/), testler: [`outputs/tes
 
 ## Doğrulama ve geliştirme
 
-3 Ekim 2026 tarihli mevcut teslim kaydında **112 birim testi geçti**. Bu sonuç gerçek donanım yükü, temiz kurulum veya farklı laptop desteği anlamına gelmez. Özel canlı kontrollerin kapsamı ve sonuçları [durum belgesinde](outputs/docs/IMPLEMENTATION_STATUS.md) ayrı tutulur.
+3 Ekim 2026 tarihli son kaynak doğrulamasında **127 birim testi geçti**. Fan köprüsünün gerçek C kodunu kullanan ayrı hata simülasyonu geçti ve kernel **7.2.8-2-cachyos** başlıklarıyla LLVM nesne derlemesi başarılı oldu. Bu sonuçlar gerçek donanım yükü, modül yükleme, temiz kurulum veya farklı laptop desteği anlamına gelmez. Özel canlı kontrollerin kapsamı ve sonuçları [durum belgesinde](outputs/docs/IMPLEMENTATION_STATUS.md) ayrı tutulur.
+
+Son güvenilirlik düzeltmeleri oyun sonrası GPU frekans sınırını geri alır, etkin profil düzenlemelerini yeniden uygular ve fanın otomatik kontrole dönüşü başarısız olduğunda yeniden denemeyi sürdürür. Uygulama/kullanıcı-servisi kurulumu son adımda hata verse de önceki dosyaları ve servis durumlarını geri alır; DKMS sürücü kurulumu bu geri alma kapsamının dışındadır. Yeni kaynak henüz fiziksel cihazda yeniden kurulup doğrulanmadı.
 
 Python 3 + PySide6 ortamında, depo kökünden:
 
 ```sh
 cd outputs
-PYTHONPATH=. QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -q
+PYTHONPATH=. PYTHONDONTWRITEBYTECODE=1 QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -q
 ```
+
+Donanıma erişmeyen ayrı fan hata simülasyonu, C derleyicisi bulunan ortamda depo kökünden `python outputs/fan-driver/test_fallback.py` ile çalıştırılır.
 
 `tests/live_*.py` kontrolleri ayrıca çalıştırılır; bazıları gerçek fan, frekans, ekran, RGB veya kamera durumunu kısa süre değiştirir. Her betiğin model/izin koşullarını ve başlangıç durumuna dönüşünü okuyun; bu kontroller rutin birim testi komutunun parçası değildir.
 

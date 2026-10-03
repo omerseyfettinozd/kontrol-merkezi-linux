@@ -55,6 +55,18 @@
 - Bu cihazda paket enerji sayacı mevcut ancak kullanıcıya okunabilir değil; root okuyucu kullanılır. Kullanıcı yetkili destek/daemon okuyucusu GPU yönetim sorgusu yapmaz. Dynamic Boost sekmesinde normal NVIDIA tüketim sorguları sürer; GPU neden açık? sekmesindeki sorgu duraklaması korunur.
 - 112 birim testi geçti; Qt offscreen yerleşim kontrol edildi. 0.10.0 kuruldu; 5 canlı örnekte CPU paket gücü 29.18–31.40 W, NVIDIA tüketimi 18.37–29.11 W olarak okundu; bunlar test anındaki normal iş yükü örnekleridir. GPU uygulanan tavanı ayrı olarak 105 W kaldı. GUI alt süreçleri, CPU wattının CSV aktarımı, kaynak/kurulum eşitliği ve iki servisin çalıştığı doğrulandı (`dynamic-boost-validation.json`). Kontrollü yük altında gerçek güç aktarımı / Dynamic Boost etkinliği henüz doğrulanmadı.
 
+## 3 Ekim 2026 güvenilirlik düzeltmeleri
+
+- Uygulama otomasyonu GPU için başlangıçta sınır isteği bulunmadığında `0` (otomatik) geri dönüşünü de kaydeder. Oyun kapanınca geçici frekans sınırı kalmaz; daha önce kaydedilmiş bir sınır varsa o değer geri yüklenir. GPU'nun bağımsız sınır geri okuması hâlâ yoktur.
+- Aynı isimli etkin profilin değerleri değişirse otomasyon yeni içeriği bir sonraki uygun yenilemede bir kez uygular. Profil veya kural düzenlemesi uygulama öncesi geri dönüş kaydını silmez. Öncelik sırası ve priz/pil kararlılık süresi değişmedi.
+- Fan köprüsü EC otomatiğine dönüşü mod bitinden kontrol eder. Okuma/yazma veya doğrulama hatasında geri dönüş isteğini korur ve saniyede bir yeniden dener; bu sırada yeni manuel fan isteğini reddeder. Uyku öncesi dönüş doğrulanamazsa uyku isteği reddedilir ve tekrar deneme sürer. Kullanıcı alanındaki durum yanıtının alanları değişmedi.
+- Modül kaldırılırken üç sınırlı geri dönüş denemesi yapılır. Kalıcı EC hatasında firmware kontrolü garanti edilemez; hata kernel günlüğüne yazılır. Modülün kaldırılması bu durumda engellenemez.
+- Uygulama kurulumunda root servisi, kullanıcı servisi ve masaüstü başlatıcısı aynı geri alma kapsamındadır. Son kullanıcı-servisi adımı başarısız olsa da önceki uygulama/dosyalar ile etkinlik ve `enabled` / `enabled-runtime` durumları geri yüklenir; ilk kurulum hatasında yeni dosyalar ve açılış etkinliği kaldırılır. Eksik kullanıcı oturumu bağlantısı değişiklik öncesinde reddedilir. Symlink hedefleri üzerine yazılmaz; geri alma ayrıca hata verirse kalan sorunlar bildirilir.
+- DKMS kaynakları/derlemesi ve fan modülünün yüklenmesi ayrı bir önceki adımdır; uygulama geri alması bu sürücü adımını eski sürüme döndürmez. Bu çalışma tam sürücü kurulumunu kapsayan bir işlem garantisi vermez.
+- `linked`, `linked-runtime`, `indirect` veya maskelenmiş servis durumu geri alma kapsamına alınmaz; kurulum bu durumları değişiklik öncesinde açık hata ile reddeder.
+- Son kaynak doğrulaması: 127 birim testi geçti (25 otomasyon, 11 kurulum testi dahil). Gerçek fan C kodunu içeren ayrı hata simülasyonu geçti; durum alanlarının mevcut Python okuyucuyla uyumluluğu da kontrol edildi. Kernel `7.2.8-2-cachyos` başlıklarıyla LLVM `r9t_fan.o` derlemesi geçti; tam modül paketleme/yükleme yapılmadı.
+- Bu düzeltmelerin fiziksel cihazda yeniden kurulumu, gerçek uyku/uyanma ve EC iletişim hatası altında kabul testi yapılmadı. Önceki sürümlerin canlı raporları bu yeni kodun donanım doğrulaması sayılmaz.
+
 ## Donanım kanıtı bekleyenler
 
 | Özellik | Bulgular / eksik kanıt |
