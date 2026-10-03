@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QColorDialog, QComboBox,
 from . import __version__
 from .settings import Settings, atomic_json, edit_app_rule, move_app_rule, upsert_app_rule
 from . import telemetry
-from .lighting import pattern
+from .lighting import pattern, validate_map, ROWS, COLUMNS
 from .widgets import Card, MetricCard, STYLE, HistoryPlot
 from .history import History,METRICS
 
@@ -23,6 +23,85 @@ CLIENT = Path(__file__).resolve().parent.parent/'r9t-client.py'
 DESKTOP_CLIENT=CLIENT.with_name('r9t-desktop-client.py')
 EPP_NAMES={'performance':'Performans öncelikli','balance_performance':'Dengeli · performans','balance_power':'Dengeli · tasarruf','power':'Tasarruf öncelikli'}
 POWER_NAMES = {'power-saver': 'Güç tasarrufu', 'balanced': 'Dengeli', 'performance': 'Performans'}
+
+
+class LightingEditor(QDialog):
+    """Editable color draft, with no device operations or persistence."""
+    def __init__(self, colors, parent=None):
+        super().__init__(parent)
+        self.original = copy.deepcopy(validate_map(colors))
+        self.draft = copy.deepcopy(self.original)
+        self.color = QColor('#ffffff')
+        self.setWindowTitle('Klavye renk düzeni')
+        page = QVBoxLayout(self)
+        note = QLabel('Hücreye tıklayarak seçilen rengi boya veya bir bölge seç. Satır ve sütun numaraları fiziksel tuş isimleri değildir. Değişiklikler yalnız taslakta kalır.')
+        note.setWordWrap(True);page.addWidget(note)
+        self.color_button = QPushButton('Boya rengi: '+self.color.name());self.color_button.clicked.connect(self.pick_color);page.addWidget(self.color_button)
+        grid = QGridLayout();grid.setSpacing(3)
+        for col in range(COLUMNS):grid.addWidget(QLabel(str(col+1)),0,col+1,alignment=Qt.AlignmentFlag.AlignCenter)
+        self.cells = []
+        for row in range(ROWS):
+            grid.addWidget(QLabel(str(row+1)),row+1,0)
+            for col in range(COLUMNS):
+                index = row*COLUMNS+col
+                button = QPushButton();button.setFixedSize(26,26)
+                button.setToolTip(f'Satır {row+1}, sütun {col+1}')
+                button.clicked.connect(lambda checked=False,i=index:self.paint_cell(i))
+                grid.addWidget(button,row+1,col+1);self.cells.append(button)
+        page.addLayout(grid)
+        region = QGridLayout();self.region = {}
+        for index,(key,title,upper,default) in enumerate([('row_start','İlk satır',ROWS,1),('row_end','Son satır',ROWS,ROWS),('col_start','İlk sütun',COLUMNS,1),('col_end','Son sütun',COLUMNS,COLUMNS)]):
+            spin = QSpinBox();spin.setRange(1,upper);spin.setValue(default)
+            region.addWidget(QLabel(title),0,index);region.addWidget(spin,1,index);self.region[key] = spin
+        page.addLayout(region)
+        self.region_button = QPushButton('Bölgeyi boya');self.region_button.clicked.connect(self.paint_region);page.addWidget(self.region_button)
+        row = QHBoxLayout();self.presets = QComboBox()
+        for title,key in [('Tek renk','uniform'),('Gökkuşağı geçişi','rainbow'),('Üç renk bölgesi','zones'),('Parlaklık geçişi','gradient')]:self.presets.addItem(title,key)
+        row.addWidget(self.presets)
+        button = QPushButton('Hazır düzeni yükle');button.clicked.connect(self.load_preset);row.addWidget(button);page.addLayout(row)
+        row = QHBoxLayout()
+        button = QPushButton('Tüm renkleri temizle');button.clicked.connect(self.clear_colors);row.addWidget(button)
+        button = QPushButton('Açılıştaki düzene dön');button.clicked.connect(self.reset_colors);row.addWidget(button);page.addLayout(row)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save|QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText('Taslağı kullan')
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText('İptal')
+        buttons.accepted.connect(self.accept);buttons.rejected.connect(self.reject);page.addWidget(buttons)
+        self.render_colors()
+
+    def colors(self):
+        return copy.deepcopy(validate_map(self.draft))
+
+    def rgb_values(self):
+        return [self.color.red(),self.color.green(),self.color.blue()]
+
+    def pick_color(self):
+        color = QColorDialog.getColor(self.color,self,'Boya rengi')
+        if color.isValid():self.color = color;self.color_button.setText('Boya rengi: '+color.name())
+
+    def render_colors(self):
+        for button,color in zip(self.cells,self.draft):
+            button.setStyleSheet('QPushButton { background:'+QColor(*color).name()+'; border:1px solid #68768a; border-radius:3px; }')
+
+    def paint_cell(self, index):
+        self.draft[index] = self.rgb_values();self.render_colors()
+
+    def paint_region(self):
+        r0,r1 = sorted([self.region['row_start'].value()-1,self.region['row_end'].value()-1])
+        c0,c1 = sorted([self.region['col_start'].value()-1,self.region['col_end'].value()-1])
+        for row in range(r0,r1+1):
+            for col in range(c0,c1+1):self.draft[row*COLUMNS+col] = self.rgb_values()
+        self.render_colors()
+
+    def load_preset(self):
+        key = self.presets.currentData();color = self.rgb_values()
+        self.draft = [color.copy() for _ in range(ROWS*COLUMNS)] if key=='uniform' else pattern(key,color)
+        self.render_colors()
+
+    def clear_colors(self):
+        self.draft = [[0,0,0] for _ in range(ROWS*COLUMNS)];self.render_colors()
+
+    def reset_colors(self):
+        self.draft = copy.deepcopy(self.original);self.render_colors()
 
 
 class ProfileEditor(QDialog):
@@ -64,6 +143,7 @@ class ProfileEditor(QDialog):
         self.color_button = QPushButton('Renk seç: '+self.color.name());self.color_button.clicked.connect(self.pick_color);box.addWidget(self.color_button)
         self.brightness = QSpinBox();self.brightness.setRange(0,100);self.brightness.setSuffix(' % parlaklık');self.brightness.setValue(settings.get('brightness',100));box.addWidget(self.brightness)
         box.addWidget(QLabel('Kayıtlı renk düzenini koru seçimi, özel renkleri değiştirmeden saklar.'))
+        self.light_edit = QPushButton('Renk düzenini düzenle');self.light_edit.clicked.connect(self.edit_lighting);box.addWidget(self.light_edit)
         box.addWidget(QLabel('Fan ayarı'))
         self.fan_mode = QComboBox()
         for title,key in [('Fan ayarı ekleme',None),('EC otomatik','auto'),('Manuel','manual'),('Özel eğri','curve'),('Hazır fan profili','preset'),('Maksimum soğutma','boost')]:self.fan_mode.addItem(title,key)
@@ -112,6 +192,17 @@ class ProfileEditor(QDialog):
     def pick_color(self):
         color = QColorDialog.getColor(self.color,self,'Profil klavye rengi')
         if color.isValid():self.color = color;self.color_button.setText('Renk seç: '+color.name())
+
+    def edit_lighting(self):
+        key = self.light_pattern.currentData();color = [self.color.red(),self.color.green(),self.color.blue()]
+        colors = self.original['rgb_map'] if key=='stored' else [color.copy() for _ in range(ROWS*COLUMNS)] if key=='uniform' else pattern(key,color)
+        dialog = LightingEditor(colors,self)
+        try:
+            if dialog.exec()!=QDialog.DialogCode.Accepted:return
+            self.original['rgb_map'] = dialog.colors()
+            if self.light_pattern.findData('stored')<0:self.light_pattern.insertItem(0,'Kayıtlı renk düzenini koru','stored')
+            self.light_pattern.setCurrentIndex(self.light_pattern.findData('stored'));self.light_include.setChecked(True)
+        finally:dialog.deleteLater()
 
     def profile_settings(self):
         from .hardware import validate_profile
@@ -659,6 +750,8 @@ class ControlCenter(QMainWindow):
         self.light_pattern=QComboBox()
         for title,key in [('Tek renk','uniform'),('Gökkuşağı geçişi','rainbow'),('Üç renk bölgesi','zones'),('Seçilen renkle parlaklık geçişi','gradient')]:self.light_pattern.addItem(title,key)
         box.addWidget(self.light_pattern)
+        self.rgb_map_draft = None
+        self.button(box,'Renk düzenini düzenle',self.edit_rgb_map)
         self.button(box,'Seçilen renk düzenini uygula',lambda:self.command('profile',json.dumps(self.lighting_settings())),'rgb_map')
         box.addWidget(self.label('Statik düzenler 6 × 21 sürücü kanalına uygulanır ve tüm kanallar geri okunur. Fiziksel tuş konumları kasa düzenine göre farklı olabilir; bunlar donanım animasyonu değildir. Renk düzeni kayıtlı profile de eklenir.'))
         self.fn_check=QCheckBox('Fn Lock etkin')
@@ -1165,7 +1258,20 @@ class ControlCenter(QMainWindow):
 
     def lighting_settings(self):
         key=self.light_pattern.currentData()
+        if key=='custom':return {'brightness':self.brightness.value(),'rgb_map':copy.deepcopy(validate_map(self.rgb_map_draft))}
         return dict(brightness=self.brightness.value(),**({'rgb':self.rgb_values()} if key=='uniform' else {'rgb_map':pattern(key,self.rgb_values())}))
+
+    def edit_rgb_map(self):
+        current = self.lighting_settings()
+        colors = current.get('rgb_map') or [self.rgb_values() for _ in range(ROWS*COLUMNS)]
+        dialog = LightingEditor(colors,self)
+        try:
+            if dialog.exec()!=QDialog.DialogCode.Accepted:return
+            self.rgb_map_draft = dialog.colors()
+            if self.light_pattern.findData('custom')<0:self.light_pattern.addItem('Özel renk düzeni','custom')
+            self.light_pattern.setCurrentIndex(self.light_pattern.findData('custom'))
+            self.feedback('Renk düzeni taslakta hazır. Klavyeye göndermek için renk düzenini uygula düğmesini kullanın.')
+        finally:dialog.deleteLater()
 
     def rgb_values(self):
         return [self.color.red(), self.color.green(), self.color.blue()]
