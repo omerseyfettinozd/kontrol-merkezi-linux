@@ -106,7 +106,7 @@ fan işlemlerinin reddi, arayüz, kalıcı işlem sonucu ve işlem kayıtları
 kontrol edildi. Uzun süreli kullanım, uyku/uyanma ve farklı BIOS sürümleri bu
 sürümde doğrulanmadı.
 
-4 Ekim 2026 bütünleşik kaynak kontrolünde 268 Python/Qt testi, ayrı fan C hata simülasyonu ve 84 Python dosyasının sözdizimi kontrolü geçti. Kurulu uygulama/servis salt okunur önkontrolde 0.10.0, kaynak 0.11.0 olarak görüldü; fiziksel kabul sınırları ve tarihli önceki sonuçlar [durum belgesinde](docs/IMPLEMENTATION_STATUS.md) izlenir.
+4 Ekim 2026 bütünleşik kaynak kontrolünde 277 Python/Qt testi, ayrı fan C hata simülasyonu ve 86 Python dosyasının sözdizimi kontrolü geçti. Kurulu uygulama/servis salt okunur önkontrolde 0.10.0, kaynak 0.11.0 olarak görüldü; fiziksel kabul sınırları ve tarihli önceki sonuçlar [durum belgesinde](docs/IMPLEMENTATION_STATUS.md) izlenir.
 
 Modüller ve tasarım: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

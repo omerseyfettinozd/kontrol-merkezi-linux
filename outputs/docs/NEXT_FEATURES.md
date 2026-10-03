@@ -60,3 +60,5 @@ Kaynaklar genel arayüz anlamını açıklar; yukarıdaki cihaz bulguları bu bi
 salt okunur sysfs/procfs, sistem servisi ve wpctl incelemesinden gelir.
 
 4 Ekim dağıtım araçları devamında 268 Python/Qt testi, ayrı fan C hata simülasyonu ve 84 Python dosyasının AST/derleme kontrolü geçti. Derleme betiği/kurulum önkontrolü, atomik geçmiş CSV ve yalnız kaynakta salt okunur kaldırma envanteri tamamlandı; gerçek kaldırma executor'ı yoktur. KML-07/KML-08 fiziksel kabulü açık kalır.
+
+Kalıcı veri ve oturum kapanışı devamında 277 Python/Qt testi, ayrı 1 C fan simülasyonu ve 86 Python AST/derleme kontrolü geçti. JSON dosyaları 131072 bayt/64 düzey sınırında kontrollü reddedilir; kapanış ekran/idle/ışık geri dönüşünü bağımsız dener. Fiziksel ve gerçek kurulum/kaldırma kabulü açıktır.
