@@ -1,4 +1,4 @@
-# Slayer R9T Kontrol Merkezi — 0.10.0
+# Slayer R9T Kontrol Merkezi — 0.11.0
 
 Program uygulama menüsünde **Slayer R9T Kontrol Merkezi** adıyla açılır.
 Kurulu dosyalar `/usr/local/lib/slayer-r9t/` altındadır.

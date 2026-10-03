@@ -1,6 +1,6 @@
 # Kontrol Merkezi Linux
 
-**GameGaraj Slayer R9T için Linux / KDE Plasma donanım ve masaüstü kontrol merkezi.** Mevcut sürüm: **0.10.0**.
+**GameGaraj Slayer R9T için Linux / KDE Plasma donanım ve masaüstü kontrol merkezi.** Mevcut sürüm: **0.11.0**.
 
 Güç, CPU boost, fanlar, RGB klavye, ekran ve cihaz ayarlarını tek arayüzde yönetir. Profiller ve isteğe bağlı otomasyonla ayarları birlikte uygular; sıcaklık, fan RPM ve güç ölçümleriyle sonuçları görünür kılar. Windows kontrol merkezinin bütün özelliklerini kapsadığı veya tüm oyun laptoplarında çalıştığı iddia edilmez.
 
