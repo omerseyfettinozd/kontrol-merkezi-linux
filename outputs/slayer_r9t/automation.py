@@ -8,11 +8,20 @@ from .settings import validate_document,atomic_json,default_automation
 POLICY=Path('/var/lib/slayer-r9t/policy.json')
 
 def power_source():
-    for supply in Path('/sys/class/power_supply').iterdir():
+    try:
+        supplies=list(Path('/sys/class/power_supply').iterdir())
+    except OSError:
+        return None
+    offline=False;unknown=False
+    for supply in supplies:
         try:
-            if (supply/'type').read_text().strip()=='Mains':return 'ac' if (supply/'online').read_text().strip()=='1' else 'battery'
-        except OSError:pass
-    return None
+            if (supply/'type').read_text().strip() not in ('Mains','USB'):continue
+            online=(supply/'online').read_text().strip()
+            if online=='1':return 'ac'
+            if online=='0':offline=True
+            else:unknown=True
+        except (OSError,UnicodeError):unknown=True
+    return 'battery' if offline and not unknown else None
 
 def executables(uid):
     found=set()

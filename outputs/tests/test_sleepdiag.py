@@ -63,6 +63,7 @@ class SleepDiagTest(unittest.TestCase):
         r = sleepdiag.compare(s, dict(s, time=100))
         self.assertIsNone(r['energy_delta_uwh'])
         self.assertIsNone(r['suspend_delta'])
+        self.assertFalse(r['valid'])
 
     def test_charge_voltage_fallback(self):
         with tempfile.TemporaryDirectory() as d:
@@ -81,6 +82,59 @@ class SleepDiagTest(unittest.TestCase):
             p.write_text('garbage')
             self.assertIsNone(sleepdiag.load_snapshot(p))
 
+    def test_malformed_snapshot_fields_are_rejected(self):
+        valid = self.snap(100)
+        changes = [
+            {'time': True}, {'time': 10 ** 400}, {'time': float('nan')}, {'time': float('inf')},
+            {'time': float('-inf')}, {'energy_uwh': 'bad'}, {'energy_uwh': -1},
+            {'energy_uwh': True}, {'energy_uwh': 10 ** 400}, {'power_uw': []}, {'ac_online': 'false'},
+            {'stats': []}, {'stats': {'success': 'bad'}},
+            {'stats': {'fail': -1}}, {'status': {}},
+        ]
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / 'snapshot.json'
+            for change in changes:
+                with self.subTest(change=change):
+                    bad = dict(valid, **change)
+                    path.write_text(json.dumps(bad))
+                    self.assertIsNone(sleepdiag.load_snapshot(path))
+                    result = sleepdiag.compare(bad, self.snap(200))
+                    self.assertFalse(result['valid'])
+                    self.assertIsNone(result['loss_uwh_per_h'])
+
+    def test_unverified_sleep_or_missing_measurement_is_invalid(self):
+        before, after = self.snap(0), self.snap(3600, success=4)
+        changes = [
+            {'ac_online': None}, {'energy_uwh': None}, {'stats': {}},
+            {'stats': {'success': 3}}, {'stats': {'success': 2}},
+        ]
+        for change in changes:
+            with self.subTest(change=change):
+                self.assertFalse(sleepdiag.compare(before, dict(after, **change))['valid'])
+
+    def test_extreme_interval_cannot_overflow_rate(self):
+        before = self.snap(0)
+        after = self.snap(5e-324, energy=49_000_000, success=4)
+        result = sleepdiag.compare(before, after)
+        self.assertFalse(result['valid'])
+        self.assertIsNone(result['loss_uwh_per_h'])
+
+    def test_widget_recovers_from_corrupt_snapshot(self):
+        from PySide6.QtWidgets import QApplication
+        from slayer_r9t.sleepdiag_widget import SleepDiagPanel
+        QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as d:
+            ps, pw = build(d)
+            path = Path(d) / 'st.json'
+            path.write_text('{"time":1,"energy_uwh":"bad"}')
+            w = SleepDiagPanel(state_path=path, ps_root=ps, power_root=pw)
+            self.assertFalse(w.compare_button.isEnabled())
+            w.compare()
+            self.assertIn('Önce', w.status.text())
+            w.prepare()
+            self.assertTrue(w.compare_button.isEnabled())
+            self.assertIsNotNone(sleepdiag.load_snapshot(path))
+
     def test_widget(self):
         from PySide6.QtWidgets import QApplication
         from slayer_r9t.sleepdiag_widget import SleepDiagPanel
@@ -92,7 +146,7 @@ class SleepDiagTest(unittest.TestCase):
             w.prepare()
             self.assertTrue(w.compare_button.isEnabled())
             w.compare()
-            self.assertIn('Sonuç', w.result.text())
+            self.assertIn('Sonuç: GEÇERSİZ', w.result.text())
             self.assertIn('fiziksel uyku', w.warning.text())
 
 
