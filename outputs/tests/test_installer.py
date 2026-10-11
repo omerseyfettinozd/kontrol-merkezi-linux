@@ -215,6 +215,7 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue((self.target / 'r9t-service.py').exists())
         self.assertEqual((self.target.with_name('.slayer-r9t-previous') / 'previous.txt').read_text(), 'old application')
         self.assertFalse(self.old_launcher.exists())
+        self.assertIn('Icon=/usr/local/lib/slayer-r9t/slayer_r9t/assets/slayer-r9t.svg', self.desktop.read_text())
         self.assertTrue(all(state == {'active': True, 'enabled': 'enabled'} for state in self.states.values()))
 
     def test_clean_install_success_deploys_assets_and_both_services(self):

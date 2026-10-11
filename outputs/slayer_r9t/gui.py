@@ -13,6 +13,26 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QColorDialog, QComboBox,
     QFileDialog, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QMainWindow,
     QPushButton, QScrollArea, QDialog, QDialogButtonBox, QLineEdit, QSpinBox, QTabWidget, QTextEdit, QVBoxLayout, QWidget,QListWidget,QSystemTrayIcon,QMenu)
 from . import __version__
+from .single_instance import SingleInstance
+from .fans import Fans
+
+APP_ICON = Path(__file__).with_name('assets') / 'slayer-r9t.svg'
+
+
+def fan_status_text(fans):
+    if not fans.get('available'):
+        return 'R9T fan sürücüsü hazır değil; kontrol uygulanamaz.'
+    names={'auto':'EC otomatik','manual':'Elle hız','curve':'Fan eğrisi','boost':'Maksimum soğutma'}
+    text=names.get(fans.get('mode'),'Sürücü hazır değil')
+    if fans.get('mode')=='auto':
+        measured=fans.get('measured')
+        verified=Fans.is_auto(measured)
+        text+=' · '+('EC kontrolü doğrulandı' if verified else 'EC kontrolü doğrulanamadı')
+    else:
+        text+=' · '+('Hedef / RPM doğrulandı' if fans.get('verified') else 'Doğrulama sürüyor')
+    for error in dict.fromkeys((fans.get('error'),fans.get('verification_error'))):
+        if error:text+=' · '+error
+    return text
 from .settings import Settings, atomic_json, edit_app_rule, move_app_rule, upsert_app_rule
 from . import telemetry
 from .lighting import pattern, validate_map, ROWS, COLUMNS
@@ -563,17 +583,29 @@ class ControlCenter(QMainWindow):
         if path:self.guarded(lambda:self.feedback(f'{self.history.export(path,self.history_window.currentData())} ölçüm CSV dosyasına kaydedildi.'))
 
     def build_tray(self):
-        self.tray=QSystemTrayIcon(QIcon.fromTheme('preferences-system'),self)
+        self.tray=QSystemTrayIcon(QIcon(str(APP_ICON)),self)
         self.tray.setToolTip('Slayer R9T Kontrol Merkezi')
         self.tray_menu=QMenu()
-        self.tray_menu.addAction('Kontrol merkezini göster',lambda:(self.show(),self.raise_(),self.activateWindow()))
+        self.tray_menu.addAction('Kontrol merkezini göster',self.show_existing)
         self.tray_profiles=self.tray_menu.addMenu('Profiller')
         self.tray_menu.addAction('EC otomatik fan',lambda:self.command('auto'))
         self.tray_menu.addAction('Otomasyonu sürdür',lambda:self.command('automation_resume'))
         self.tray_menu.addAction('Arayüzü kapat',self.close)
         self.tray.setContextMenu(self.tray_menu)
-        self.tray.activated.connect(lambda _:self.show())
+        self.tray.activated.connect(self.tray_activated)
         self.tray.show();self.update_tray_profiles()
+
+    def show_existing(self, fan=False):
+        if fan:
+            self.tabs.setCurrentIndex(2)
+        self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized)
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def tray_activated(self, reason):
+        if reason in (QSystemTrayIcon.ActivationReason.Trigger, QSystemTrayIcon.ActivationReason.DoubleClick):
+            self.show_existing()
 
     def update_tray_profiles(self):
         if not hasattr(self,'tray_profiles'):return
@@ -687,6 +719,7 @@ class ControlCenter(QMainWindow):
         self.button(row,'EC otomatik',lambda:self.command('auto'),'auto_fan')
         self.button(row,'Maksimum soğutma',lambda:self.command('fan_boost'),'fan_boost')
         box.addLayout(row)
+        box.addWidget(self.label('EC otomatik, fan hızlarını BIOS’a bırakır. Doğrulama güncel sürücü modu ve EC mod bitinden yapılır; düşük veya sıfır RPM tek başına hata değildir.'))
         self.fan_preset_combo=QComboBox()
         box.addWidget(self.fan_preset_combo)
         self.button(box,'Hazır fan profilini uygula',lambda:self.command('fan_preset',self.fan_preset_combo.currentData()),'curve')
@@ -1123,11 +1156,7 @@ class ControlCenter(QMainWindow):
         fans=state.get('fans',{})
         measured=fans.get('measured') or {}
         for key,card in self.fan_metrics.items():card.set_value(measured.get(key))
-        names={'auto':'EC otomatik','manual':'Elle hız','curve':'Fan eğrisi','boost':'Maksimum soğutma'}
-        fan_text=names.get(fans.get('mode'),'Sürücü hazır değil')
-        if fans.get('mode')!='auto':fan_text+=' · '+('Hedef / RPM doğrulandı' if fans.get('verified') else 'Doğrulama sürüyor')
-        if fans.get('error'):fan_text+=' · '+fans['error']
-        if not fans.get('available'):fan_text='R9T fan sürücüsü hazır değil; kontrol uygulanamaz.'
+        fan_text=fan_status_text(fans)
         self.fan_validation.setText(fan_text)
         if self.fan_feedback_pending and (fans.get('verified') or fans.get('error')):
             self.feedback('Fan kontrolü: '+fan_text,error=bool(fans.get('error')))
@@ -1135,7 +1164,8 @@ class ControlCenter(QMainWindow):
         targets=fans.get('targets')
         target_text=(f"CPU %{targets[0]} / GPU %{targets[1]}" if targets else 'EC otomatik belirler')
         self.fan_targets.setText(f"Etkin hedef: {target_text} · CPU {measured.get('cpu_temp','—')}°C / GPU {measured.get('gpu_temp','—')}°C")
-        self.fan_validation.setStyleSheet('color:'+('#f28f97' if fans.get('error') else '#83cfc6' if fans.get('verified') else '#dfb477'))
+        fan_verified=Fans.is_auto(measured) if fans.get('mode')=='auto' else fans.get('verified')
+        self.fan_validation.setStyleSheet('color:'+('#f28f97' if fans.get('error') or fans.get('verification_error') else '#83cfc6' if fan_verified else '#dfb477'))
         self.fan_state.setText(fan_text+' · CPU '+str(measured.get('cpu_rpm','—'))+' RPM · GPU '+str(measured.get('gpu_rpm','—'))+' RPM')
         if not self.fan_preset_combo.count():
             for key,preset in fans.get('presets',{}).items():self.fan_preset_combo.addItem(preset['name'],key)
@@ -1464,6 +1494,7 @@ class ControlCenter(QMainWindow):
         self.audio_panel.shutdown()
         self.processes_panel.shutdown()
         self.closing = True
+        self.tray.hide()
         self.queue.clear()
         self.timer.stop()
         for process in (self.process, self.gpu_process,self.desktop_process,self.gpu_diagnostic_process,self.dynamic_boost_process):
@@ -1476,9 +1507,20 @@ class ControlCenter(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName('Slayer R9T Kontrol Merkezi')
+    app.setDesktopFileName('slayer-r9t-control-center')
+    app.setWindowIcon(QIcon(str(APP_ICON)))
     app.setFont(QFont('Noto Sans', 10))
-    window = ControlCenter()
-    if '--fan' in sys.argv:
-        window.tabs.setCurrentIndex(2)
-    window.show()
-    return app.exec()
+    instance = SingleInstance(parent=app)
+    if not instance.primary:
+        if instance.activate_existing('--fan' in sys.argv):
+            return 0
+        print('Çalışan kontrol merkeziyle bağlantı kurulamadı.', file=sys.stderr)
+        return 1
+    try:
+        window = ControlCenter()
+        instance.activated.connect(window.show_existing)
+        app.aboutToQuit.connect(window.tray.hide)
+        window.show_existing('--fan' in sys.argv)
+        return app.exec()
+    finally:
+        instance.close()

@@ -98,19 +98,36 @@ class Fans:
         self.last_state = values
         return values
 
+    def has_control(self):
+        return (ROOT/'control').exists()
+
     def send(self, command):
         (ROOT/'control').write_text(command)
         self.last_refresh = time.monotonic()
 
     def auto(self):
-        self.send('auto')
+        # Drop the old software targets before attempting the handover. A failed
+        # EC write must not let monitor() renew a previous manual lease.
         self.mode = 'auto';self.targets=None;self.points=None;self.samples=0
-        self.smoothers=[]
-        state=self.read()
-        if state['mode']!=0 or state['mode_byte']&0x40:
-            raise RuntimeError('Fan otomatik modu geri okunarak doğrulanamadı.')
+        self.smoothers=[];self.failure_since=None;self.verified=False
+        try:
+            try:state=self.read()
+            except (OSError,ValueError,RuntimeError):state=None
+            already_auto=self.is_auto(state)
+            if not already_auto:
+                self.send('auto')
+                state=self.read()
+            if not self.is_auto(state):
+                raise RuntimeError('Fan otomatik modu geri okunarak doğrulanamadı.')
+        except (OSError,ValueError,RuntimeError) as exc:
+            self.error='EC otomatiğine geçiş doğrulanamadı: '+str(exc)
+            raise
         self.verified=True;self.error=''
-        return {'verified':True,'message':'Fanlar EC otomatiğine döndü; mod biti doğrulandı.'}
+        return {'verified':True,'message':('Fanlar zaten EC otomatiğinde; ek komut yazılmadan mod doğrulandı.' if already_auto else 'Fanlar EC otomatiğine döndü; mod biti doğrulandı.')}
+
+    @staticmethod
+    def is_auto(state):
+        return state is not None and state.get('mode')==0 and not state.get('mode_byte',0x40)&0x40
 
     def apply(self, op, req):
         if op=='auto':return self.auto()
@@ -181,9 +198,19 @@ class Fans:
 
     def status(self):
         available=(ROOT/'status').is_file() and (ROOT/'control').exists()
+        measurement_error=''
         try:measured=self.read() if available else None
-        except (OSError,ValueError,RuntimeError) as exc:measured=None;self.error=str(exc)
+        except (OSError,ValueError,RuntimeError) as exc:measured=None;measurement_error=str(exc)
+        verification_error=''
+        if self.mode=='auto':
+            # Reuse this status read: never write the EC or require spinning
+            # fans to verify firmware control (zero RPM may be legitimate).
+            self.verified=self.is_auto(measured)
+            if measured is not None and not self.verified:
+                verification_error='EC otomatik seçili ancak sürücü / mod biti otomatik kontrolü doğrulamıyor.'
+        elif measured is None:
+            self.verified=False
         return {'available':available and measured is not None,'mode':self.mode,
                 'targets':self.targets,'points':self.points,'verified':self.verified,
-                'error':self.error,'measured':measured,'presets':PRESETS,
+                'error':self.error or measurement_error,'verification_error':verification_error,'measured':measured,'presets':PRESETS,
                 'curve_smoothing':{'cooling_hysteresis_c':2,'cooling_hold_seconds':6,'down_step_percent':2,'refresh_seconds':2}}

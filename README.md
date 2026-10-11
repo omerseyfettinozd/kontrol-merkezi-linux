@@ -90,7 +90,11 @@ systemctl status slayer-r9t.service
 systemctl --user status slayer-r9t-session.service
 ```
 
-Program menüde **Slayer R9T Kontrol Merkezi** adıyla açılır. Terminalden:
+Program menüde **Slayer R9T Kontrol Merkezi** adıyla açılır.
+
+Uygulama kullanıcı başına tek GUI süreci ve tek sistem tepsisi simgesi oluşturur. Yeniden başlatmak mevcut pencereyi öne getirir; `--fan` mevcut pencerenin fan sekmesini açar. Pencereyi veya tepsi menüsündeki **Arayüzü kapat** seçeneğini kapatmak GUI sürecini sonlandırır. Menü, pencere ve sistem tepsisi uygulamanın paketlenmiş ikonunu kullanır.
+
+Terminalden:
 
 ```sh
 /usr/bin/python /usr/local/lib/slayer-r9t/r9t-control-center.py
