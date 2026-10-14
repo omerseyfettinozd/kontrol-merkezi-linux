@@ -797,7 +797,13 @@ class ControlCenter(QMainWindow):
             settings = preset['settings']
             cpu = str(settings['cpu_max_mhz'])+' MHz' if settings['cpu_max_mhz'] else 'Otomatik'
             gpu = str(settings['gpu_max_mhz'])+' MHz' if settings['gpu_max_mhz'] else 'Otomatik'
-            self.thermal_description.setText(preset['description']+f'\nCPU: {cpu} · GPU: {gpu} · Boost: '+('Açık' if settings['boost_enabled'] else 'Kapalı'))
+            details = preset['description']+f'\nCPU: {cpu} · GPU: {gpu} · Boost: '+('Açık' if settings['boost_enabled'] else 'Kapalı')
+            if settings.get('fan', {}).get('preset') == 'cool':
+                details += '\nFan: Serin fan eğrisi'
+            if settings.get('cpu_epp') == 'balance_performance':
+                details += ' · Enerji tercihi: Dengeli performans'
+            self.thermal_description.setText(details)
+        self.update_buttons()
 
     def build_keyboard(self):
         page = self.tab('Klavye')
@@ -1034,6 +1040,10 @@ class ControlCenter(QMainWindow):
         for button, capability in self.action_buttons:
             if capability == 'thermal':
                 enabled = all(capabilities.get(key) for key in ('power','boost','cpu_limit','gpu_limit'))
+                preset = self.state.get('cooling', {}).get('presets', {}).get(self.thermal_combo.currentData(), {})
+                settings = preset.get('settings', {})
+                if 'fan' in settings: enabled = enabled and capabilities.get('curve', False)
+                if 'cpu_epp' in settings: enabled = enabled and capabilities.get('cpu_epp', False)
             elif capability == 'profile':
                 fields = self.store.profiles.get(self.profile_combo.currentText(), {})
                 mapping = {'power_profile':'power','boost_enabled':'boost','rgb':'rgb','rgb_map':'rgb_map','brightness':'rgb','cpu_epp':'cpu_epp','cpu_max_mhz':'cpu_limit','gpu_max_mhz':'gpu_limit','fan':'manual_fan'}
