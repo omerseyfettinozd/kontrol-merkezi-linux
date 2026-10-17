@@ -189,3 +189,10 @@ Yönetici doğrulaması tamamlandı;kurulu0.10.1 üzerinde3dosya staging SHA256 
 - **Turbo priz kilidi (Asus paritesi):** Pilde Turbo butonu kapanır ve yalnız prizde uyarısı gösterilir; komut seviyesinde de reddedilir.
 - **Steam oyun önerisi:** Otomasyon sekmesi salt okunur Steam kütüphanesini tarar (32 oyun bulundu) ve kural ekleme ipucunda listeler.
 - **Doğrulama:** 219 birim/Qt testi offscreen geçti (`test_gui_game_mode.py` + `test_games.py` dahil).
+
+## 18 Ekim 2026 — 0.12.0 birleştirme (yedek sürüm)
+
+- Dağınık kopyalar tek dalda birleşti: `codex/control-center-reliability-011` (12 commit), EC devri + tek örnek GUI (dd5091e), Sweet Spot hazır profili (43697e5) ve çalışma ağacındaki oyun modu (0.11.1 WIP). İki ayrı "0.11.1" yerine sürüm **0.12.0**.
+- Kurulum/kaldırma için codex dalının salt okunur kaldırma envanteri (`r9t-uninstall-plan.py --dry-run`) tutuldu; 2fc5d4b'deki ön kontrol, çalıştıran kaldırıcı ve DKMS arşivli geri alma alınmadı (gerekçe: `r9t-studio/docs/05_legacy_parite.md`). Bu nedenle o snapshot'ın 31 testi yoktur.
+- Birleştirme düzeltmeleri: Sweet Spot'un seçili profil fan/EPP kapısı yalnız "Seçilen soğutma profilini uygula" düğmesine uygulanır; oyun ve senaryo düğmeleri temel termal kapıyı kullanır. Profil karşılaştırma testleri widget'ları Qt üzerinden siler; çıkıştaki SIGSEGV (codex birleşmesinden sonra 10/10) giderildi.
+- Doğrulama: **305 Python/Qt testi** offscreen geçti; tam paket 20 ardışık çalıştırmada çıkış kodu 0. Kurulum yapılmadı, donanıma yazılmadı; kurulu kopyalar (`/usr/local/lib/slayer-r9t` 0.10.1, `~/.local/lib/slayer-r9t` 0.11.0) değişmedi.
