@@ -1,0 +1,12 @@
+{
+  "generated_utc": "2026-10-17T21:47:17Z",
+  "kernel": "7.2.9-2-cachyos",
+  "module_version": "0.2.0",
+  "srcversion": "34316EF339CB41A6C327C1C",
+  "tests": [
+    {"test": "auto", "ok": true, "detail": "mode=0 mode_byte=160"},
+    {"test": "manual", "ok": true, "detail": "mode=1 pwm=120/120 lease_ms=11074 rpm=3796/3789"},
+    {"test": "lease_expiry", "ok": true, "detail": "auto 16.5s sonra, error=-110"},
+    {"test": "invalid_rejected", "ok": true, "detail": "5 geçersiz komut reddedildi"}
+  ]
+}
