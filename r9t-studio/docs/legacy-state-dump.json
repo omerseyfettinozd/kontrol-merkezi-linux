@@ -1,0 +1,392 @@
+{
+  "generated_utc": "2026-10-17T21:31:53Z",
+  "state_dir": "/var/lib/slayer-r9t",
+  "files": [
+    {
+      "name": "actions.jsonl",
+      "size": 68833,
+      "mode": "0o600",
+      "type": "file",
+      "mtime_utc": "2026-10-17T10:43:18Z"
+    },
+    {
+      "name": "policy.json",
+      "size": 1228,
+      "mode": "0o600",
+      "type": "file",
+      "mtime_utc": "2026-10-10T17:06:59Z"
+    },
+    {
+      "name": "policy.paused",
+      "size": 21,
+      "mode": "0o600",
+      "type": "file",
+      "mtime_utc": "2026-10-16T21:17:46Z"
+    }
+  ],
+  "errors": {},
+  "state_dir_mode": "0o700",
+  "policy": {
+    "schema": 3,
+    "profiles": {
+      "Oyun - Serin": {
+        "power_profile": "balanced",
+        "boost_enabled": true,
+        "cpu_max_mhz": 3500,
+        "gpu_max_mhz": 2100,
+        "fan": {
+          "mode": "preset",
+          "preset": "cool"
+        }
+      },
+      "Sweet Spot - 5 Döngü": {
+        "power_profile": "balanced",
+        "boost_enabled": true,
+        "cpu_max_mhz": 4900,
+        "cpu_epp": "balance_performance",
+        "gpu_max_mhz": 2475,
+        "fan": {
+          "mode": "preset",
+          "preset": "cool"
+        }
+      },
+      "Oyun - CPU Serin 3500": {
+        "power_profile": "balanced",
+        "boost_enabled": true,
+        "cpu_max_mhz": 3500,
+        "gpu_max_mhz": 2475,
+        "cpu_epp": "balance_performance",
+        "fan": {
+          "mode": "preset",
+          "preset": "cool"
+        }
+      }
+    },
+    "legacy_fan_profiles": {
+      "profiles": {},
+      "curve": [
+        [
+          55,
+          30
+        ],
+        [
+          65,
+          45
+        ],
+        [
+          75,
+          65
+        ],
+        [
+          85,
+          85
+        ],
+        [
+          92,
+          100
+        ]
+      ]
+    },
+    "automation": {
+      "startup": null,
+      "ac": null,
+      "battery": null,
+      "apps": [],
+      "low_hz_on_battery": false,
+      "lighting_timeout": 0
+    }
+  },
+  "automation_paused_file": true,
+  "temperature_target_recovery": null,
+  "gpu_clock_owned": null,
+  "actions": {
+    "count": 317,
+    "first_utc": "2026-10-03T10:58:20+00:00",
+    "last_utc": "2026-10-17T10:43:18+00:00",
+    "by_operation": {
+      "profile": 56,
+      "session_ready": 42,
+      "lighting_idle": 35,
+      "thermal_preset": 29,
+      "auto": 23,
+      "automation_pause": 23,
+      "automation": 20,
+      "power": 16,
+      "manual": 11,
+      "fan_preset": 9,
+      "boost": 8,
+      "automation_resume": 8,
+      "fan_boost": 7,
+      "configure": 7,
+      "fn_lock": 6,
+      "rgb": 5,
+      "camera": 5,
+      "curve": 4,
+      "temperature_target": 2,
+      "temperature_target_stop": 1
+    },
+    "failed_by_operation": {
+      "manual": 2,
+      "curve": 2,
+      "profile": 2,
+      "camera": 1,
+      "thermal_preset": 1
+    },
+    "duration_ms_median": {
+      "profile": 1642,
+      "manual": 2312,
+      "curve": 3355,
+      "power": 1564,
+      "auto": 1528,
+      "boost": 1364,
+      "rgb": 3214,
+      "thermal_preset": 1730,
+      "fan_preset": 3335,
+      "fan_boost": 2739,
+      "session_ready": 0,
+      "lighting_idle": 0,
+      "automation": 0,
+      "fn_lock": 1691,
+      "automation_pause": 4,
+      "configure": 5,
+      "automation_resume": 0,
+      "camera": 1358,
+      "temperature_target": 2704,
+      "temperature_target_stop": 2141
+    },
+    "duration_ms_max": {
+      "profile": 7388,
+      "manual": 2761,
+      "curve": 3377,
+      "power": 1912,
+      "auto": 1973,
+      "boost": 1661,
+      "rgb": 4014,
+      "thermal_preset": 4348,
+      "fan_preset": 3493,
+      "fan_boost": 3032,
+      "session_ready": 0,
+      "lighting_idle": 2834,
+      "automation": 0,
+      "fn_lock": 1721,
+      "automation_pause": 33,
+      "configure": 21,
+      "automation_resume": 0,
+      "camera": 1711,
+      "temperature_target": 2704,
+      "temperature_target_stop": 2141
+    },
+    "last_events": [
+      {
+        "time": "2026-10-12T21:45:31+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-13T10:04:52+00:00",
+        "operation": "lighting_idle",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "Klavye boşta kalma aydınlatması güncellendi."
+      },
+      {
+        "time": "2026-10-13T12:38:00+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-13T12:42:46+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-14T08:38:02+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-14T12:02:27+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-14T17:58:56+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-14T23:02:19+00:00",
+        "operation": "lighting_idle",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "Klavye boşta kalma aydınlatması güncellendi."
+      },
+      {
+        "time": "2026-10-15T08:05:24+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-15T12:09:38+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-16T03:58:49+00:00",
+        "operation": "lighting_idle",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "Klavye boşta kalma aydınlatması güncellendi."
+      },
+      {
+        "time": "2026-10-16T08:23:07+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-16T16:28:18+00:00",
+        "operation": "lighting_idle",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "Klavye boşta kalma aydınlatması güncellendi."
+      },
+      {
+        "time": "2026-10-16T18:27:20+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-16T20:57:14+00:00",
+        "operation": "thermal_preset",
+        "ok": true,
+        "duration_ms": 3536,
+        "message": "Profil uygulandı; geri okunabilen ayarlar doğrulandı. Fan hedefi kabul edildi; RPM doğrulaması sürüyor. GPU sınır komutu sürücü tarafından kabul edildi; sınırın bağımsız geri okuması yok."
+      },
+      {
+        "time": "2026-10-16T20:57:14+00:00",
+        "operation": "automation",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "Elle seçim; otomasyon duraklatıldı. · "
+      },
+      {
+        "time": "2026-10-16T21:07:07+00:00",
+        "operation": "fan_boost",
+        "ok": true,
+        "duration_ms": 2875,
+        "message": "Fan hedefi gönderildi. Mod, PWM ve gerçek RPM üzerinden doğrulama sürüyor."
+      },
+      {
+        "time": "2026-10-16T21:11:07+00:00",
+        "operation": "boost",
+        "ok": true,
+        "duration_ms": 1661,
+        "message": "CPU boost ayarı sistemden doğrulandı."
+      },
+      {
+        "time": "2026-10-16T21:11:38+00:00",
+        "operation": "thermal_preset",
+        "ok": true,
+        "duration_ms": 1810,
+        "message": "Profil uygulandı; geri okunabilen ayarlar doğrulandı. GPU sınır komutu sürücü tarafından kabul edildi; sınırın bağımsız geri okuması yok."
+      },
+      {
+        "time": "2026-10-16T21:12:24+00:00",
+        "operation": "auto",
+        "ok": true,
+        "duration_ms": 1498,
+        "message": "Fanlar EC otomatiğine döndü; mod biti doğrulandı."
+      },
+      {
+        "time": "2026-10-16T21:12:44+00:00",
+        "operation": "profile",
+        "ok": true,
+        "duration_ms": 3685,
+        "message": "Profil uygulandı; geri okunabilen ayarlar doğrulandı. Fan hedefi kabul edildi; RPM doğrulaması sürüyor. GPU sınır komutu sürücü tarafından kabul edildi; sınırın bağımsız geri okuması yok."
+      },
+      {
+        "time": "2026-10-16T21:13:27+00:00",
+        "operation": "power",
+        "ok": true,
+        "duration_ms": 1506,
+        "message": "Güç profili sistemden doğrulandı."
+      },
+      {
+        "time": "2026-10-16T21:17:11+00:00",
+        "operation": "thermal_preset",
+        "ok": true,
+        "duration_ms": 1720,
+        "message": "Profil uygulandı; geri okunabilen ayarlar doğrulandı. GPU sınır komutu sürücü tarafından kabul edildi; sınırın bağımsız geri okuması yok."
+      },
+      {
+        "time": "2026-10-16T21:17:43+00:00",
+        "operation": "thermal_preset",
+        "ok": true,
+        "duration_ms": 2280,
+        "message": "Profil uygulandı; geri okunabilen ayarlar doğrulandı. GPU sınır komutu sürücü tarafından kabul edildi; sınırın bağımsız geri okuması yok."
+      },
+      {
+        "time": "2026-10-16T21:17:48+00:00",
+        "operation": "auto",
+        "ok": true,
+        "duration_ms": 1673,
+        "message": "Fanlar EC otomatiğine döndü; mod biti doğrulandı."
+      },
+      {
+        "time": "2026-10-17T08:45:05+00:00",
+        "operation": "lighting_idle",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "Klavye boşta kalma aydınlatması güncellendi."
+      },
+      {
+        "time": "2026-10-17T09:12:33+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-17T10:42:10+00:00",
+        "operation": "lighting_idle",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "Klavye boşta kalma aydınlatması güncellendi."
+      },
+      {
+        "time": "2026-10-17T10:42:42+00:00",
+        "operation": "session_ready",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "KDE kullanıcı oturumu hazır."
+      },
+      {
+        "time": "2026-10-17T10:43:18+00:00",
+        "operation": "lighting_idle",
+        "ok": true,
+        "duration_ms": 0,
+        "message": "Klavye boşta kalma aydınlatması güncellendi."
+      }
+    ]
+  }
+}

@@ -423,7 +423,7 @@ Kabul:
 2. **UI teknolojisi** (0.4 sonrası): Tauri (varsayılan) ya da Qt/QML.
 3. **power-watch.sh** (Faz 3b öncesi): r9t-session devralır (varsayılan) ya da kalır ve r9t-session Hz'e dokunmaz.
 4. **Birleşik eski sürüm** (0.2 sonrası): yedek olarak kurulsun mu (öneri: evet)?
-5. **PPT:** 0.5 sonucuna göre tamamen çıkar (varsayılan) ya da deneysel kalır.
+5. ~~**PPT**~~ **Karar verildi (2026-10-18, 0.5 kanıtı):** tamamen çıkarıldı. `ryzenadj -i`: "request_table_ver_and_size is not supported on this family", güç tablosu açılamıyor; RAPL `package-0` enabled=0 ve constraint dosyası yok. Paket gücü yalnız RAPL enerji sayacından okunur.
 
 ## 7. Bir Sonraki Oturum Buradan Başlar
 

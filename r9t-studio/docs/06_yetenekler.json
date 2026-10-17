@@ -1,0 +1,293 @@
+{
+  "generated_utc": "2026-10-17T21:32:04Z",
+  "rgb_timing_requested": true,
+  "system": {
+    "kernel": "7.2.9-2-cachyos",
+    "dmi": {
+      "sys_vendor": "GAME GARAJ",
+      "product_name": "SLAYER R9T",
+      "bios_version": "N.1.19GAR06"
+    },
+    "platform_profile_exists": false
+  },
+  "ryzenadj": {
+    "available": true,
+    "returncode": 255,
+    "parsed": {},
+    "stdout": "CPU Family: Dragon Range\nSMU BIOS Interface Version: 0\nVersion: v0.19.0 \nrequest_table_ver_and_size is not supported on this family\nUnable to init power metric table: -1, this does not affect adjustments because it is only needed for monitoring.\n",
+    "stderr": "no compatible ryzen_smu kernel module found, fallback to /dev/mem\n"
+  },
+  "rapl": [
+    {
+      "path": "intel-rapl",
+      "name": "<hata: FileNotFoundError: No such file or directory>",
+      "enabled": "1",
+      "constraints": {}
+    },
+    {
+      "path": "intel-rapl:0",
+      "name": "package-0",
+      "enabled": "0",
+      "energy_uj_mode": "0o400",
+      "max_energy_range_uj": "65532610987",
+      "constraints": {}
+    },
+    {
+      "path": "intel-rapl:0:0",
+      "name": "core",
+      "enabled": "0",
+      "energy_uj_mode": "0o400",
+      "max_energy_range_uj": "65532610987",
+      "constraints": {}
+    }
+  ],
+  "cpufreq": {
+    "policy_count": 16,
+    "scaling_driver": [
+      "amd-pstate-epp"
+    ],
+    "scaling_governor": [
+      "powersave"
+    ],
+    "energy_performance_preference": [
+      "power"
+    ],
+    "energy_performance_available_preferences": [
+      "default performance balance_performance balance_power power custom"
+    ],
+    "boost": [
+      "0"
+    ],
+    "cpuinfo_max_freq": [
+      "2401000"
+    ],
+    "amd_pstate_max_freq": [
+      "5386028"
+    ],
+    "scaling_max_freq": [
+      "2401000"
+    ],
+    "scaling_min_freq": [
+      "421798"
+    ],
+    "amd_pstate_highest_perf": [
+      "166"
+    ],
+    "amd_pstate_prefcore_ranking": [
+      "166",
+      "171",
+      "176",
+      "181",
+      "186",
+      "191",
+      "196",
+      "201",
+      "206",
+      "211",
+      "216",
+      "221",
+      "226",
+      "231",
+      "236"
+    ]
+  },
+  "r9t_fan": {
+    "loaded": true,
+    "srcversion": "471F13C24BB67AC993237C1",
+    "version": "<hata: FileNotFoundError: No such file or directory>",
+    "status": {
+      "mode": "0",
+      "cpu_target": "100",
+      "gpu_target": "100",
+      "cpu_rpm": "3390",
+      "gpu_rpm": "3411",
+      "cpu_temp": "67",
+      "gpu_temp": "62",
+      "mode_byte": "128",
+      "cpu_pwm": "106",
+      "gpu_pwm": "106",
+      "lease_ms": "0",
+      "error": "0",
+      "thermal": "0"
+    },
+    "status_read_ms": [
+      620.8,
+      616.1
+    ],
+    "dkms": "slayer-r9t-fan/0.1.0, 6.18.55-2-cachyos-lts, x86_64: installed\nslayer-r9t-fan/0.1.0, 7.2.5-1-cachyos, x86_64: installed\nslayer-r9t-fan/0.1.0, 7.2.9-2-cachyos, x86_64: installed\ntuxedo-drivers/4.24.0, 6.18.55-2-cachyos-lts, x86_64: installed (Original modules exist)\ntuxedo-drivers/4.24.0, 7.2.5-1-cachyos, x86_64: installed (Original modules exist)\ntuxedo-drivers/4.24.0, 7.2.9-2-cachyos, x86_64: installed (Original modules exist)"
+  },
+  "tuxedo_io": {
+    "open_mode": "O_RDONLY",
+    "hwcheck_uw": 1,
+    "hwcheck_ms": 0.0,
+    "model_id": "0x1a",
+    "interface": "uniwill_wmi",
+    "reads": {
+      "cpu_duty": {
+        "value": 110,
+        "ms": 56.7
+      },
+      "gpu_duty": {
+        "value": 110,
+        "ms": 55.6
+      },
+      "cpu_temp": {
+        "value": 68,
+        "ms": 56.9
+      },
+      "gpu_temp": {
+        "value": 63,
+        "ms": 56.4
+      },
+      "mode": {
+        "value": 128,
+        "ms": 61.0
+      }
+    }
+  },
+  "dgpu_power": {
+    "runtime_status": "active",
+    "control": "auto",
+    "runtime_active_time": "2612902",
+    "runtime_suspended_time": "0",
+    "d3cold_allowed": "1",
+    "boot_vga": "1"
+  },
+  "ec_vs_host_temperature": {
+    "samples": [
+      {
+        "ec_cpu": 68,
+        "tctl": 68.125,
+        "ec_gpu": 63,
+        "nvml_gpu": 64
+      },
+      {
+        "ec_cpu": 68,
+        "tctl": 68.125,
+        "ec_gpu": 63,
+        "nvml_gpu": 63
+      },
+      {
+        "ec_cpu": 68,
+        "tctl": 68.125,
+        "ec_gpu": 63,
+        "nvml_gpu": 64
+      },
+      {
+        "ec_cpu": 68,
+        "tctl": 68.125,
+        "ec_gpu": 63,
+        "nvml_gpu": 64
+      },
+      {
+        "ec_cpu": 68,
+        "tctl": 68.125,
+        "ec_gpu": 63,
+        "nvml_gpu": 63
+      },
+      {
+        "ec_cpu": 68,
+        "tctl": 68.25,
+        "ec_gpu": 63,
+        "nvml_gpu": 64
+      },
+      {
+        "ec_cpu": 68,
+        "tctl": 68.25,
+        "ec_gpu": 63,
+        "nvml_gpu": 64
+      },
+      {
+        "ec_cpu": 68,
+        "tctl": 68.25,
+        "ec_gpu": 63,
+        "nvml_gpu": 64
+      },
+      {
+        "ec_cpu": 68,
+        "tctl": 68.25,
+        "ec_gpu": 63,
+        "nvml_gpu": 64
+      },
+      {
+        "ec_cpu": 68,
+        "tctl": 68.125,
+        "ec_gpu": 63,
+        "nvml_gpu": 64
+      }
+    ],
+    "ec_cpu_minus_tctl": {
+      "mean": -0.17,
+      "min": -0.25,
+      "max": -0.12,
+      "n": 10
+    },
+    "ec_gpu_minus_nvml": {
+      "mean": -0.8,
+      "min": -1,
+      "max": 0,
+      "n": 10
+    },
+    "nvml_used": true,
+    "nvml_error": null
+  },
+  "rgb": {
+    "led_count": 126,
+    "driver": "ite_8291",
+    "multi_max_intensity": [
+      "255 255 255"
+    ],
+    "max_brightness": [
+      "50"
+    ],
+    "brightness": [
+      "8"
+    ],
+    "buffer_input_path": "/sys/bus/hid/devices/0003:048D:600B.0001/controls/buffer_input",
+    "buffer_input_value": "0"
+  },
+  "rgb_timing": {
+    "unbuffered_ms": [
+      2648.4,
+      2650.9,
+      2651.0
+    ],
+    "buffered_ms": [
+      26.0,
+      26.0,
+      26.0
+    ],
+    "values_unchanged": true,
+    "buffer_input_final": "0"
+  },
+  "features": {
+    "fn_lock": "0",
+    "ctgp_offset": "0",
+    "bat0_files": [
+      "alarm",
+      "capacity",
+      "capacity_level",
+      "charge_full",
+      "charge_full_design",
+      "charge_now",
+      "current_now",
+      "cycle_count",
+      "device",
+      "extensions",
+      "hwmon2",
+      "manufacturer",
+      "model_name",
+      "power",
+      "present",
+      "serial_number",
+      "status",
+      "subsystem",
+      "technology",
+      "type",
+      "uevent",
+      "voltage_min_design",
+      "voltage_now"
+    ],
+    "charge_threshold_present": false
+  }
+}
