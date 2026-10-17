@@ -54,6 +54,8 @@ pub trait Gpu: Send + Sync {
     /// sysfs `power/runtime_status` (`active`, `suspended`, ...).
     fn runtime_status(&self) -> Result<String>;
     fn sample(&self) -> Result<GpuSample>;
+    /// Temperature, power and utilisation only (3 NVML calls, ~0.3 ms CPU).
+    fn sample_fast(&self) -> Result<GpuSample>;
     fn processes(&self) -> Result<Vec<GpuProcess>>;
     fn set_locked_clocks(&self, max_mhz: u32) -> Result<()>;
     fn reset_locked_clocks(&self) -> Result<()>;
@@ -292,6 +294,23 @@ impl Gpu for Nvml {
         })
     }
 
+    fn sample_fast(&self) -> Result<GpuSample> {
+        self.with_device(|api, dev| {
+            let mut s = GpuSample::default();
+            let mut t: c_uint = 0;
+            // SAFETY: valid device and out-pointer; 0 = NVML_TEMPERATURE_GPU.
+            s.temp_c = self.check(unsafe { (api.temperature)(dev, 0, &mut t) }, "temp").ok().map(|_| t);
+            s.power_w = self.read_u32(api.power_usage, dev, "power").map(|mw| mw as f32 / 1000.0);
+            let mut u = Utilization::default();
+            // SAFETY: `u` matches nvmlUtilization_t.
+            if self.check(unsafe { (api.utilization)(dev, &mut u) }, "util").is_ok() {
+                s.util_gpu_pct = u8::try_from(u.gpu).ok();
+                s.util_memory_pct = u8::try_from(u.memory).ok();
+            }
+            Ok(s)
+        })
+    }
+
     fn processes(&self) -> Result<Vec<GpuProcess>> {
         self.with_device(|api, dev| {
             let mut all = self.procs(api, dev, ProcessKind::Graphics)?;
@@ -357,6 +376,10 @@ pub mod fake {
         fn sample(&self) -> Result<GpuSample> {
             self.gate()?;
             Ok(self.sample.clone())
+        }
+        fn sample_fast(&self) -> Result<GpuSample> {
+            self.gate()?;
+            Ok(GpuSample { temp_c: self.sample.temp_c, power_w: self.sample.power_w, ..Default::default() })
         }
         fn processes(&self) -> Result<Vec<GpuProcess>> {
             self.gate()?;

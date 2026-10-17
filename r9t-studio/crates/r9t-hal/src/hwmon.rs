@@ -78,16 +78,21 @@ impl Hwmon {
         temps.iter().find(|t| t.chip == chip && t.label == label)
     }
 
+    /// Path of amdgpu `power1_input`, for repeated reads without rescanning.
+    pub fn apu_ppt_path(&self) -> Option<String> {
+        self.fs.list("/sys/class/hwmon").into_iter().map(|h| format!("/sys/class/hwmon/{h}")).find_map(|base| {
+            (self.fs.read(format!("{base}/name")).ok().as_deref() == Some("amdgpu")).then(|| format!("{base}/power1_input"))
+        })
+    }
+
     /// amdgpu `power1_input` (µW) = APU package PPT. Not the iGPU's own power.
     pub fn apu_ppt_w(&self) -> Option<f32> {
-        for h in self.fs.list("/sys/class/hwmon") {
-            let base = format!("/sys/class/hwmon/{h}");
-            if self.fs.read(format!("{base}/name")).ok().as_deref() == Some("amdgpu") {
-                let uw: u64 = self.fs.parse(format!("{base}/power1_input")).ok()?;
-                return Some(uw as f32 / 1e6);
-            }
-        }
-        None
+        self.read_w(&self.apu_ppt_path()?)
+    }
+
+    pub fn read_w(&self, path: &str) -> Option<f32> {
+        let uw: u64 = self.fs.parse(path).ok()?;
+        Some(uw as f32 / 1e6)
     }
 }
 
