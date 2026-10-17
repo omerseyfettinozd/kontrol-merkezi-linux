@@ -215,7 +215,125 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue((self.target / 'r9t-service.py').exists())
         self.assertEqual((self.target.with_name('.slayer-r9t-previous') / 'previous.txt').read_text(), 'old application')
         self.assertFalse(self.old_launcher.exists())
+        self.assertIn('Icon=/usr/local/lib/slayer-r9t/slayer_r9t/assets/slayer-r9t.svg', self.desktop.read_text())
         self.assertTrue(all(state == {'active': True, 'enabled': 'enabled'} for state in self.states.values()))
+
+    def test_clean_install_success_deploys_assets_and_both_services(self):
+        self.deploy()
+        for source in self.source.glob('*.py'):
+            self.assertEqual((self.target / source.name).read_bytes(), source.read_bytes())
+        self.assertEqual((self.target / 'slayer_r9t/__init__.py').read_bytes(),
+                         (self.source / 'slayer_r9t/__init__.py').read_bytes())
+        self.assertEqual((self.target / 'r9t-idle').stat().st_mode & 0o777, 0o755)
+        self.assertEqual((self.target / 'r9t-service.py').stat().st_mode & 0o777, 0o644)
+        self.assertIn('Environment=R9T_UID=1234', self.unit.read_text())
+        self.assertIn('r9t-control-center.py', self.desktop.read_text())
+        self.assertIn('r9t-session.py', self.session_unit.read_text())
+        self.assertFalse(self.target.with_name('.slayer-r9t-previous').exists())
+        self.assertFalse(list(self.target.parent.glob('.slayer-r9t-stage-*')))
+        self.assertTrue(all(state == {'active': True, 'enabled': 'enabled'}
+                            for state in self.states.values()))
+
+    def test_staging_dependency_failure_preserves_existing_installation(self):
+        originals = self.existing_installation(active=True, enabled='enabled')
+        fake = self.run_command
+        for step in ('compiler', 'import'):
+            with self.subTest(step=step):
+                self.calls.clear()
+                def fail_dependency(command, **kwargs):
+                    matches = command[0] == 'c++' if step == 'compiler' else '-c' in command
+                    if matches:
+                        self.calls.append(command)
+                        raise subprocess.CalledProcessError(1, command)
+                    return fake(command, **kwargs)
+                with patch.object(installer.subprocess, 'run', side_effect=fail_dependency):
+                    with self.assertRaises(subprocess.CalledProcessError):
+                        self.deploy()
+                self.assert_restored(originals, active=True, enabled='enabled')
+                self.assertFalse(any('/usr/bin/systemctl' in command for command in self.calls))
+                self.assertFalse(any(command[0] in ('/usr/bin/modprobe', '/usr/bin/rmmod')
+                                     for command in self.calls))
+
+    def test_root_activation_failure_restores_existing_installation(self):
+        originals = self.existing_installation(active=True, enabled='enabled-runtime')
+        self.failure = ('root', 'start')
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.deploy()
+        self.assert_restored(originals, active=True, enabled='enabled-runtime')
+
+    def test_clean_install_root_activation_failure_removes_new_files(self):
+        self.failure = ('root', 'start')
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.deploy()
+        for path in (self.target, self.unit, self.desktop, self.session_unit):
+            self.assertFalse(path.exists())
+        self.assertFalse(list(self.target.parent.glob('.slayer-r9t-stage-*')))
+        self.assertTrue(all(state == {'active': False, 'enabled': 'disabled'}
+                            for state in self.states.values()))
+
+    def deploy_with_driver(self,app_only=False):
+        installer.deploy(self.source,self.target,1234,self.user,
+                         self.unit,self.desktop,self.session_unit,app_only=app_only)
+
+    def test_deployment_preflight_dependency_failure_never_installs_driver(self):
+        originals=self.existing_installation(active=True,enabled='enabled')
+        fake=self.run_command
+        for step in ('compiler','import'):
+            with self.subTest(step=step):
+                self.calls.clear()
+                def fail_dependency(command,**kwargs):
+                    matches=command[0]=='c++' if step=='compiler' else '-c' in command
+                    if matches:
+                        self.calls.append(command)
+                        raise subprocess.CalledProcessError(1,command)
+                    return fake(command,**kwargs)
+                with patch.object(installer.subprocess,'run',side_effect=fail_dependency):
+                    with self.assertRaises(subprocess.CalledProcessError):self.deploy_with_driver()
+                self.assert_restored(originals,active=True,enabled='enabled')
+                self.assertFalse(any(any('install-fan-driver.py' in arg for arg in command)
+                                     for command in self.calls))
+
+    def test_deployment_unsupported_service_state_never_installs_driver(self):
+        originals=self.existing_installation(active=True,enabled='masked')
+        with self.assertRaisesRegex(RuntimeError,'Maskelenmiş'):self.deploy_with_driver()
+        self.assert_restored(originals,active=True,enabled='masked')
+        self.assertFalse(any(any('install-fan-driver.py' in arg for arg in command)
+                             for command in self.calls))
+
+    def test_driver_failure_cleans_staging_and_preserves_application(self):
+        originals=self.existing_installation(active=True,enabled='enabled-runtime')
+        fake=self.run_command
+        def fail_driver(command,**kwargs):
+            if any('install-fan-driver.py' in arg for arg in command):
+                self.calls.append(command)
+                raise subprocess.CalledProcessError(1,command)
+            return fake(command,**kwargs)
+        with patch.object(installer.subprocess,'run',side_effect=fail_driver):
+            with self.assertRaises(subprocess.CalledProcessError):self.deploy_with_driver()
+        self.assert_restored(originals,active=True,enabled='enabled-runtime')
+        self.assertFalse(any('stop' in command for command in self.calls))
+
+    def test_prepare_runs_once_before_driver_and_application_activation(self):
+        self.existing_installation(active=True,enabled='enabled')
+        self.deploy_with_driver()
+        driver=next(i for i,c in enumerate(self.calls) if any('install-fan-driver.py' in arg for arg in c))
+        compiler=[i for i,c in enumerate(self.calls) if c[0]=='c++']
+        imports=[i for i,c in enumerate(self.calls) if '-c' in c]
+        self.assertEqual(len(compiler),1);self.assertEqual(len(imports),1)
+        self.assertLess(compiler[0],driver);self.assertLess(imports[0],driver)
+        self.assertTrue(all(i>driver for i,c in enumerate(self.calls) if 'stop' in c))
+        self.assertFalse(list(self.target.parent.glob('.slayer-r9t-stage-*')))
+
+    def test_app_only_driver_check_failure_cleans_prepared_stage(self):
+        originals=self.existing_installation(active=True,enabled='enabled')
+        exists=Path.exists
+        def no_module(path):
+            return False if str(path)=='/sys/module/r9t_fan' else exists(path)
+        with patch.object(Path,'exists',no_module):
+            with self.assertRaisesRegex(RuntimeError,'fan sürücüsü kaynaklarının'):self.deploy_with_driver(app_only=True)
+        self.assert_restored(originals,active=True,enabled='enabled')
+        self.assertFalse(any(any('install-fan-driver.py' in arg for arg in command)
+                             for command in self.calls))
 
 
 if __name__ == '__main__':

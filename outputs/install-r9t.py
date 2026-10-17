@@ -74,21 +74,31 @@ def main():
     uid = int(raw_uid)
     user = pwd.getpwuid(uid)
     source = Path(__file__).resolve().parent
-    if '--app-only' in sys.argv:
-        installed_driver=Path('/usr/src/slayer-r9t-fan-0.1.0')
-        if not Path('/sys/module/r9t_fan').exists() or any((source/'fan-driver'/name).read_bytes()!=(installed_driver/name).read_bytes() for name in ('r9t_fan.c','Makefile','build.sh','dkms.conf')):
-            raise RuntimeError('Uygulama güncellemesi için fan sürücüsü kaynaklarının aynı ve modülün yüklü olması gerekli.')
-    else:subprocess.run(['/usr/bin/python',str(source/'install-fan-driver.py')],check=True)
-    return install_application(source, Path('/usr/local/lib/slayer-r9t'), uid, user,
-                               Path('/etc/systemd/system/slayer-r9t.service'),
-                               Path('/usr/share/applications/slayer-r9t-control-center.desktop'),
-                               Path('/etc/systemd/user/slayer-r9t-session.service'))
+    return deploy(source, Path('/usr/local/lib/slayer-r9t'), uid, user,
+                  Path('/etc/systemd/system/slayer-r9t.service'),
+                  Path('/usr/share/applications/slayer-r9t-control-center.desktop'),
+                  Path('/etc/systemd/user/slayer-r9t-session.service'),
+                  app_only='--app-only' in sys.argv)
 
 
-def install_application(source, target, uid, user, unit_path, desktop_path, user_unit_path):
-    """Application transaction only; DKMS installation is an earlier, separate step."""
+def deploy(source, target, uid, user, unit_path, desktop_path, user_unit_path, app_only=False):
+    """Prepare the application before the separate, non-transactional driver step."""
+    prepared=prepare_application(source,target,uid,user,unit_path,desktop_path,user_unit_path)
+    try:
+        if app_only:
+            installed_driver=Path('/usr/src/slayer-r9t-fan-0.1.0')
+            if not Path('/sys/module/r9t_fan').exists() or any((source/'fan-driver'/name).read_bytes()!=(installed_driver/name).read_bytes() for name in ('r9t_fan.c','Makefile','build.sh','dkms.conf')):
+                raise RuntimeError('Uygulama güncellemesi için fan sürücüsü kaynaklarının aynı ve modülün yüklü olması gerekli.')
+        else:
+            subprocess.run(['/usr/bin/python',str(source/'install-fan-driver.py')],check=True)
+        return install_application(source,target,uid,user,unit_path,desktop_path,user_unit_path,prepared=prepared)
+    finally:
+        if prepared['stage'].exists():shutil.rmtree(prepared['stage'])
+
+
+def prepare_application(source, target, uid, user, unit_path, desktop_path, user_unit_path):
+    """Stage files and check dependencies/managers without changing driver or services."""
     target.parent.mkdir(parents=True, exist_ok=True)
-    backup = target.with_name('.slayer-r9t-previous')
     old = Path(user.pw_dir)/'.local/share/applications/slayer-r9t-control-center.desktop'
     paths = (unit_path, desktop_path, old, user_unit_path)
     originals = {path: file_snapshot(path) for path in paths}
@@ -97,6 +107,37 @@ def install_application(source, target, uid, user, unit_path, desktop_path, user
     root_command = ['/usr/bin/systemctl']
     root_name = 'slayer-r9t.service'
     session_name = 'slayer-r9t-session.service'
+    try:
+        for name in ('r9t-service.py', 'r9t-client.py', 'r9t-control.py', 'r9t-control-center.py','r9t-session.py','r9t-desktop-client.py','r9t-gpu-diagnostics.py','r9t-dynamic-boost.py'):
+            shutil.copyfile(source/name, stage/name)
+        flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Gui'],text=True))
+        subprocess.run(['c++','-std=c++17',str(source/'session-idle.cpp'),'-I/usr/include/KF6/KIdleTime',*flags,'-lKF6IdleTime','-o',str(stage/'r9t-idle')],check=True)
+        shutil.copytree(source/'slayer_r9t', stage/'slayer_r9t', ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+        for path in [stage, *stage.rglob('*')]:
+            os.chown(path, 0, 0)
+            os.chmod(path, 0o755 if path.is_dir() or path.name=='r9t-idle' else 0o644)
+        # Import and dependency check before stopping the installed service.
+        subprocess.run(['/usr/bin/python', '-c', 'import slayer_r9t.gui, slayer_r9t.service'], cwd=stage, check=True)
+        root_before = service_state(root_command, root_name, originals[unit_path] is not None)
+        session_before = service_state(environment, session_name, originals[user_unit_path] is not None)
+        if any(state['enabled'] in ('masked', 'masked-runtime') for state in (root_before, session_before)):
+            raise RuntimeError('Maskelenmiş servis kurulmadan önce kullanıcı tarafından açılmalı.')
+        if any(state['enabled'] in ('indirect', 'linked', 'linked-runtime') for state in (root_before, session_before)):
+            raise RuntimeError('Bağlantılı/dolaylı servis düzeni bu kurucuda desteklenmiyor; ayarlar değiştirilmedi.')
+        return {'stage':stage,'old':old,'originals':originals,'environment':environment,
+                'root_before':root_before,'session_before':session_before}
+    except BaseException:
+        shutil.rmtree(stage)
+        raise
+
+
+def install_application(source, target, uid, user, unit_path, desktop_path, user_unit_path, prepared=None):
+    """Application transaction only; DKMS installation is an earlier, separate step."""
+    prepared=prepared or prepare_application(source,target,uid,user,unit_path,desktop_path,user_unit_path)
+    stage=prepared['stage'];old=prepared['old'];originals=prepared['originals']
+    environment=prepared['environment']
+    backup=target.with_name('.slayer-r9t-previous')
+    root_command=['/usr/bin/systemctl'];root_name='slayer-r9t.service';session_name='slayer-r9t-session.service'
     unit = f'''[Unit]
 Description=GameGaraj Slayer R9T hardware control
 After=systemd-modules-load.service
@@ -130,26 +171,10 @@ WantedBy=multi-user.target
 '''
     changed = False
     transaction_started = False
-    root_before = session_before = None
+    root_before=prepared['root_before'];session_before=prepared['session_before']
     modified = set()
     root_touched = session_touched = False
     try:
-        for name in ('r9t-service.py', 'r9t-client.py', 'r9t-control.py', 'r9t-control-center.py','r9t-session.py','r9t-desktop-client.py','r9t-gpu-diagnostics.py','r9t-dynamic-boost.py'):
-            shutil.copyfile(source/name, stage/name)
-        flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Gui'],text=True))
-        subprocess.run(['c++','-std=c++17',str(source/'session-idle.cpp'),'-I/usr/include/KF6/KIdleTime',*flags,'-lKF6IdleTime','-o',str(stage/'r9t-idle')],check=True)
-        shutil.copytree(source/'slayer_r9t', stage/'slayer_r9t', ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
-        for path in [stage, *stage.rglob('*')]:
-            os.chown(path, 0, 0)
-            os.chmod(path, 0o755 if path.is_dir() or path.name=='r9t-idle' else 0o644)
-        # Import and dependency check before stopping the installed service.
-        subprocess.run(['/usr/bin/python', '-c', 'import slayer_r9t.gui, slayer_r9t.service'], cwd=stage, check=True)
-        root_before = service_state(root_command, root_name, originals[unit_path] is not None)
-        session_before = service_state(environment, session_name, originals[user_unit_path] is not None)
-        if any(state['enabled'] in ('masked', 'masked-runtime') for state in (root_before, session_before)):
-            raise RuntimeError('Maskelenmiş servis kurulmadan önce kullanıcı tarafından açılmalı.')
-        if any(state['enabled'] in ('indirect', 'linked', 'linked-runtime') for state in (root_before, session_before)):
-            raise RuntimeError('Bağlantılı/dolaylı servis düzeni bu kurucuda desteklenmiyor; ayarlar değiştirilmedi.')
         transaction_started = True
         if session_before['active']:
             session_touched = True
@@ -182,7 +207,7 @@ Type=Application
 Name=Slayer R9T Kontrol Merkezi
 Comment=GameGaraj güç, RGB ve donanım izleme
 Exec=/usr/bin/python /usr/local/lib/slayer-r9t/r9t-control-center.py
-Icon=preferences-system
+Icon=/usr/local/lib/slayer-r9t/slayer_r9t/assets/slayer-r9t.svg
 Terminal=false
 Categories=Settings;HardwareSettings;
 StartupNotify=true

@@ -5,6 +5,7 @@ AudioReadbackError. Muting a microphone is a software mute in PipeWire, not a
 hardware disconnect.
 """
 import re
+import math
 import shutil
 import subprocess
 from dataclasses import dataclass, field
@@ -86,7 +87,13 @@ def parse_volume(text):
     m = re.search(r'Volume:\s*([\d.]+)(\s+\[MUTED\])?', text)
     if not m:
         raise AudioError('wpctl get-volume çıktısı anlaşılamadı')
-    return round(float(m.group(1)) * 100), bool(m.group(2))
+    try:
+        volume = float(m.group(1))
+        if not math.isfinite(volume) or volume < 0:
+            raise ValueError
+        return round(volume * 100), bool(m.group(2))
+    except (ValueError, OverflowError):
+        raise AudioError('wpctl get-volume çıktısı geçersiz ses düzeyi içeriyor') from None
 
 
 def validate_percent(value):
@@ -110,6 +117,8 @@ def _run(args):
         raise AudioUnavailable('wpctl bulunamadı')
     except subprocess.TimeoutExpired:
         raise AudioUnavailable('wpctl zaman aşımına uğradı')
+    except (OSError, UnicodeError) as exc:
+        raise AudioUnavailable(f'wpctl çalıştırılamadı: {exc}') from exc
     return p.returncode, p.stdout, p.stderr
 
 

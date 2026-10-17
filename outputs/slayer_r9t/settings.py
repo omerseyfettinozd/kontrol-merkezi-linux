@@ -9,6 +9,26 @@ import shutil
 from .hardware import validate_profile
 
 DEFAULT_PATH = Path.home()/'.config/slayer-r9t-control-center/settings.json'
+MAX_JSON_BYTES=131072
+MAX_JSON_DEPTH=64
+
+
+def parse_document_json(text):
+    """Reject excessive nesting before the JSON decoder can exhaust its stack."""
+    if len(text.encode('utf-8'))>MAX_JSON_BYTES:raise ValueError('Profil dosyası çok büyük.')
+    depth=0;quoted=False;escaped=False
+    for char in text:
+        if quoted:
+            if escaped:escaped=False
+            elif char=='\\':escaped=True
+            elif char=='"':quoted=False
+        elif char=='"':quoted=True
+        elif char in '[{':
+            depth+=1
+            if depth>MAX_JSON_DEPTH:raise ValueError('JSON belgesi en fazla 64 düzey iç içe olabilir.')
+        elif char in ']}':depth-=1
+    try:return json.loads(text)
+    except RecursionError as error:raise ValueError('JSON belgesi çok derin.') from error
 
 def default_automation():
     return {'startup':None,'ac':None,'battery':None,'apps':[],'low_hz_on_battery':False,'lighting_timeout':0}
@@ -100,7 +120,7 @@ class Settings:
         try:
             if self.path.stat().st_size > 131072:
                 raise ValueError('Ayar dosyası çok büyük.')
-            value = json.loads(self.path.read_text())
+            value = parse_document_json(self.path.read_text())
             if isinstance(value, dict) and 'schema' not in value:
                 self.data['legacy_fan_profiles'] = value
                 self.warning = 'Eski fan profilleri arşivlendi; yeni profiller güç, frekans, klavye ve fan ayarlarını birlikte kaydedebilir.'
@@ -131,7 +151,7 @@ class Settings:
         path = Path(path)
         if path.stat().st_size > 131072:
             raise ValueError('Profil dosyası çok büyük.')
-        incoming = validate_document(json.loads(path.read_text()))
+        incoming = validate_document(parse_document_json(path.read_text()))
         merged = dict(self.profiles, **incoming['profiles'])
         candidate = dict(self.data, profiles=merged)
         validate_document(candidate)

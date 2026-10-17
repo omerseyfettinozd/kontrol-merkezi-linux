@@ -32,7 +32,7 @@ Başka model için R9T kurucusunu çalıştırmadan önce [yapay zekâ ile lapto
 | Soğutma | Sessiz/Ofis, Serin Dengeli ve Serin Oyun hazır ayarları; CPU/GPU frekans sınırlama |
 | Fanlar | EC otomatik mod, maksimum soğutma, ayrı CPU/GPU %50–100 hedefleri, hazır ve dört noktalı kullanıcı eğrileri; soğumada histerezis ve kademeli düşüş |
 | Sıcaklık hedefi | İsteğe bağlı yazılım kontrolü: CPU 60–85°C, GPU 60–80°C; fanları ve frekans tavanlarını sıcaklığa göre yönetir |
-| RGB klavye | Tek renk/parlaklık; 126 kanallı statik gökkuşağı, üç bölge ve renk/parlaklık geçiş düzenleri; profil kaydı |
+| RGB klavye | Tek renk/parlaklık; 126 kanallı statik düzenler, 6×21 görsel hücre/bölge boyama düzenleyicisi, önizleme ve profil kaydı |
 | Profiller | Güç, boost, frekans, EPP, RGB ve isteğe bağlı fan ayarlarını birlikte kaydetme/uygulama; kayıtlı profili ayrı taslakta düzenleme, kopyalama, silme ve JSON içe/dışa aktarma |
 | Otomasyon | Açılış, priz/pil ve yürütülebilir dosya eşleşmesine göre profil; uygulama kuralını düzenleme ve ilk eşleşme önceliğini değiştirme; elle seçimde duraklatma; varsayılan kapalı |
 | Ekran / oturum | Mevcut ekran modları ve Hz, parlaklık, KDE gece rengi, ICC dosyası; isteğe bağlı dahili ekran düşük Hz ve klavye ışığı zaman aşımı |
@@ -41,6 +41,10 @@ Başka model için R9T kurucusunu çalıştırmadan önce [yapay zekâ ile lapto
 | Ölçüm geçmişi | GUI açıkken 5/30 dakika grafikler, min/ortalama/maks ve CSV dışa aktarımı; CPU paket gücü dahil |
 | GPU tanılama | GPU neden açık? panelinde DRM ekran bağlantıları, runtime güç durumu ve görünür aygıt bağlantısı olan süreçler |
 | Dynamic Boost | Firmware destek durumu, `nvidia-powerd` servis sağlığı ve ayrı CPU paket / NVIDIA güç ölçümleri |
+| Kaynaklar | Salt okunur CPU/RAM ve görünür GPU compute süreçleri; komut satırları toplanmaz |
+| Profil karşılaştırma | Kullanıcı başlatmalı A/B ölçümleri, ortalama/tepe farkları ve CSV; FPS ölçülmez |
+| Ses / mikrofon | WirePlumber ses düzeyi, yazılımsal susturma ve varsayılan aygıt seçimi; geri okuma |
+| Uyku / pil tanılaması | Kullanıcı başlatmalı öncesi/sonrası enerji ve uyku sayaçları; araç uykuyu başlatmaz |
 | Kullanım / tanılama | Sistem tepsisi, hızlı profil/fan menüsü, işlem bildirimi ve JSON tanılama raporu |
 
 Eksik sensörler `—` / veri yok olarak gösterilir. Arayüz seçilen ayarı ve sistemden geri okunan etkin değeri ayırır. Profillerin başarısız uygulanmasında önceki ayarlara dönüş denenir ve eksik geri dönüş bildirilir.
@@ -51,7 +55,7 @@ Profil düzenleyicisi yalnız işaretli alanları saklar; özel RGB haritası ve
 
 - **GPU watt/TGP yazımı, MUX, OEM Office/Gaming/Turbo modları, undervolt ve overclock açılmadı.** Komut adlarının veya register değerlerinin bulunması bu BIOS'ta çalışan bir kontrol kanıtı değildir.
 - Standart pil şarj eşiği arayüzü varsa kontrol kullanılabilir; doğrulanan R9T'de bu arayüz bulunmadığından **%60/%80 şarj sınırı desteği doğrulanmadı**.
-- Statik çok renkli RGB düzenleri mevcut; görsel hücre boyama düzenleyicisi ve donanım RGB animasyonları henüz tamamlanmadı.
+- Statik çok renkli RGB ve görsel hücre boyama düzenleyicisi mevcut; donanım RGB animasyonları henüz tamamlanmadı. Hücre numaraları fiziksel tuş adları değildir.
 - Sıcaklık hedefi yazılımla fan/frekans yönetir; kesin sıcaklık veya FPS garantisi vermez. GPU frekans komutunun kabulü, bağımsız limit geri okuması ile aynı değildir.
 - Dynamic Boost destek bilgisi ve çalışan daemon, gerçek yük altında CPU → GPU güç aktarımını kanıtlamaz. CPU paket + NVIDIA tüketimi de toplam priz tüketimi değildir.
 - GPU neden açık? paneli GPU'yu uyutmaz ve MUX değiştirmez. Açık aygıt bağlantısı tek başına gerçek GPU iş yükü kanıtı değildir.
@@ -86,7 +90,11 @@ systemctl status slayer-r9t.service
 systemctl --user status slayer-r9t-session.service
 ```
 
-Program menüde **Slayer R9T Kontrol Merkezi** adıyla açılır. Terminalden:
+Program menüde **Slayer R9T Kontrol Merkezi** adıyla açılır.
+
+Uygulama kullanıcı başına tek GUI süreci ve tek sistem tepsisi simgesi oluşturur. Yeniden başlatmak mevcut pencereyi öne getirir; `--fan` mevcut pencerenin fan sekmesini açar. Pencereyi veya tepsi menüsündeki **Arayüzü kapat** seçeneğini kapatmak GUI sürecini sonlandırır. Menü, pencere ve sistem tepsisi uygulamanın paketlenmiş ikonunu kullanır.
+
+Terminalden:
 
 ```sh
 /usr/bin/python /usr/local/lib/slayer-r9t/r9t-control-center.py
@@ -119,9 +127,9 @@ Kaynak kod: [`outputs/slayer_r9t/`](outputs/slayer_r9t/), testler: [`outputs/tes
 
 ## Doğrulama ve geliştirme
 
-3 Ekim 2026 tarihli son kaynak doğrulamasında **150 birim testi geçti**; kayıtlı profil/otomasyon düzenleme için 14 Qt offscreen ve 9 kural testi dahil. Fan köprüsünün gerçek C kodunu kullanan ayrı hata simülasyonu geçti. Önceki güvenilirlik diliminde kernel **7.2.8-2-cachyos** başlıklarıyla LLVM nesne derlemesi başarılı oldu; bu dilimde sürücü değiştirilmedi. Bu sonuçlar gerçek donanım yükü, modül yükleme, temiz kurulum veya farklı laptop desteği anlamına gelmez. Özel canlı kontrollerin kapsamı ve sonuçları [durum belgesinde](outputs/docs/IMPLEMENTATION_STATUS.md) ayrı tutulur.
+4 Ekim 2026 tarihli bütünleşik kaynak doğrulamasında **277 Python/Qt testi geçti**; ayrı fan C hata simülasyonu ve 86 Python dosyasının sözdizimi kontrolü de geçti. Tarihli önceki dilimler [durum belgesinde](outputs/docs/IMPLEMENTATION_STATUS.md) korunur. Önceki güvenilirlik diliminde kernel **7.2.8-2-cachyos** başlıklarıyla LLVM nesne derlemesi başarılı oldu; bu dilimde sürücü değiştirilmedi. Bu sonuçlar gerçek donanım yükü, modül yükleme, temiz kurulum veya farklı laptop desteği anlamına gelmez. Özel canlı kontrollerin kapsamı ve sonuçları [durum belgesinde](outputs/docs/IMPLEMENTATION_STATUS.md) ayrı tutulur.
 
-Son güvenilirlik düzeltmeleri oyun sonrası GPU frekans sınırını geri alır, etkin profil düzenlemelerini yeniden uygular ve fanın otomatik kontrole dönüşü başarısız olduğunda yeniden denemeyi sürdürür. Uygulama/kullanıcı-servisi kurulumu son adımda hata verse de önceki dosyaları ve servis durumlarını geri alır; DKMS sürücü kurulumu bu geri alma kapsamının dışındadır. Yeni kaynak henüz fiziksel cihazda yeniden kurulup doğrulanmadı.
+Son güvenilirlik düzeltmeleri oyun sonrası GPU frekans sınırını geri alır, etkin profil düzenlemelerini yeniden uygular ve fanın otomatik kontrole dönüşü başarısız olduğunda yeniden denemeyi sürdürür. Uygulama/kullanıcı-servisi kurulumu son adımda hata verse de önceki dosyaları ve servis durumlarını geri alır; DKMS sürücü kurulumu bu geri alma kapsamının dışındadır. 4 Ekim salt okunur önkontrolünde kurulu uygulama ve servis 0.10.0, kaynak 0.11.0 olarak görüldü. Yeni kaynak henüz fiziksel cihazda yeniden kurulup doğrulanmadı.
 
 Python 3 + PySide6 ortamında, depo kökünden:
 
@@ -151,3 +159,5 @@ Linux arayüzlerini, üreticinin Windows kontrol merkezinin model tanımlarını
 **Başka laptopu olanlar için:** [AI_LAPTOP_ADAPTATION_GUIDE.md](outputs/docs/AI_LAPTOP_ADAPTATION_GUIDE.md) dosyasını yapay zekâya vererek model keşfi, kaynak taraması, güvenli adaptör tasarımı ve doğrulama planı oluşturabilirsiniz. [Donanım araştırma notu](outputs/docs/HARDWARE_RESEARCH.md) bu yöntemin R9T'deki örneğidir; diğer modellerin desteğini kanıtlamaz.
 
 Yerel OEM çıkarımları, indirilmiş araçlar, derleme çıktıları ve eski paketler `work/` / `outputs/releases/` altında Git dışında tutulur. TUXEDO kaynaklarının lisans bildirimi [`TUXEDO-LICENSE`](outputs/driver-patches/TUXEDO-LICENSE) dosyasındadır; bu bildirim tüm uygulama için otomatik bir lisans ataması değildir.
+
+Kaldırma sahipliğini incelemek için kaynak depoda `PYTHONPATH=outputs python outputs/r9t-uninstall-plan.py --dry-run` kullanılabilir. JSON envanteri salt okunurdur; kaldırma executor'ı yoktur. Mevcut kurulumda ownership manifest bulunmadığından hash/marker eşleşmesi silme izni sayılmaz; kullanıcı verileri ve sürücüler korunur. Bu CLI mevcut kurucu tarafından kurulu uygulamaya dağıtılmaz. Gerçek temiz kurulum/kaldırma kabulü açık kalır.

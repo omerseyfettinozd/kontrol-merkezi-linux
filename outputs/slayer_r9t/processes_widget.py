@@ -1,10 +1,29 @@
 """Read-only 'Resource-using applications' panel."""
 import time
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QObject,QRunnable,QThreadPool,QTimer,Qt,Signal,Slot
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout
 
 from .processes import ProcessSampler, format_bytes
 from .widgets import Card
+
+
+class SampleSignals(QObject):
+    completed=Signal(object,str)
+
+
+class SampleWorker(QRunnable):
+    def __init__(self,sampler):
+        super().__init__()
+        self.sampler=sampler
+        self.signals=SampleSignals()
+
+    def run(self):
+        try:
+            data=self.sampler.sample()
+        except Exception as error:
+            self.signals.completed.emit(None,str(error))
+        else:
+            self.signals.completed.emit(data,'')
 
 
 class ProcessesPanel(QWidget):
@@ -15,6 +34,8 @@ class ProcessesPanel(QWidget):
         self.sampler = sampler or ProcessSampler()
         self.refreshes = 0
         self.last = None
+        self._worker=None
+        self._closed=False
         self.timer = QTimer(self)
         self.timer.setInterval(max(1000, int(interval_ms)))
         self.timer.timeout.connect(self._tick)
@@ -53,6 +74,7 @@ class ProcessesPanel(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
+        self._closed=False
         self.refresh()
         self.timer.start()
 
@@ -67,9 +89,30 @@ class ProcessesPanel(QWidget):
             self.timer.stop()
 
     def refresh(self):
-        self.last = self.sampler.sample()
-        self.refreshes += 1
-        self.render(self.last)
+        if self._closed or not self.isVisible() or self._worker is not None:return
+        worker=SampleWorker(self.sampler)
+        self._worker=worker
+        worker.signals.completed.connect(self._sample_done,Qt.ConnectionType.QueuedConnection)
+        QThreadPool.globalInstance().start(worker)
+
+    @Slot(object,str)
+    def _sample_done(self,data,error):
+        self._worker=None
+        if self._closed or not self.isVisible():return
+        if error:
+            self.status.setText('Örnek alınamadı: '+error)
+            return
+        self.last=data
+        self.refreshes+=1
+        self.render(data)
+
+    def shutdown(self):
+        self._closed=True
+        self.timer.stop()
+
+    def closeEvent(self,event):
+        self.shutdown()
+        super().closeEvent(event)
 
     def render(self, data):
         if data.get('error'):

@@ -50,7 +50,9 @@ class Platform:
             logging.warning('EC bağlantısı hazır değil: %s', exc)
 
     def auto(self):
-        if self.fans.status()['available']:
+        # A telemetry failure must not bypass the bridge's lease and recovery
+        # state by sending a competing raw ioctl to the same EC registers.
+        if self.fans.has_control():
             return self.fans.auto()
         if self.fd is None: raise RuntimeError('EC arayüzüne bağlantı yok.')
         current = io.read_int(self.fd,0x14)

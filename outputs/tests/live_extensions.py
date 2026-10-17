@@ -3,6 +3,7 @@ import json,time,os
 from pathlib import Path
 from slayer_r9t.protocol import request
 from slayer_r9t import telemetry
+from acceptance_gui_contract import verify_gui_tabs
 
 def fan_snapshot(state):
     fan=state['fans'];mode=fan['mode'];value={'mode':mode}
@@ -11,11 +12,13 @@ def fan_snapshot(state):
     return value
 
 def run():
+    if os.environ.get('R9T_LIVE_CHECK') != '1':
+        raise SystemExit('Gerçek donanım kontrolü için R9T_LIVE_CHECK=1 gerekli.')
     before=request({'op':'status'})
     original={'fan':fan_snapshot(before),'cpu_epp':before['cooling']['epp']['value']}
     report={'version':before['version'],'epp':[],'fan_samples':[]}
     try:
-        assert before['version'] in ('0.7.0','0.8.0','0.9.0','0.10.0', '0.11.0')
+        assert before['version'] in ('0.7.0','0.8.0','0.9.0','0.10.0', '0.11.0', '0.12.0')
         for value in before['cooling']['epp']['choices']:
             result=request({'op':'profile','settings':{'cpu_epp':value}})
             assert result['verified']
@@ -64,16 +67,16 @@ def run():
     errors=[]
     def finish():
         try:
-            assert window.tabs.count()==13
+            tabs = verify_gui_tabs(window)
             assert window.epp_combo.count()==4
             assert len(window.history.rows)>=4
             assert len(window.sensor_cards)==4
             docs=Path(__file__).resolve().parents[1]/'docs'
             count=window.history.export(docs/'history-live.csv',300)
             assert count>=4
-            window.tabs.setCurrentIndex(11);app.processEvents();window.grab().save(str(docs/'history-live.png'))
-            window.tabs.setCurrentIndex(12);app.processEvents();window.grab().save(str(docs/'sensors-live.png'))
-            report['gui']={'tabs':13,'history_rows':count,'sensor_cards':4,'epp_choices':4}
+            window.tabs.setCurrentIndex(tabs.index('Ölçüm geçmişi'));app.processEvents();window.grab().save(str(docs/'history-live.png'))
+            window.tabs.setCurrentIndex(tabs.index('SSD ve RAM'));app.processEvents();window.grab().save(str(docs/'sensors-live.png'))
+            report['gui']={'tabs':len(tabs),'tab_names':tabs,'history_rows':count,'sensor_cards':4,'epp_choices':4}
         except Exception as exc:errors.append(exc)
         finally:window.close();app.quit()
     QTimer.singleShot(15000,finish);app.exec()

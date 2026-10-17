@@ -17,6 +17,10 @@ düzeltildi. Önceki ham EC değeri göstergesi RPM değildi.
 ## Panel
 
 - EC otomatik fan modu.
+- EC otomatiği zaten ölçümle doğrulanmışsa tekrar komut yazılmaz. Manuel
+  kontrolden dönüşte komut sonrası yeni ölçümle sürücü modu ve EC mod biti
+  birlikte doğrulanır. Her durum sorgusu mevcut ölçümle doğrulamayı yeniler;
+  düşük/sıfır RPM otomatik modda tek başına hata sayılmaz.
 - Maksimum soğutma: iki fan tam hız.
 - Ayrı CPU/GPU fan hedefleri: %50–100.
 - Hazır Dengeli / Serin fan eğrileri; maksimum soğutma profili.

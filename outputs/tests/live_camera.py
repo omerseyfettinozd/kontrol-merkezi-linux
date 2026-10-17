@@ -4,6 +4,8 @@ from pathlib import Path
 from slayer_r9t.protocol import request
 
 def run():
+    if os.environ.get('R9T_LIVE_CHECK') != '1':
+        raise SystemExit('Gerçek donanım kontrolü için R9T_LIVE_CHECK=1 gerekli.')
     before=request({'op':'status'})['features']['camera']['value']
     report={}
     try:

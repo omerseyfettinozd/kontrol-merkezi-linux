@@ -1,4 +1,4 @@
-# Slayer R9T Kontrol Merkezi — 0.11.0
+# Slayer R9T Kontrol Merkezi — 0.12.0
 
 Program uygulama menüsünde **Slayer R9T Kontrol Merkezi** adıyla açılır.
 Kurulu dosyalar `/usr/local/lib/slayer-r9t/` altındadır.
@@ -9,12 +9,16 @@ Kurulu dosyalar `/usr/local/lib/slayer-r9t/` altındadır.
 - **Güç ve işlemci:** Linux güç profili ve AMD P-State CPU boost. Seçim ile sistemden okunan etkin değer ayrı gösterilir; ayar ancak Uygula düğmesiyle değişir.
 - **Fanlar:** gerçek CPU/GPU RPM, ayrı %50–100 hedefler, maksimum soğutma ve fan eğrileri.
 - **Serin çalışma:** hazır Sessiz/Ofis, Serin Dengeli, Serin Oyun profilleri; CPU ve GPU üst frekans sınırları. Voltaj ayarı bulunmaz.
-- **Klavye:** tek renk RGB ve parlaklık. Donanım 50 parlaklık adımı kullanır; örneğin %51 isteği %52 olarak uygulanabilir. Arayüz gerçek değeri gösterir.
+- **Klavye:** tek renk RGB ve parlaklık; 6×21 görsel statik renk düzenleyicisinde hücre/bölge boyama, önizleme ve profil kaydı. Donanım 50 parlaklık adımı kullanır; örneğin %51 isteği %52 olarak uygulanabilir. Arayüz gerçek değeri gösterir.
 - **Profiller:** güç, boost ve RGB seçimlerini birlikte kaydetme/uygulama, silme, JSON içe/dışa aktarma. Aynı adla içe aktarım o profilin değerlerini günceller. Uygulama hatasında önceki ayarlar geri yüklenir; geri yükleme doğrulaması başarısızsa ayrıca bildirilir.
 - **Pil:** kapasite, sağlık, voltaj, akım, güç; şarj sınırı ancak standart arayüz mevcutsa açılır. Bu cihazda henüz doğrulanmadı.
 - **Ekran:** bağlı ekranlara göre mevcut Hz/mod, parlaklık, gece rengi ve ICC dosyası seçimi.
 - **Otomasyon:** açılış, priz/pil ve gerçek yürütülebilir dosyaya göre profil; düşük Hz ve klavye ışığı zaman aşımı. Varsayılan kapalıdır.
 - **Cihazlar:** Wi-Fi, Bluetooth, uçak modu, touchpad ve eksik OEM desteğinin nedenleri. Klavyede Fn Lock ve KDE Caps Lock eşleme seçenekleri bulunur.
+- **Kaynaklar:** salt okunur CPU/RAM/GPU compute süreçleri; komut satırları toplanmaz, uyuyan GPU sorgulanmaz.
+- **Karşılaştırma:** kullanıcı başlatmalı A/B ölçümleri, ortalama/tepe farkları ve CSV; FPS ölçülmez.
+- **Ses:** WirePlumber çıkış/mikrofon ses düzeyi, yazılımsal susturma ve varsayılan aygıt; yazma sonrası geri okuma.
+- **Uyku ve pil:** öncesi/sonrası enerji ve uyku sayaçları; araç uykuyu başlatmaz, fiziksel uyku testi ayrı gerekir.
 - **Tanılama:** model, BIOS, çekirdek, destek durumu ve işlem geçmişi. JSON raporu dışa aktarılabilir.
 
 İşlem sonucu otomatik yenilemelerle silinmez. Sensör ve servis işlemleri arayüzü
@@ -90,17 +94,19 @@ TUXEDO/Uniwill/ITE 8291 sürücü uyarlamaları gerekir. Genel Clevo/Tongfang
 modellerine yönelik bir kurulum değildir.
 
 ```sh
-PYTHONPATH=. python -m unittest discover -s tests -v
+QT_QPA_PLATFORM=offscreen PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python -m unittest discover -s tests -v
 # Ayarları kısa süre değiştirir ve başlangıç ayarlarını geri yükler:
 QT_QPA_PLATFORM=offscreen R9T_LIVE_CHECK=1 PYTHONPATH=. python tests/live_acceptance.py
 ```
 
-48 birim kontrolü; bozuk/taşan protokol iletileri, profil doğrulaması,
+İlk kabul dilimindeki 48 birim kontrolü; bozuk/taşan protokol iletileri, profil doğrulaması,
 ayarlardaki atomik yazma, eski profillerin korunması, geri yükleme ve RGB
 parlaklık adımları için geçti. Gerçek cihaz kabul kontrolünde birleşik profil,
 fan işlemlerinin reddi, arayüz, kalıcı işlem sonucu ve işlem kayıtları
 kontrol edildi. Uzun süreli kullanım, uyku/uyanma ve farklı BIOS sürümleri bu
 sürümde doğrulanmadı.
+
+4 Ekim 2026 bütünleşik kaynak kontrolünde 277 Python/Qt testi, ayrı fan C hata simülasyonu ve 86 Python dosyasının sözdizimi kontrolü geçti. Kurulu uygulama/servis salt okunur önkontrolde 0.10.0, kaynak 0.11.0 olarak görüldü; fiziksel kabul sınırları ve tarihli önceki sonuçlar [durum belgesinde](docs/IMPLEMENTATION_STATUS.md) izlenir.
 
 Modüller ve tasarım: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -117,4 +123,6 @@ yeni paket sürümünde uyumluluk tekrar kontrol edilmelidir.
 
 Soğutma profillerinin değerleri ve sınırları: [docs/COOLING.md](docs/COOLING.md).
 
-0.6 kapsamı, kalıcı fan profilleri, otomasyon kuralları ve donanım kanıtı bekleyen özellikler: [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md). Windows ile tam özellik eşitliği henüz sağlanmadı.
+Güncel kapsam, kalıcı fan profilleri, otomasyon kuralları ve donanım kanıtı bekleyen özellikler: [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md). Windows ile tam özellik eşitliği henüz sağlanmadı.
+
+Kaynak dizininden `PYTHONPATH=. python r9t-uninstall-plan.py --dry-run` yalnız JSON kaldırma envanteri üretir. Executor yoktur; kullanıcı/politika verileri ve sürücüler korunur. Ownership manifest olmadığı için eşleşen dosyalar da silinebilir sayılmaz. Bu kaynak CLI mevcut kurucu tarafından kurulu uygulamaya dağıtılmaz; gerçek kaldırma kabulü ayrıca gerekir.

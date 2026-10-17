@@ -46,6 +46,15 @@ def memory():
         return None
 
 
+def disk():
+    try:
+        import shutil
+        total, used, _ = shutil.disk_usage('/')
+        return {'used_gib': used/1073741824, 'total_gib': total/1073741824}
+    except OSError:
+        return None
+
+
 def battery():
     for base in Path('/sys/class/power_supply').glob('BAT*'):
         try:
