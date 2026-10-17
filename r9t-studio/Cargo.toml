@@ -1,0 +1,33 @@
+[workspace]
+resolver = "3"
+members = ["crates/r9t-protocol", "crates/r9t-hal", "crates/r9td", "crates/r9t-session", "crates/r9tctl"]
+exclude = ["spikes", "ui"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "GPL-2.0-only"
+publish = false
+
+[workspace.dependencies]
+r9t-protocol = { path = "crates/r9t-protocol" }
+r9t-hal = { path = "crates/r9t-hal" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "net", "io-util", "time", "sync", "signal", "fs"] }
+nix = { version = "0.31", features = ["ioctl", "fs", "user", "socket", "process", "signal"] }
+libloading = "0.8"
+tempfile = "3"
+proptest = "1"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.release]
+lto = "thin"
+strip = true

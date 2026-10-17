@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "check": "cpu_temp ±2",
+      "ok": true,
+      "detail": "probe 71 / legacy 71"
+    },
+    {
+      "check": "gpu_temp ±2",
+      "ok": true,
+      "detail": "probe 65 / legacy 65"
+    },
+    {
+      "check": "ec fast-path cpu ±2",
+      "ok": true,
+      "detail": "tuxedo_io 71 / legacy 71"
+    },
+    {
+      "check": "fan mode",
+      "ok": true,
+      "detail": "probe 0 / legacy 0"
+    },
+    {
+      "check": "cpu duty",
+      "ok": true,
+      "detail": "probe 55% / legacy 55%"
+    },
+    {
+      "check": "cpu rpm ±10%",
+      "ok": true,
+      "detail": "probe 3483 / legacy 3450"
+    },
+    {
+      "check": "gpu duty",
+      "ok": true,
+      "detail": "probe 55% / legacy 55%"
+    },
+    {
+      "check": "gpu rpm ±10%",
+      "ok": true,
+      "detail": "probe 3506 / legacy 3511"
+    },
+    {
+      "check": "nvml vs ec gpu ±2",
+      "ok": true,
+      "detail": "nvml 65 / ec 65"
+    }
+  ],
+  "legacy_gpu_nvml_c": null
+}

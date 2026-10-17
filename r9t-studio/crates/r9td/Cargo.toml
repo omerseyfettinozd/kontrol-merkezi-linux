@@ -1,0 +1,16 @@
+[package]
+name = "r9td"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+r9t-protocol.workspace = true
+r9t-hal.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
