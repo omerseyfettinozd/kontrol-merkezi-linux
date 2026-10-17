@@ -27,3 +27,4 @@ r9t-studio/ui/src-tauri/target/
 r9t-studio/spikes/**/node_modules/
 r9t-studio/spikes/**/target/
 r9t-studio/.claude/worktrees/
+r9t-studio/spikes/**/src-tauri/gen/

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>R9T Tauri Spike</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <strong>R9T Studio · Faz 0.4 spike</strong>
+    <span id="mode"></span>
+    <span class="spacer"></span>
+    <span>FPS <b id="fps">—</b></span>
+    <span>p99 <b id="p99">—</b> ms</span>
+    <button id="toggle">Animasyonu durdur</button>
+  </header>
+  <main>
+    <section class="card">
+      <h2>Canlı geçmiş (çift eksen, 300 sn)</h2>
+      <canvas id="chart"></canvas>
+    </section>
+    <section class="card">
+      <h2>Klavye ızgarası 6×21 (tıkla / sürükle)</h2>
+      <svg id="keys" viewBox="0 0 1050 300" role="img" aria-label="Klavye ızgarası"></svg>
+    </section>
+  </main>
+  <script src="main.js"></script>
+</body>
+</html>
