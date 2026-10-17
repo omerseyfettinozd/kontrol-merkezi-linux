@@ -132,3 +132,35 @@ Windows ile tam eşitlik veya bütün planın tamamlandığı anlamına gelmez.
 - **Ses ve Mikrofon Kontrolleri (KML-12a):** PipeWire/WirePlumber `wpctl` ile çıkış ve mikrofon ses düzeyi, yazılımsal sessize alma ve varsayılan aygıt seçimi; her yazma sonrası geri okuma doğrulaması. Mikrofon susturmanın donanımsal devre kesici olmadığı belirtilir.
 - **Uyku ve Pil Kaybı Tanılaması (KML-12b):** Salt okunur öncesi/sonrası anlık görüntüsü, saat farkı, enerji kaybı/saat ve `suspend_stats` sayaç analizi. Fiziksel uyku testi henüz yapılmadı.
 - **Doğrulama:** 202 birim ve CLI regresyon testi offscreen ortamda geçti. C acil durum fan köprüsü geri dönüş simülasyonu geçti.
+
+
+## 4 Ekim 2026 kabul araçları ve kaynak güvenilirliği
+
+- Dynamic Boost canlı kabul betiğinin sürüm koşulu ve rapor literalindeki sözdizimi hatası giderildi. Kurulu uygulama ve servis sürümü kaynak sürümüyle eşleşmelidir; çalıştırılmayan birim testleri için sabit test sayısı raporlanmaz.
+- Canlı GUI kontrolleri 19 sekmenin adını ve sırasını ortak sözleşmeyle doğrular; geçmiş ve sensör ekranları sekme adına göre seçilir. Donanıma erişmeden tüm canlı betikleri derleyen regresyon ve gerçek GUI ile offscreen sözleşme kontrolü eklendi.
+- Uyku tanılamasında bozuk veya sonsuz snapshot değerleri reddedilir; eksik enerji/priz/uyku kanıtı sonuçta geçerli uyku ölçümü gibi gösterilmez.
+- İlk güvenilirlik diliminde **215 Python/Qt testi** ve 74 Python dosyasının AST/derleme kontrolü geçti; son bütünleşik devam sonucu aşağıdadır. Bu sonuçlar fiziksel cihaz kabulü veya uzak CI sonucu değildir.
+- Salt okunur cihaz önkontrolünde kaynak **0.11.0**, kurulu uygulama ve servis **0.10.0** bulundu. Servis/sürüm ve tanılama önkontrolü yeni kaynak kurulumunun veya donanım kabulünün yerine geçmez. Gerçek kurulum, uyku/uyanma, priz/pil geçişi ve donanım ayarı değişikliği yapılmadı; KML-07/KML-08 açık kalır.
+
+## 4 Ekim 2026 devam dilimleri — arayüz ve ölçüm dayanıklılığı
+
+- Süreç örneklemesi ve ses komutları Qt işçi havuzunda çalışır; yavaş sorguda ana arayüz yanıt verir. Tek işlem sınırı, hata sonrası tekrar deneme ve kapanış sonrası geç sonuçların bırakılması doğrulandı. Ses yazımı ve geri okuması aynı işçi işleminde sürer; bozuk wpctl çıktısı hata olarak döner.
+- A/B pencereleri altı ölçümün toplam/sayı/tepe değerlerini sınırlı bellekte toplar. Uzun aktif pencere 30 dakika/1200 satır geçmiş sınırından etkilenmez; durdurulan özetler korunur, yeniden başlatılan pencere sıfırlanır. CSV atomik kaydedilir; hata önceki dosyayı ve ölçümleri korur, arayüz hata/başarı mesajı gösterir.
+- CPU fark hesabı PID, süreç adı ve `/proc` başlangıç zamanı eşleşmesi gerektirir; yeniden kullanılan PID eski CPU sayacını kullanmaz. Komut satırı toplanmaz.
+- Profil silme kaydı başarısızsa hem kayıtlı belge hem kaydedilmemiş uygulama kuralı taslağı geri döner. Otomasyon bütün Mains/USB kaynaklarını değerlendirir; doğrulanmış bağlı kaynak priz seçer, belirsiz/hatalı okuma pil profili sayılmaz.
+- Kamera, aydınlatma ve genişletilmiş donanım betikleri açık `R9T_LIVE_CHECK=1` olmadan başlamaz. Kabul testi çok renkli başlangıç haritasını geri yükler; donanım geri dönüşü hata verse bile başlangıç otomasyon durumuna dönmeyi dener. Geçici kökte kurulum testleri ilk kurulum, bağımlılık önkontrolü ve root servis aktivasyon hatasının uygulama geri almasını kapsar; gerçek DKMS/kaldırma kabulü değildir.
+- Son bütünleşik yerel doğrulama: **247 Python/Qt testi**, ayrı **1 gerçek fan C hata simülasyonu** ve **79 Python dosyasında AST/bellekte derleme** geçti; `git diff --check` temiz. Kontrollü yavaş sorgu/hata testleri donanım ayarı değiştirmez. Uzak CI sonucu, yeni kaynak kurulumu ve fiziksel cihaz kabulü ayrıca doğrulanmalıdır.
+
+## 4 Ekim 2026 dağıtım araçları devamı
+
+- Fan DKMS derleme betiği ripgrep gerektirmez; POSIX grep ile Clang/GCC seçer. Eksik kernel Makefile/okunamayan derleyici yapılandırması görünür hatadır; `.config` bulunmazsa `include/config/auto.conf` okunur. Altı gerçek shell fixture testi geçti; gerçek kernel derlemesi/modül değişimi yapılmadı.
+- Kurulumda uygulama staging, bağımlılık ve servis durumu önkontrolü ayrı driver adımından önce tamamlanır. Önkontrol hatası driver kurulumunu başlatmaz; driver hatasında staging temizlenir ve mevcut uygulama/servisler korunur. DKMS adımı uygulama transaction geri almasının dışında kalır; gerçek kurulum/kaldırma sınanmadı.
+- Ölçüm geçmişi CSV kaydı da geçici dosya, flush/fsync ve atomik değiştirme kullanır; yazma/değiştirme hatası eski CSV'yi korur. Veri biçimi ve eksik değer boşlukları korunur.
+- **Yalnız kaynakta kaldırma envanteri:** `PYTHONPATH=outputs python outputs/r9t-uninstall-plan.py --dry-run` JSON planı üretir. Executor yoktur; dosya, servis veya modül değiştirmez. Sabit uygulama yolları no-follow dizin tanımlayıcıları ve sahiplik/tür/içerik kontrolüyle incelenir; symlink, bilinmeyen veya değiştirilmiş girdiler engellenir. Mevcut kurucu ownership manifest yazmadığından eşleşen hash/marker da silme izni değildir; bütün `removable` alanları false kalır. Kullanıcı/politika/yedek verileri ve sürücüler korunur. Bu yeni kaynak CLI mevcut kurucu listesinden kurulu uygulamaya dağıtılmaz.
+- **Son bütünleşik yerel sonuç:** 268 Python/Qt testi, ayrı 1 gerçek fan C hata simülasyonu, 84 Python dosyasında AST/bellekte derleme, `sh -n outputs/fan-driver/build.sh` ve diff kontrolü geçti. Önceki 247/79 sonucu tarihsel dilimdir. Kurulu 0.10.0/kaynak 0.11.0 farkı ve KML-07/KML-08 fiziksel/gerçek yaşam döngüsü kabulü açık kalır; uzak CI sonucu değildir.
+
+## 4 Ekim 2026 kalıcı veri ve oturum kapanışı devamı
+
+- Ayar açma, profil içe aktarma ve root otomasyon politika yükleyicisi ortak JSON önkontrolünü kullanır: en fazla 131072 UTF-8 bayt ve 64 iç içe düzey. Metin içindeki parantezler/kaçışlar derinlik sayılmaz; decoder recursion hatası kontrollü ValueError olur. Aşırı derin legacy dosyalar da kontrollü reddedilir: kullanıcı ayarları arşivlenir, politika varsayılanlarla hata kaydı tutar, başarısız içe aktarım mevcut belleği/dosyayı değiştirmez.
+- Oturum kapanışı düşük Hz için kayıtlı ekran modlarını bağımsız geri yüklemeyi dener. Bir ekran, idle helper veya ışık hatası diğer geri dönüşleri durdurmaz; başarısız ekran kaydı tekrar denemeye kalır, ilk neden ve birleşik hata korunur. Elle seçilmiş ekran modu geri dönüş kaydından çıkarıldığı için kapanışta ezilmez. Normal sinyal ve loop hata yollarında kapanış/socket temizliği regresyonlarla doğrulandı; fiziksel ekran/uyku kabulü değildir.
+- Son bütünleşik yerel kanıt **277 Python/Qt testi**, ayrı **1 C fan hata simülasyonu**, **86 Python dosyasında AST/bellekte derleme**, build shell sözdizimi ve diff kontrolü. Önceki 268/84 kaydı tarihsel dilimdir. Kurulu kaynak sürümü eşitliği, KML-07/KML-08 fiziksel/gerçek kurulum-kaldırma kabulü ve uzak CI açık kalır.

@@ -42,8 +42,28 @@ class SessionRules:
                 for line in self.idle_helper.stdout.read().decode().splitlines():request({'op':'lighting_idle','idle':line=='idle'})
 
     def close(self):
-        if self.idle_helper:self.idle_helper.terminate();self.idle_helper.wait(timeout=2)
-        request({'op':'lighting_idle','idle':False})
+        failures = []
+        def attempt(label, operation):
+            try:
+                operation()
+                return True
+            except Exception as exc:
+                failures.append((label, exc))
+                return False
+        for identifier, mode in list(self.saved_modes.items()):
+            if attempt(f'Ekran {identifier}', lambda i=identifier, m=mode: desktop.set_mode(i, m)):
+                del self.saved_modes[identifier]
+        self.low_active = bool(self.saved_modes)
+        if self.idle_helper:
+            def stop_helper():
+                self.idle_helper.terminate()
+                self.idle_helper.wait(timeout=2)
+            attempt('Boşta kalma bileşeni', stop_helper)
+        attempt('Klavye ışığı', lambda: request({'op':'lighting_idle','idle':False}))
+        if failures:
+            self.error = 'Oturum ayarlarının geri dönüşü eksik: ' + '; '.join(
+                f'{label}: {type(exc).__name__}: {exc}' for label, exc in failures)
+            raise RuntimeError(self.error) from failures[0][1]
     def tick(self):
         if time.monotonic()-self.last_check<3:return
         self.last_check=time.monotonic()

@@ -1,7 +1,6 @@
 # Yeni özellik adayları — 2026-10-03
 
-Bu liste araştırma sonucudur. 0.7.0 ile 1, 2, 4 ve 7 numaralı özellikler uygulandı; 0.8.0 ile 3 numara da uygulandı; 0.9.0 ile 5 numara da uygulandı; 0.10.0 ile 6 numara da uygulandı; diğerleri adaydır. Mevcut 0.6.1
-özelliklerini yeniden yapılacak iş olarak saymaz. Bu incelemede donanım ayarı değiştirilmedi.
+Bu liste araştırma sonucudur. 1–7 numaralı özellikler 0.7.0–0.10.0 arasında, 8–12 numaralı özellikler 0.11.0 ile yazılımsal olarak uygulandı. Fiziksel kabul ve temiz kurulum açık işlerdir; kaynakta uygulama ile donanım doğrulaması ayrı izlenir. Araştırma aşamasında donanım ayarı değiştirilmedi.
 
 ## Araştırma sırasında cihazdan doğrulanan bulgular
 
@@ -46,7 +45,8 @@ yük altında performansın veya tüm donanım davranışlarının doğrulandı�
 | 12 | Uyku ve pil kaybı tanılaması | Uygulandı: Salt okunur uyku öncesi/sonrası anlık görüntüsü, enerji kaybı ve suspend_stats sayacı. |
 
 8–12 numaralı özelliklerin tamamı yazılımsal olarak uygulandı ve GUI sekme sistemine entegre edildi.
-Tüm birim ve regresyon testleri (202 test) offscreen ortamda geçmektedir.
+0.11.0 panel diliminde 202 birim ve regresyon testi offscreen ortamda geçti; güncel bütünleşik sonuç [uygulama durumunda](IMPLEMENTATION_STATUS.md) izlenir.
+4 Ekim dayanıklılık devam dilimleriyle 247 Python/Qt testi, ayrı fan C hata simülasyonu ve 79 Python dosyasının AST/derleme kontrolü geçti. Ses/süreç sorguları işçilerde çalışır; uzun A/B ölçümleri ve atomik CSV korunur.
 Sıradaki aşama: Fiziksel donanım kabulü (uyku/uyanma, priz/pil geçişi) ve temiz kurulum/dağıtım doğrulamasıdır.
 
 ## Kaynaklar
@@ -58,3 +58,7 @@ Sıradaki aşama: Fiziksel donanım kabulü (uyku/uyanma, priz/pil geçişi) ve 
 
 Kaynaklar genel arayüz anlamını açıklar; yukarıdaki cihaz bulguları bu bilgisayardaki
 salt okunur sysfs/procfs, sistem servisi ve wpctl incelemesinden gelir.
+
+4 Ekim dağıtım araçları devamında 268 Python/Qt testi, ayrı fan C hata simülasyonu ve 84 Python dosyasının AST/derleme kontrolü geçti. Derleme betiği/kurulum önkontrolü, atomik geçmiş CSV ve yalnız kaynakta salt okunur kaldırma envanteri tamamlandı; gerçek kaldırma executor'ı yoktur. KML-07/KML-08 fiziksel kabulü açık kalır.
+
+Kalıcı veri ve oturum kapanışı devamında 277 Python/Qt testi, ayrı 1 C fan simülasyonu ve 86 Python AST/derleme kontrolü geçti. JSON dosyaları 131072 bayt/64 düzey sınırında kontrollü reddedilir; kapanış ekran/idle/ışık geri dönüşünü bağımsız dener. Fiziksel ve gerçek kurulum/kaldırma kabulü açıktır.

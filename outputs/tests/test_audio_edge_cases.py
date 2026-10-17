@@ -37,3 +37,21 @@ class AudioBackendEdgeCasesTest(unittest.TestCase):
         backend = AudioBackend(runner=mismatch_runner)
         with self.assertRaises(AudioReadbackError):
             backend.set_volume('sink', 80)
+
+
+class MalformedAudioOutputTests(unittest.TestCase):
+    def test_malformed_or_overflowing_volume_is_audio_error(self):
+        from slayer_r9t.audio import parse_volume, AudioError
+        for text in ('Volume: ...', 'Volume: 1.2.3', 'Volume: ' + '9' * 400):
+            with self.subTest(text=text[:30]), self.assertRaises(AudioError):
+                parse_volume(text)
+
+    def test_command_os_or_decoding_error_is_unavailable(self):
+        from unittest.mock import patch
+        from slayer_r9t.audio import _run, AudioUnavailable
+        errors = [PermissionError('denied'), UnicodeDecodeError('utf8', b'\xff', 0, 1, 'bad')]
+        for error in errors:
+            with self.subTest(error=type(error).__name__), \
+                 patch('slayer_r9t.audio.subprocess.run', side_effect=error), \
+                 self.assertRaises(AudioUnavailable):
+                _run(['status'])

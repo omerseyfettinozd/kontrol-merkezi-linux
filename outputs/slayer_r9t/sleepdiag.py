@@ -4,6 +4,7 @@ Never suspends the system and never writes to sysfs. Only a snapshot file in
 the user's state directory is written (atomically).
 """
 import json
+import math
 import os
 import tempfile
 import time
@@ -100,20 +101,58 @@ def save_snapshot(snap, path=DEFAULT_PATH):
         raise
 
 
+def _valid_snapshot(data):
+    if not isinstance(data, dict):
+        return False
+    stamp = data.get('time')
+    if isinstance(stamp, bool) or not isinstance(stamp, (int, float)):
+        return False
+    try:
+        if not math.isfinite(stamp):
+            return False
+    except OverflowError:
+        return False
+    for key in ('energy_uwh', 'power_uw', 'capacity'):
+        value = data.get(key)
+        if value is not None and (type(value) is not int or not 0 <= value <= 2 ** 64 - 1):
+            return False
+    if data.get('ac_online') is not None and type(data['ac_online']) is not bool:
+        return False
+    for key in ('status', 'battery'):
+        if data.get(key) is not None and not isinstance(data[key], str):
+            return False
+    stats = data.get('stats')
+    if stats is not None:
+        if not isinstance(stats, dict):
+            return False
+        for key in ('success', 'fail'):
+            value = stats.get(key)
+            if value is not None and (type(value) is not int or not 0 <= value <= 2 ** 64 - 1):
+                return False
+        for key in ('last_failed_dev', 'last_failed_errno', 'mem_sleep'):
+            if stats.get(key) is not None and not isinstance(stats[key], str):
+                return False
+    return True
+
+
 def load_snapshot(path=DEFAULT_PATH):
     try:
         data = json.loads(Path(path).read_text())
     except (OSError, ValueError):
         return None
-    return data if isinstance(data, dict) and isinstance(data.get('time'), (int, float)) else None
+    return data if _valid_snapshot(data) else None
 
 
 def compare(before, after):
     """Compare snapshots. Missing values stay None; `warnings` explain invalidity."""
     res = {'duration_s': None, 'energy_delta_uwh': None, 'loss_uwh_per_h': None,
            'suspend_delta': None, 'fail_delta': None, 'valid': True, 'warnings': [WARNING]}
+    if not _valid_snapshot(before) or not _valid_snapshot(after):
+        res['valid'] = False
+        res['warnings'].append('Anlık görüntü bozuk; yeni bir ölçüm başlatın.')
+        return res
     dur = after['time'] - before['time']
-    if dur <= 0:
+    if not math.isfinite(dur) or dur <= 0:
         res['valid'] = False
         res['warnings'].append('Saat geriye gitti veya süre sıfır; sonuç geçersiz.')
     else:
@@ -127,19 +166,32 @@ def compare(before, after):
             res['warnings'].append('Pil şarj oluyordu; sonuç geçersiz.')
             break
     if before.get('ac_online') is None or after.get('ac_online') is None:
+        res['valid'] = False
         res['warnings'].append('Priz durumu okunamadı; geçerlilik doğrulanamadı.')
     e0, e1 = before.get('energy_uwh'), after.get('energy_uwh')
     if e0 is not None and e1 is not None:
         res['energy_delta_uwh'] = e1 - e0
         if res['duration_s']:
-            res['loss_uwh_per_h'] = (e0 - e1) / (res['duration_s'] / 3600)
+            try:
+                rate = (e0 - e1) / (res['duration_s'] / 3600)
+                if not math.isfinite(rate):
+                    raise OverflowError
+                res['loss_uwh_per_h'] = rate
+            except (OverflowError, ZeroDivisionError):
+                res['valid'] = False
+                res['warnings'].append('Ölçüm aralığı hesaplama için uygun değil; sonuç geçersiz.')
     else:
+        res['valid'] = False
         res['warnings'].append('Pil enerjisi okunamadı.')
     s0, s1 = before.get('stats') or {}, after.get('stats') or {}
     if s0.get('success') is not None and s1.get('success') is not None:
         res['suspend_delta'] = s1['success'] - s0['success']
-        if res['suspend_delta'] == 0:
-            res['warnings'].append('Uyku sayacı artmadı; sistem uyumamış olabilir.')
+        if res['suspend_delta'] <= 0:
+            res['valid'] = False
+            res['warnings'].append('Uyku sayacı artmadı veya sıfırlandı; uyku doğrulanamadı.')
+    else:
+        res['valid'] = False
+        res['warnings'].append('Uyku sayacı okunamadı; uyku doğrulanamadı.')
     if s0.get('fail') is not None and s1.get('fail') is not None:
         res['fail_delta'] = s1['fail'] - s0['fail']
     return res

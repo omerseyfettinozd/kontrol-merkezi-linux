@@ -1418,6 +1418,7 @@ class ControlCenter(QMainWindow):
         def remove():
             import copy
             previous_document=copy.deepcopy(self.store.data)
+            previous_app_rules=copy.deepcopy(self.app_rules)
             previous = self.store.profiles.pop(name)
             rules=self.store.data['automation']
             for key in ('startup','ac','battery'):
@@ -1428,6 +1429,7 @@ class ControlCenter(QMainWindow):
                 self.store.save()
             except Exception:
                 self.store.data=previous_document
+                self.app_rules=previous_app_rules
                 raise
             self.reload_profiles()
             self.command('configure',json.dumps(self.store.data))
@@ -1459,6 +1461,8 @@ class ControlCenter(QMainWindow):
             self.guarded(lambda: atomic_json(path, self.report()))
 
     def closeEvent(self, event):
+        self.audio_panel.shutdown()
+        self.processes_panel.shutdown()
         self.closing = True
         self.queue.clear()
         self.timer.stop()

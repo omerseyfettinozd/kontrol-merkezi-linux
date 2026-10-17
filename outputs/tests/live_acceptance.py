@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import time
+from acceptance_gui_contract import verify_gui_tabs
 
 if os.environ.get('R9T_LIVE_CHECK') != '1':
     raise SystemExit('Gerçek donanım kontrolü için R9T_LIVE_CHECK=1 gerekli.')
@@ -18,7 +19,10 @@ ARTIFACTS.mkdir(exist_ok=True)
 before = request({'op': 'status'})
 rgb = before['rgb_state']
 restore = {'power_profile': before['power_profile'], 'boost_enabled': before['boost_enabled'],
-           'rgb': rgb['rgb'], 'brightness': rgb['brightness']}
+           **rgb}
+# Profile schema accepts either the complete channel map or a solid color.
+if 'rgb_map' in restore:
+    restore.pop('rgb', None)
 if before['capabilities'].get('cpu_limit'):restore['cpu_max_mhz']=before['cooling']['cpu']['max_mhz']
 report = {'before': restore, 'checks': []}
 try:
@@ -43,7 +47,7 @@ try:
     outcomes = []
     def trigger():
         assert window.initialized
-        assert window.tabs.count() == 13
+        report['gui_tabs'] = verify_gui_tabs(window)
         window.power_combo.setCurrentIndex(window.power_combo.findData('power-saver'))
         window.command('power', 'power-saver')
     def inspect():
@@ -61,18 +65,20 @@ try:
     QTimer.singleShot(8500, inspect)
     app.exec()
     assert outcomes == [True]
-    report['checks'].append('Eleven-tab GUI: asynchronous action, actual state, persistent feedback passed')
+    report['checks'].append('Named GUI tabs: asynchronous action, actual state, persistent feedback passed')
     events = request({'op': 'events'})['events']
     assert any(event['operation'] == 'profile' and event['ok'] for event in events)
     assert any(event['operation'] == 'manual' and not event['ok'] for event in events)
     report['checks'].append('Successful and rejected actions recorded in diagnostics')
 finally:
-    request({'op':'profile', 'settings': restore})
-    after = request({'op':'status'})
-    assert after['power_profile'] == restore['power_profile']
-    assert after['boost_enabled'] == restore['boost_enabled']
-    assert after['rgb_state'] == {'rgb':restore['rgb'], 'brightness':restore['brightness']}
-    report['restored'] = True
-    request({'op':'automation_pause' if before.get('automation',{}).get('paused') else 'automation_resume'})
+    try:
+        request({'op':'profile', 'settings': restore})
+        after = request({'op':'status'})
+        assert after['power_profile'] == restore['power_profile']
+        assert after['boost_enabled'] == restore['boost_enabled']
+        assert after['rgb_state'] == before['rgb_state']
+        report['restored'] = True
+    finally:
+        request({'op':'automation_pause' if before.get('automation',{}).get('paused') else 'automation_resume'})
     (ARTIFACTS/'live-acceptance.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
 print(json.dumps(report, ensure_ascii=False, indent=2))

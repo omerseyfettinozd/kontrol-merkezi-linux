@@ -30,14 +30,17 @@ def _page_size():
 
 
 def parse_stat(text):
-    """Return (comm, utime+stime ticks) from /proc/PID/stat text, or None."""
+    """Return (comm, utime+stime ticks, starttime ticks) from /proc/PID/stat text, or None."""
     try:
         left = text.index('(')
         right = text.rindex(')')
         comm = text[left + 1:right]
         fields = text[right + 2:].split()
         # fields[0] is state (field 3); utime=14 -> idx 11, stime=15 -> idx 12
-        return comm, int(fields[11]) + int(fields[12])
+        user, system, start = int(fields[11]), int(fields[12]), int(fields[19])
+        if min(user, system, start) < 0:
+            return None
+        return comm, user + system, start
     except (ValueError, IndexError):
         return None
 
@@ -148,16 +151,16 @@ class ProcessSampler:
             if stat is None or rss is None:
                 unreadable += 1
                 continue
-            entries[pid] = (stat[0], stat[1], rss)
+            entries[pid] = (stat[0], stat[1], rss, stat[2])
         interval = None if self._prev_time is None else now - self._prev_time
         rows = []
-        for pid, (comm, ticks, rss) in entries.items():
+        for pid, (comm, ticks, rss, starttime) in entries.items():
             cpu = None
             prev = self._prev.get(pid)
-            if interval and interval > 0 and prev and prev[0] == comm and ticks >= prev[1]:
+            if interval and interval > 0 and prev and prev[0] == comm and prev[2] == starttime and ticks >= prev[1]:
                 cpu = (ticks - prev[1]) / self.tck / interval * 100.0
             rows.append({'pid': pid, 'name': comm, 'cpu_percent': cpu, 'rss_bytes': rss})
-        self._prev = {pid: (v[0], v[1]) for pid, v in entries.items()}
+        self._prev = {pid: (v[0], v[1], v[3]) for pid, v in entries.items()}
         self._prev_time = now
         cpu_rows = sorted((r for r in rows if r['cpu_percent'] is not None),
                           key=lambda r: r['cpu_percent'], reverse=True)[:self.limit]

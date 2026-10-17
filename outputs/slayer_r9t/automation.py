@@ -3,16 +3,25 @@ import copy
 import os
 from pathlib import Path
 import time
-from .settings import validate_document,atomic_json,default_automation
+from .settings import validate_document,atomic_json,default_automation,parse_document_json
 
 POLICY=Path('/var/lib/slayer-r9t/policy.json')
 
 def power_source():
-    for supply in Path('/sys/class/power_supply').iterdir():
+    try:
+        supplies=list(Path('/sys/class/power_supply').iterdir())
+    except OSError:
+        return None
+    offline=False;unknown=False
+    for supply in supplies:
         try:
-            if (supply/'type').read_text().strip()=='Mains':return 'ac' if (supply/'online').read_text().strip()=='1' else 'battery'
-        except OSError:pass
-    return None
+            if (supply/'type').read_text().strip() not in ('Mains','USB'):continue
+            online=(supply/'online').read_text().strip()
+            if online=='1':return 'ac'
+            if online=='0':offline=True
+            else:unknown=True
+        except (OSError,UnicodeError):unknown=True
+    return 'battery' if offline and not unknown else None
 
 def executables(uid):
     found=set()
@@ -32,10 +41,9 @@ class Automation:
         self.source=None;self.candidate=None;self.changed=0;self.last_tick=0;self.startup_done=False
         self.applied_settings=None
         try:
-            import json
             if self.path.exists():
                 if self.path.stat().st_size>131072:raise ValueError('Politika çok büyük.')
-                self.document=validate_document(json.loads(self.path.read_text()))
+                self.document=validate_document(parse_document_json(self.path.read_text()))
         except (OSError,ValueError,TypeError) as exc:self.error=str(exc)
 
     def configure(self,document):
