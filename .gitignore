@@ -20,3 +20,10 @@ modules.order
 *.log
 .env
 .env.*
+# R9T Studio (Rust/Tauri) derleme çıktıları ve yerel çalışma ağaçları
+r9t-studio/target/
+r9t-studio/ui/node_modules/
+r9t-studio/ui/src-tauri/target/
+r9t-studio/spikes/**/node_modules/
+r9t-studio/spikes/**/target/
+r9t-studio/.claude/worktrees/
