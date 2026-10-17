@@ -5,6 +5,12 @@ os.environ.setdefault('QT_QPA_PLATFORM','offscreen')
 from slayer_r9t.compare import summarize,compare,warnings,export_csv,PERMANENT_WARNING
 from slayer_r9t.history import History
 
+def dispose(w):
+    # Delete through Qt while QApplication is alive; dropping the last Python reference
+    # leaves stale child wrappers that PySide deletes again at exit (SIGSEGV).
+    from PySide6.QtCore import QCoreApplication,QEvent
+    w.timer.stop();w.close();w.deleteLater();QCoreApplication.sendPostedEvents(None,QEvent.Type.DeferredDelete)
+
 def hist(vals,t0=0,step=1):
     h=History()
     for i,v in enumerate(vals):h.add(v,now=t0+i*step,utc='x')
@@ -48,7 +54,7 @@ class CompareTests(unittest.TestCase):
         self.assertEqual(w.table.item(0,3).text(),'10.0')
         self.assertEqual(w.table.item(1,1).text(),'')
         self.assertIn(PERMANENT_WARNING,w.warning.text());self.assertIn('1 örnek',w.info.text())
-        w.timer.stop()
+        dispose(w)
 
     def test_completed_window_survives_history_retention_and_csv_export(self):
         from PySide6.QtWidgets import QApplication
@@ -77,7 +83,7 @@ class CompareTests(unittest.TestCase):
                         with open(p,encoding='utf-8') as stream:rows=list(csv.reader(stream))
                     cpu=next(row for row in rows if row and row[0]=='CPU sıcaklığı')
                     self.assertEqual(cpu[2:5],['50.00','60.00','10.00'])
-                finally:w.timer.stop();w.close()
+                finally:dispose(w)
 
     def test_restarting_window_discards_previous_completed_summary(self):
         from PySide6.QtWidgets import QApplication
@@ -90,7 +96,7 @@ class CompareTests(unittest.TestCase):
             t[0]=3;w.toggle('A')
             self.assertEqual(w.summary('A')['samples'],1)
             self.assertEqual(w.summary('A')['metrics']['cpu_temp']['avg'],70)
-        finally:w.timer.stop();w.close()
+        finally:dispose(w)
 
     def test_running_window_collects_all_samples_beyond_both_retention_limits(self):
         from PySide6.QtWidgets import QApplication
@@ -111,7 +117,7 @@ class CompareTests(unittest.TestCase):
             w.toggle('A')
             self.assertEqual(w.summary('A'),live)
             self.assertEqual(len(h.observers),0)
-        finally:w.timer.stop();w.close()
+        finally:dispose(w)
 
     def test_overlapping_windows_and_close_release_collectors(self):
         from PySide6.QtWidgets import QApplication
@@ -130,7 +136,7 @@ class CompareTests(unittest.TestCase):
             self.assertFalse(w.timer.isActive())
             h.add({'cpu_temp':99},now=4,utc='x')
             self.assertEqual(w.summary('B')['samples'],1)
-        finally:w.timer.stop();w.close()
+        finally:dispose(w)
 
     def test_csv_io_failures_preserve_destination_and_remove_temporary_file(self):
         a=summarize(hist([{'cpu_temp':50}]).rows,0,0)
@@ -162,5 +168,5 @@ class CompareTests(unittest.TestCase):
                 self.assertEqual((w.summary('A'),w.summary('B')),before)
                 with patch('slayer_r9t.compare_widget.export_csv',return_value=6):w.export_dialog()
                 self.assertIn('CSV kaydedildi',w.export_status.text())
-        finally:w.timer.stop();w.close()
+        finally:dispose(w)
 if __name__=='__main__':unittest.main()
