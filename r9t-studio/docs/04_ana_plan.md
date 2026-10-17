@@ -1,6 +1,6 @@
 # R9T Studio — Ana Plan (Kesin Yol Haritası)
 
-Tarih: 2026-10-17. Durum: **onaylandı, Faz 0 sürüyor** (0.0 ve 0.1 tamam). Sürüm: 2 (3 bağımsız incelemeden geçti: donanım/güvenlik, uygulanabilirlik, devir).
+Tarih: 2026-10-17. Durum: **onaylandı, Faz 0 sürüyor** (2026-10-18: 0.0 ve 0.1 tamam; 0.2 `legacy/merge-0.12`'de hazır, main'e merge onay bekliyor; 0.3 belgesi yazıldı, root dökümü bekliyor; 0.4 geçici karar Tauri, görsel/KDE kontrolü bekliyor; 0.5 betiği hazır, çalıştırılmadı). Sürüm: 2 (3 bağımsız incelemeden geçti: donanım/güvenlik, uygulanabilirlik, devir).
 
 ## 0. Önce Bunu Oku
 
@@ -427,8 +427,10 @@ Kabul:
 
 ## 7. Bir Sonraki Oturum Buradan Başlar
 
-1. Bu dosyanın §0 bölümünü ve `03_dogrulama_raporu.md`'yi oku. Otomatik yüklenen `CLAUDE.md`'deki donanım değerlerine, soket yollarına, ioctl sabitlerine, watt presetlerine ve faz sırasına güvenme.
-2. Kullanıcıya 6.1 (depo) kararını sor, ardından 0.0'ı uygula.
-3. 0.1: `CLAUDE.md`'yi yeniden yaz ve kabul grep'ini çalıştır.
-4. 0.2: önce `git status`, `git branch -a`, `git for-each-ref refs/codex` ile durumu yeniden doğrula. Bundle yedeğini al, sonra birleştirmeye başla. İlgisiz değişiklikleri koru.
-5. 0.3 ve 0.4'e geç. 0.5–0.8 kullanıcıyla birlikte yapılır: betikler `tools/` altında, sudo'yu kullanıcı çalıştırır, fiziksel gözlem kullanıcıdadır.
+Durum 2026-10-18 (ayrıntı: `05_legacy_parite.md`, `08_tauri_spike.md`):
+
+1. **0.2 bitirme (onayla):** `legacy/merge-0.12` (0.12.0, 305 test) → main. Ana çalışma ağacındaki commit'siz WIP dosyaları `legacy/0.11.1-game-mode` (418f685) ile bayt bayt aynıdır. Merge'den önce bu dosyalar temizlenir (`git checkout --` ile 4 dosya, 3 izlenmeyen dosya silinir), sonra `git merge --no-ff legacy/merge-0.12`, test, push. Geçici worktree: scratchpad'deki `merge` (`git worktree remove` ile kaldırılır).
+2. **0.3:** kullanıcı `sudo r9t-studio/tools/legacy-state-dump.sh` çalıştırır → `docs/legacy-state-dump.json`. Gözden geçirilir (public repo), commit'lenir.
+3. **0.4:** `08_tauri_spike.md` "Açık kalanlar" listesi (görsel kontrol, KDE, balanced FPS). Sonra karar 6.2 kesinleşir.
+4. **0.5:** kullanıcı `sudo r9t-studio/tools/probe-capabilities.sh` (isteğe bağlı `--rgb-timing`) çalıştırır → `docs/06_yetenekler.json`. Sonuç PPT kararını (6.5) ve 0x0751/0xF012 notunu (`05` §2.6) besler.
+5. 0.6–0.8 kullanıcıyla birlikte yapılır: betikler `tools/` altında, sudo'yu kullanıcı çalıştırır, fiziksel gözlem kullanıcıdadır.
