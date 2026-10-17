@@ -10,6 +10,10 @@
 //!  * shadow mode while the legacy service has the EC in manual: no `status`; RPM is
 //!    taken from the legacy service's own `status` reply every 10 s.
 //!
+//! Shadow mode halves the EC load (fast path every 2 s, `status` every 30 s): the EC
+//! channel is a single mutex and the legacy service's 1.3 s `status` (≈22 EC ops)
+//! otherwise grew 17.5 % with r9td running (Faz 2 acceptance c allows 10 %).
+//!
 //! CPU budget (measured, `docs/11`): one tuxedo_io read costs ~0.75 ms of kernel
 //! time, so non-thermal sources are thinned: `acpitz` is never read (ACPI `_TMP`
 //! goes through the EC), NVMe temps every 10 s, other slow sensors every 5 s,
@@ -111,17 +115,21 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
         let m = &shared.metrics;
 
         // --- EC fast path ---
+        let owns = shared.owns_fans.load(Ordering::Relaxed);
+        let ec_every: u64 = if cfg.shadow && !owns { 2 } else { 1 };
         let mut fast = None;
-        if let Some(dev) = ec.get(&fs, now) {
+        if tick % ec_every != 0 {
+            // skip this tick (shadow mode thinning)
+        } else if let Some(dev) = ec.get(&fs, now) {
             let temps_r = dev.temps();
             m.ec_ops.fetch_add(2, Ordering::Relaxed);
-            let duty_r = if tick % 2 == 0 && (ec_manual || shared.owns_fans.load(Ordering::Relaxed)) {
+            let duty_r = if tick % (2 * ec_every) == 0 && (ec_manual || shared.owns_fans.load(Ordering::Relaxed)) {
                 m.ec_ops.fetch_add(2, Ordering::Relaxed);
                 Some(dev.duties())
             } else {
                 None
             };
-            let mode_r = if tick % 5 == 0 {
+            let mode_r = if tick % (5 * ec_every) < ec_every {
                 m.ec_ops.fetch_add(1, Ordering::Relaxed);
                 Some(dev.mode())
             } else {
@@ -131,8 +139,11 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
         }
 
         // --- r9t_fan status (full path) ---
-        let owns = shared.owns_fans.load(Ordering::Relaxed);
-        let interval = if owns { Duration::from_secs(3) } else { Duration::from_secs(10) };
+        let interval = match (owns, cfg.shadow) {
+            (true, _) => Duration::from_secs(3),
+            (false, true) => Duration::from_secs(30),
+            (false, false) => Duration::from_secs(10),
+        };
         let want_status = fan.loaded()
             && (!cfg.shadow || !ec_manual)
             && last_status.is_none_or(|t| now.duration_since(t) >= interval);
