@@ -619,6 +619,16 @@ class ControlCenter(QMainWindow):
 
     def build_overview(self):
         page = self.tab('Genel durum')
+        box = self.card(page, 'Senaryo — tek tuşla mod seç')
+        box.addWidget(self.label('Sessiz ofis, dengeli günlük, serin oyun veya tam güç turbo.'))
+        row = QHBoxLayout()
+        self.scenario_buttons = {}
+        for title, slot in [('Sessiz', 'scenario_quiet'), ('Dengeli', 'scenario_balanced'), ('Oyun', 'scenario_game'), ('Turbo', 'scenario_turbo')]:
+            btn = self.button(row, title, getattr(self, slot), 'thermal')
+            self.scenario_buttons[title] = btn
+        box.addLayout(row)
+        self.scenario_state = self.label('Etkin senaryo okunuyor…')
+        box.addWidget(self.scenario_state)
         grid = QGridLayout()
         self.metrics = {}
         grid.setHorizontalSpacing(14)
@@ -643,6 +653,27 @@ class ControlCenter(QMainWindow):
         self.button(box, 'EC otomatik fan komutunu gönder', lambda: self.command('auto'), 'auto_fan')
         box.addWidget(self.label('Fan sürücüsüyle bağlantı kesilirse 15 saniyelik zaman aşımıyla EC otomatiğine dönüş denenir.'))
         page.addStretch()
+
+    def scenario_quiet(self):
+        self.command('thermal_preset', 'quiet')
+        self.command('auto')
+
+    def scenario_balanced(self):
+        self.command('thermal_preset', 'stock')
+        self.command('auto')
+
+    def scenario_game(self):
+        self.command('thermal_preset', 'gaming_cool')
+        self.command('fan_preset', 'cool')
+
+    def scenario_turbo(self):
+        if (self.state.get('features', {}) or {}).get('battery', {}).get('status') == 'Discharging':
+            self.feedback('Turbo yalnız prizde kullanılır; pilde kapalı.', error=True)
+            return
+        self.command('power', 'performance')
+        self.command('boost', '1')
+        self.command('profile', json.dumps({'cpu_max_mhz': 0, 'gpu_max_mhz': 0}))
+        self.command('fan_boost')
 
     def build_power(self):
         page = self.tab('Güç ve işlemci')
@@ -712,6 +743,19 @@ class ControlCenter(QMainWindow):
 
     def build_cooling(self):
         page = self.tab('Serin çalışma')
+        box = self.card(page, 'Hızlı oyun modu')
+        box.addWidget(self.label('Tek tuş: Serin Oyun (CPU 3500, GPU 2100) + serin fan. Oyun bitince günlük moda dön.'))
+        row = QHBoxLayout()
+        self.button(row, 'Oyun Modunu Aç', self.game_mode_on, 'thermal')
+        self.button(row, 'Günlük Moda Dön', self.game_mode_off, 'thermal')
+        box.addLayout(row)
+        self.button(box, 'Oyun profili olarak kaydet (otomasyon için)', self.save_game_profile, 'thermal')
+        box.addWidget(self.label('Kaydedince Otomasyon sekmesinden oyununa bağla: oyun açılınca otomatik serin oynar.'))
+        fanrow = QHBoxLayout()
+        self.button(fanrow, 'Sessiz Fan', lambda: self.command('auto'))
+        self.button(fanrow, 'Dengeli Fan', lambda: self.command('fan_preset', 'balanced'))
+        self.button(fanrow, 'Serin Fan', lambda: self.command('fan_preset', 'cool'))
+        box.addLayout(fanrow)
         box = self.card(page, 'Hazır soğutma profilleri')
         box.addWidget(self.label('Güç ve frekans sınırlarını birlikte uygular. Sıcaklık ve FPS etkisi iş yüküne göre değişir; ölçülmüş sıcaklık düşüşü garantisi değildir.'))
         self.thermal_combo = QComboBox()
@@ -756,6 +800,41 @@ class ControlCenter(QMainWindow):
         box.addWidget(self.label('Doğrudan CPU/GPU voltaj azaltma bu cihazda doğrulanmadı; bu nedenle voltaj ayarı kapalı. Buradaki profiller frekans sınırı ve güç modu kullanır. GPU watt sınırı da mevcut sürücüde desteklenmiyor.'))
         page.addStretch()
         self.cooling_initialized = False
+
+    def game_mode_on(self):
+        self.command('thermal_preset', 'gaming_cool')
+        self.command('fan_preset', 'cool')
+
+    def game_mode_off(self):
+        self.command('thermal_preset', 'stock')
+        self.command('auto')
+
+    def save_game_profile(self):
+        def save():
+            from .hardware import validate_profile
+            name = 'Oyun - Serin'
+            if name in self.store.profiles:
+                raise ValueError('Oyun - Serin zaten kayıtlı; Otomasyon sekmesinden oyununa bağlayabilirsin.')
+            settings = {'power_profile': 'balanced', 'boost_enabled': True,
+                        'cpu_max_mhz': 3500, 'gpu_max_mhz': 2100,
+                        'fan': {'mode': 'preset', 'preset': 'cool'}}
+            capabilities = self.state.get('capabilities', {})
+            if not capabilities.get('cpu_limit'):
+                settings.pop('cpu_max_mhz', None)
+            if not capabilities.get('gpu_limit'):
+                settings.pop('gpu_max_mhz', None)
+            settings = validate_profile(settings)
+            previous = dict(self.store.profiles)
+            self.store.profiles[name] = settings
+            try:
+                self.store.save()
+            except Exception:
+                self.store.data['profiles'] = previous
+                raise
+            self.reload_profiles(name)
+            self.command('configure', json.dumps(self.store.data))
+            self.feedback('Oyun - Serin kaydedildi. Otomasyon sekmesinden oyununa bağla.')
+        self.guarded(save)
 
     def preview_thermal(self, *_):
         presets = self.state.get('cooling', {}).get('presets', {})
@@ -830,8 +909,9 @@ class ControlCenter(QMainWindow):
         box=self.card(page,'Pil sağlığı ve şarj')
         self.battery_text=self.label('Pil ölçümleri bekleniyor…');box.addWidget(self.battery_text)
         self.charge_reason=self.label('Destek bilgisi bekleniyor…');box.addWidget(self.charge_reason)
-        self.charge_end=QSpinBox();self.charge_end.setRange(50,100);self.charge_end.setValue(80);self.charge_end.setSuffix(' % şarj sınırı');box.addWidget(self.charge_end)
-        self.button(box,'Şarj sınırını uygula',lambda:self.command('charge_limit',str(self.charge_end.value())),'charge_limit')
+        self.charge_end=QSpinBox();self.charge_end.setRange(50,100);self.charge_end.setValue(80);self.charge_end.setSuffix(' % şarj sınırı');self.charge_end.setVisible(False);box.addWidget(self.charge_end)
+        self.charge_button=self.button(box,'Şarj sınırını uygula',lambda:self.command('charge_limit',str(self.charge_end.value())),'charge_limit')
+        self.charge_button.setVisible(False)
         page.addStretch()
 
     def build_display(self):
@@ -874,6 +954,8 @@ class ControlCenter(QMainWindow):
         self.app_list=QListWidget();self.app_list.setMaximumHeight(120)
         self.app_list.setStyleSheet('QListWidget { background:#132033; color:#c8d5e5; border:1px solid #2c4055; border-radius:8px; padding:8px; } QListWidget::item:selected { background:#204a50; }')
         box.addWidget(self.app_list)
+        self.app_hint = self.label('Örnek: CS2 için önce Serin çalışma sekmesinden Oyun profili olarak kaydet, sonra Çalışan programdan kural ekle ile oyunu bağla.')
+        box.addWidget(self.app_hint)
         self.button(box,'Uygulama kuralı ekle',self.add_app_rule)
         self.button(box,'Çalışan programdan kural ekle',self.add_running_rule)
         self.button(box,'Seçili uygulama kuralını düzenle',self.edit_selected_app_rule)
@@ -899,6 +981,15 @@ class ControlCenter(QMainWindow):
         self.app_list.clear()
         for rule in self.app_rules:self.app_list.addItem(Path(rule['executable']).name+' → '+rule['profile']+'\n'+rule['executable'])
         if self.app_rules:self.app_list.setCurrentRow(min(max(0,selected),len(self.app_rules)-1))
+        if hasattr(self, 'app_hint'):
+            try:
+                from .games import steam_games
+                games = steam_games()
+                names = ', '.join(g['name'] for g in games[:6])
+                extra = f" Steam'de {len(games)} oyun bulundu ({names})." if games else ''
+            except OSError:
+                extra = ''
+            self.app_hint.setText('Örnek: CS2 için önce Serin çalışma sekmesinden Oyun profili olarak kaydet, sonra oyun açıkken Çalışan programdan kural ekle ile bağla.' + extra)
 
     def add_app_rule(self):
         path,_=QFileDialog.getOpenFileName(self,'Çalışan programın gerçek yürütülebilir dosyası')
@@ -1008,6 +1099,12 @@ class ControlCenter(QMainWindow):
             else:
                 enabled = capabilities.get(capability,False)
             button.setEnabled(bool(enabled) and not self.action_busy)
+        on_battery = (self.state.get('features', {}) or {}).get('battery', {}).get('status') == 'Discharging'
+        turbo = getattr(self, 'scenario_buttons', {}).get('Turbo')
+        if turbo is not None and on_battery:
+            turbo.setEnabled(False)
+            if hasattr(self, 'scenario_state') and 'priz' not in self.scenario_state.text():
+                self.scenario_state.setText(self.scenario_state.text() + ' · Turbo yalnız prizde kullanılır.')
 
     def command(self, op, *arguments, action=True):
         if action:
@@ -1092,8 +1189,16 @@ class ControlCenter(QMainWindow):
         self.camera_actual.setText(('Kamera açık' if camera.get('value') else 'Kamera kapalı')+' · '+camera.get('reason',''))
         if camera.get('available') and not self.camera_initialized:self.camera_check.setChecked(camera['value']);self.camera_initialized=True
         fn=extra.get('fn_lock',{});self.fn_actual.setText('Sistemden okunan Fn Lock: '+('Açık' if fn.get('value')==1 else 'Kapalı' if fn.get('value')==0 else 'Destek yok'))
-        self.battery_text.setText(f"Seviye: %{battery.get('capacity','—')} · Sağlık: %{battery.get('health','—')} · Döngü: {battery.get('cycles','—')}\nDurum: {battery.get('status','—')} · Voltaj: {battery.get('voltage_v','—')} V · Akım: {battery.get('current_a','—')} A · Güç: {battery.get('power_w','—')} W")
-        self.charge_reason.setText(extra.get('charge_limit',{}).get('reason') or 'Şarj sınırı arayüzü mevcut.')
+        self.battery_text.setText(f"Seviye: %{battery.get('capacity','—')} · Sağlık: %{battery.get('health','—')} · Döngü: {battery.get('cycles','—')}\nDurum: {battery.get('status','—')} · Voltaj: {battery.get('voltage_v','—')} V · Akım: {battery.get('current_a','—')} A · Güç: {battery.get('power_w','—')} W" + ('\nPrizde, pil dolu — normal, şarj akmıyor.' if battery.get('status') == 'Full' and battery.get('power_w') == 0.0 else ''))
+        charge = extra.get('charge_limit', {})
+        if charge.get('available'):
+            self.charge_reason.setText('Şarj sınırı arayüzü mevcut.')
+        else:
+            self.charge_reason.setText('Bu modelde şarj sınırı yok — pil %100’e kadar dolar. ' + (charge.get('reason') or ''))
+        self.charge_end.setEnabled(bool(charge.get('available')))
+        self.charge_end.setVisible(bool(charge.get('available')))
+        if hasattr(self, 'charge_button'):
+            self.charge_button.setVisible(bool(charge.get('available')))
         self.oem_text.setText('\n\n'.join(title+': '+extra.get(key,{}).get('reason','Bekleniyor…') for key,title in [('oem_mode','OEM performans modları'),('cpu_watts','CPU watt sınırları'),('gpu_watts','GPU TGP / Dynamic Boost'),('mux','GPU geçişi'),('rgb_effects','RGB efektleri'),('camera','Kamera'),('usb_charge','USB şarjı')]))
         auto=state.get('automation',{})
         rules=auto.get('document',{}).get('automation',{})
@@ -1104,7 +1209,30 @@ class ControlCenter(QMainWindow):
         power = state.get('power_profile')
         boost = state.get('boost_enabled')
         rgb = state.get('rgb_state') or {}
-        self.power_state.setText('Sistemden okunan etkin profil: '+POWER_NAMES.get(power, 'Okunamadı'))
+        combined = ''
+        if power == 'power-saver' and epp.get('value') == 'power':
+            combined = ' · Birleşik etki: en sessiz/serin ama en yavaş (2400 MHz bandı normal).'
+        elif power == 'performance' and epp.get('value') == 'performance':
+            combined = ' · Birleşik etki: en hızlı ama sıcak/gürültülü.'
+        self.power_state.setText('Sistemden okunan etkin profil: '+POWER_NAMES.get(power, 'Okunamadı')+combined)
+        cpu_max = ((state.get('cooling') or {}).get('cpu') or {}).get('max_mhz')
+        gpu_req = ((state.get('cooling') or {}).get('gpu') or {}).get('requested_max_mhz')
+        fan_mode = (state.get('fans') or {}).get('mode')
+        if power == 'power-saver' and boost is False and cpu_max == 1800:
+            scenario = 'Sessiz (ofis)'
+        elif power == 'balanced' and boost is True and cpu_max == 3500 and gpu_req == 2100:
+            scenario = 'Oyun (serin)'
+        elif power == 'performance' and boost is True and not cpu_max and not gpu_req:
+            scenario = 'Turbo (tam güç — ısınır)'
+        elif power == 'balanced' and boost is True and not cpu_max and not gpu_req:
+            scenario = 'Dengeli (günlük)'
+        else:
+            scenario = 'Özel karışım'
+        if hasattr(self, 'scenario_state'):
+            self.scenario_state.setText('Etkin senaryo: ' + scenario)
+        for title, btn in getattr(self, 'scenario_buttons', {}).items():
+            active = scenario.startswith(title)
+            btn.setStyleSheet('border: 2px solid #2dd4bf; font-weight: bold;' if active else '')
         self.boost_state.setText('Sistemden okunan boost: '+('Açık' if boost is True else 'Kapalı' if boost is False else 'Okunamadı'))
         values = rgb.get('rgb')
         color = QColor(*values).name() if values else 'Karışık veya okunamadı'
@@ -1231,6 +1359,9 @@ class ControlCenter(QMainWindow):
         parts = ['Sensör okuması '+datetime.now().strftime('%H:%M:%S')]
         if memory:
             parts.append(f'RAM {memory["used_gib"]:.1f}/{memory["total_gib"]:.1f} GiB')
+        disk = telemetry.disk()
+        if disk:
+            parts.append(f'Disk {disk["used_gib"]:.0f}/{disk["total_gib"]:.0f} GiB')
         ssd = telemetry.temperature('nvme')
         if ssd is not None:
             parts.append(f'SSD {ssd:.0f}°C')
@@ -1241,6 +1372,9 @@ class ControlCenter(QMainWindow):
                 parts.append(f'Pil kapasite sağlığı %{battery["health"]}')
             if 'cycles' in battery:
                 parts.append(f'{battery["cycles"]} pil döngüsü')
+        gpu_temp = self.gpu_values[0] if time.monotonic()-self.gpu_received <= 5 else None
+        if (cpu_temp is not None and cpu_temp >= 85) or (gpu_temp is not None and gpu_temp >= 83):
+            parts.append('Isınıyor — Serin çalışma sekmesinden Oyun Modunu aç')
         self.sensor_summary.setText('  ·  '.join(parts))
         self.render_sensors()
         self.record_history(cpu_temp,cpu_usage,battery)
