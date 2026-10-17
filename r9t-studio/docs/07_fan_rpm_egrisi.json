@@ -1,0 +1,335 @@
+{
+  "generated_utc": "2026-10-17T21:48:05Z",
+  "module_version": "0.2.0",
+  "precondition": {
+    "cpu_temp": 69,
+    "gpu_temp": 63,
+    "auto_cpu_pwm": 110,
+    "auto_cpu_rpm": 3483,
+    "auto_gpu_rpm": 3511
+  },
+  "step_seconds": 24,
+  "steps": [
+    {
+      "duty": 50,
+      "samples": [
+        {
+          "cpu_rpm": 3180,
+          "gpu_rpm": 3227,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "cpu_temp": 69,
+          "gpu_temp": 63,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 3175,
+          "gpu_rpm": 3227,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "cpu_temp": 69,
+          "gpu_temp": 63,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 3185,
+          "gpu_rpm": 3232,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "cpu_temp": 69,
+          "gpu_temp": 63,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 3199,
+          "gpu_rpm": 3237,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "cpu_temp": 69,
+          "gpu_temp": 63,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 3175,
+          "gpu_rpm": 3232,
+          "cpu_pwm": 100,
+          "gpu_pwm": 100,
+          "cpu_temp": 69,
+          "gpu_temp": 63,
+          "mode": 1
+        }
+      ],
+      "cpu_rpm_median": 3180,
+      "gpu_rpm_median": 3232,
+      "cpu_rpm_min": 3175,
+      "gpu_rpm_min": 3227
+    },
+    {
+      "duty": 60,
+      "samples": [
+        {
+          "cpu_rpm": 3717,
+          "gpu_rpm": 3763,
+          "cpu_pwm": 120,
+          "gpu_pwm": 120,
+          "cpu_temp": 69,
+          "gpu_temp": 64,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 3717,
+          "gpu_rpm": 3743,
+          "cpu_pwm": 120,
+          "gpu_pwm": 120,
+          "cpu_temp": 69,
+          "gpu_temp": 64,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 3717,
+          "gpu_rpm": 3763,
+          "cpu_pwm": 120,
+          "gpu_pwm": 120,
+          "cpu_temp": 69,
+          "gpu_temp": 64,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 3730,
+          "gpu_rpm": 3756,
+          "cpu_pwm": 120,
+          "gpu_pwm": 120,
+          "cpu_temp": 69,
+          "gpu_temp": 64,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 3724,
+          "gpu_rpm": 3756,
+          "cpu_pwm": 120,
+          "gpu_pwm": 120,
+          "cpu_temp": 69,
+          "gpu_temp": 64,
+          "mode": 1
+        }
+      ],
+      "cpu_rpm_median": 3717,
+      "gpu_rpm_median": 3756,
+      "cpu_rpm_min": 3717,
+      "gpu_rpm_min": 3743
+    },
+    {
+      "duty": 70,
+      "samples": [
+        {
+          "cpu_rpm": 4261,
+          "gpu_rpm": 4278,
+          "cpu_pwm": 140,
+          "gpu_pwm": 140,
+          "cpu_temp": 69,
+          "gpu_temp": 63,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 4269,
+          "gpu_rpm": 4261,
+          "cpu_pwm": 140,
+          "gpu_pwm": 140,
+          "cpu_temp": 69,
+          "gpu_temp": 63,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 4278,
+          "gpu_rpm": 4261,
+          "cpu_pwm": 140,
+          "gpu_pwm": 140,
+          "cpu_temp": 69,
+          "gpu_temp": 63,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 4269,
+          "gpu_rpm": 4269,
+          "cpu_pwm": 140,
+          "gpu_pwm": 140,
+          "cpu_temp": 69,
+          "gpu_temp": 62,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 4278,
+          "gpu_rpm": 4269,
+          "cpu_pwm": 140,
+          "gpu_pwm": 140,
+          "cpu_temp": 69,
+          "gpu_temp": 62,
+          "mode": 1
+        }
+      ],
+      "cpu_rpm_median": 4269,
+      "gpu_rpm_median": 4269,
+      "cpu_rpm_min": 4261,
+      "gpu_rpm_min": 4261
+    },
+    {
+      "duty": 80,
+      "samples": [
+        {
+          "cpu_rpm": 4770,
+          "gpu_rpm": 4718,
+          "cpu_pwm": 160,
+          "gpu_pwm": 160,
+          "cpu_temp": 68,
+          "gpu_temp": 62,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 4759,
+          "gpu_rpm": 4728,
+          "cpu_pwm": 160,
+          "gpu_pwm": 160,
+          "cpu_temp": 68,
+          "gpu_temp": 61,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 4759,
+          "gpu_rpm": 4718,
+          "cpu_pwm": 160,
+          "gpu_pwm": 160,
+          "cpu_temp": 67,
+          "gpu_temp": 61,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 4759,
+          "gpu_rpm": 4728,
+          "cpu_pwm": 160,
+          "gpu_pwm": 160,
+          "cpu_temp": 67,
+          "gpu_temp": 61,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 4759,
+          "gpu_rpm": 4707,
+          "cpu_pwm": 160,
+          "gpu_pwm": 160,
+          "cpu_temp": 67,
+          "gpu_temp": 61,
+          "mode": 1
+        }
+      ],
+      "cpu_rpm_median": 4759,
+      "gpu_rpm_median": 4718,
+      "cpu_rpm_min": 4759,
+      "gpu_rpm_min": 4707
+    },
+    {
+      "duty": 90,
+      "samples": [
+        {
+          "cpu_rpm": 5246,
+          "gpu_rpm": 5170,
+          "cpu_pwm": 180,
+          "gpu_pwm": 180,
+          "cpu_temp": 66,
+          "gpu_temp": 60,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 5259,
+          "gpu_rpm": 5183,
+          "cpu_pwm": 180,
+          "gpu_pwm": 180,
+          "cpu_temp": 66,
+          "gpu_temp": 59,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 5246,
+          "gpu_rpm": 5170,
+          "cpu_pwm": 180,
+          "gpu_pwm": 180,
+          "cpu_temp": 66,
+          "gpu_temp": 59,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 5246,
+          "gpu_rpm": 5170,
+          "cpu_pwm": 180,
+          "gpu_pwm": 180,
+          "cpu_temp": 65,
+          "gpu_temp": 59,
+          "mode": 1
+        }
+      ],
+      "cpu_rpm_median": 5246.0,
+      "gpu_rpm_median": 5170.0,
+      "cpu_rpm_min": 5246,
+      "gpu_rpm_min": 5170
+    },
+    {
+      "duty": 100,
+      "samples": [
+        {
+          "cpu_rpm": 5750,
+          "gpu_rpm": 5615,
+          "cpu_pwm": 200,
+          "gpu_pwm": 200,
+          "cpu_temp": 65,
+          "gpu_temp": 58,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 5765,
+          "gpu_rpm": 5629,
+          "cpu_pwm": 200,
+          "gpu_pwm": 200,
+          "cpu_temp": 64,
+          "gpu_temp": 58,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 5765,
+          "gpu_rpm": 5629,
+          "cpu_pwm": 200,
+          "gpu_pwm": 200,
+          "cpu_temp": 64,
+          "gpu_temp": 58,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 5765,
+          "gpu_rpm": 5615,
+          "cpu_pwm": 200,
+          "gpu_pwm": 200,
+          "cpu_temp": 64,
+          "gpu_temp": 57,
+          "mode": 1
+        },
+        {
+          "cpu_rpm": 5765,
+          "gpu_rpm": 5615,
+          "cpu_pwm": 200,
+          "gpu_pwm": 200,
+          "cpu_temp": 63,
+          "gpu_temp": 57,
+          "mode": 1
+        }
+      ],
+      "cpu_rpm_median": 5765,
+      "gpu_rpm_median": 5615,
+      "cpu_rpm_min": 5750,
+      "gpu_rpm_min": 5615
+    }
+  ],
+  "stopped": null,
+  "final": {
+    "mode": 0,
+    "mode_byte": 160,
+    "auto_verified": true
+  }
+}

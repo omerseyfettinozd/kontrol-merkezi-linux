@@ -1,6 +1,6 @@
 # R9T Studio — Ana Plan (Kesin Yol Haritası)
 
-Tarih: 2026-10-17. Durum: **onaylandı, Faz 0 sürüyor** (2026-10-18: 0.0 ve 0.1 tamam; 0.2 `legacy/merge-0.12`'de hazır, main'e merge onay bekliyor; 0.3 belgesi yazıldı, root dökümü bekliyor; 0.4 geçici karar Tauri, görsel/KDE kontrolü bekliyor; 0.5 betiği hazır, çalıştırılmadı). Sürüm: 2 (3 bağımsız incelemeden geçti: donanım/güvenlik, uygulanabilirlik, devir).
+Tarih: 2026-10-17. Durum: **Faz 0 büyük ölçüde tamam, Faz 1 başlıyor** (2026-10-18: 0.0–0.5, 0.7, 0.8 tamam; 0.6 tuş kalibrasyonu ve 0.8 gözetimli uyku testi kullanıcı başında yapılacak. 2026-10-18'de kullanıcı `/goal` ile sudo yetkisi verdi; root betikleri Claude çalıştırıyor). Sürüm: 2 (3 bağımsız incelemeden geçti: donanım/güvenlik, uygulanabilirlik, devir).
 
 ## 0. Önce Bunu Oku
 
