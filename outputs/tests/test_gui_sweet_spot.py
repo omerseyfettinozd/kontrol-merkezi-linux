@@ -24,7 +24,7 @@ class SweetSpotGuiTests(unittest.TestCase):
     def setUpClass(cls):cls.app=QApplication.instance() or QApplication([])
     def setUp(self):self.win=CoolingWindow()
     def tearDown(self):self.win.close();self.win.deleteLater();self.app.sendPostedEvents(None,QEvent.Type.DeferredDelete)
-    def button(self):return next(button for button,cap in self.win.action_buttons if cap=='thermal')
+    def button(self):return next(button for button,cap in self.win.action_buttons if cap=='thermal_preset')
     def test_preview_includes_measured_scope_and_applied_fan_energy_settings(self):
         text=self.win.thermal_description.text()
         for expected in ('5 kısa','%4,9','Gerçek oyun FPS','4900','2475','Serin fan eğrisi','Dengeli performans'):
@@ -38,5 +38,10 @@ class SweetSpotGuiTests(unittest.TestCase):
             self.assertTrue(self.button().isEnabled())
             self.win.state['capabilities'][cap]=True
             self.win.thermal_combo.setCurrentIndex(self.win.thermal_combo.findData('sweet_spot'))
+    def test_selected_preset_gate_does_not_block_other_thermal_actions(self):
+        self.win.state['capabilities']['curve']=False;self.win.update_buttons()
+        self.assertFalse(self.button().isEnabled())
+        others=[button for button,cap in self.win.action_buttons if cap=='thermal']
+        self.assertTrue(others);self.assertTrue(all(button.isEnabled() for button in others))
     def test_busy_state_blocks_profile_action(self):
         self.win.action_busy=True;self.win.update_buttons();self.assertFalse(self.button().isEnabled())

@@ -177,3 +177,15 @@ Dağıtım araçları/özet kanıt `/home/chaple/.local/state/thermal-diagnostic
 ### Sweet Spot kurulu teslim doğrulaması
 
 Yönetici doğrulaması tamamlandı;kurulu0.10.1 üzerinde3dosya staging SHA256 ile eşleşti. Rootservis ve sessionservis active. Yeni `thermal_preset sweet_spot` gerçekservisten başarıyla uygulanıp CPU4900/GPUistek2475/boost açık/Serin curve geri okundu;ekran300Hz. Wayland üzerinde kuruluGUI açıldı,seçilenSweet Spot açıklaması/etkinuyguladüğmesi ve ekran görüntüsü görsel olarak doğrulandı. ArayüzSerin çalışma sekmesinde açık. Kaynak0.11.1/kurulu0.10.1 farkı sürer;bu teslim yalnızSweet Spot düzeltmesidir. Rootönceki3dosya yedeği `/usr/local/lib/.slayer-r9t-sweetspot-backup-1791650874582237771`;normalgüncelleme geçti,hata rollback yolu fizikselzorlanmadı. Kaynak212test ve stage9hedef test kanıtı önceki bölümde;commit/push yok. Sonreceipt `sweetspot-update-20261010/deployment-result.json`.
+
+## 0.11.1 aday (10 Ekim 2026 — oyun ve güç anlaşılırlığı)
+
+- **Tek tuş Oyun Modu:** Serin çalışma sekmesinde Oyun Modunu Aç (gaming_cool: dengeli güç, boost açık, CPU 3500, GPU 2100 + serin fan) ve Günlük Moda Dön (stock + oto fan). İki komut kuyruğa girer; sıcaklık hedefi donanımda otomatik durur.
+- **Oyun profili kaydet:** Oyun - Serin profilini tek tuşla kaydeder; Otomasyon sekmesinden oyuna bağlanınca oyun açılışında otomatik uygulanır.
+- **Isı uyarısı:** CPU 85°C+ veya GPU 83°C+ iken genel durum satırında Serin çalışma önerisi görünür.
+- **Pil sadeleştirmesi:** Şarj sınırı desteklenmiyorsa kutu ve buton gizlenir; Full + 0 W iken prizde dolu açıklaması gösterilir. Güç tasarrufu + tasarruf EPP birleşik etkisi güç satırında açıklanır.
+- **Doğrulama:** 214 birim/Qt testi offscreen geçti (`test_gui_game_mode.py` 5 test dahil).
+- **Ana sayfa senaryo kartı:** Genel durum sekmesinde Sessiz / Dengeli / Oyun / Turbo tek tuşları ve etkin senaryo satırı (güç + boost + frekans sınırından okunur). Turbo tam güçtür ve ısınır uyarısı taşır. 216 test geçti.
+- **Turbo priz kilidi (Asus paritesi):** Pilde Turbo butonu kapanır ve yalnız prizde uyarısı gösterilir; komut seviyesinde de reddedilir.
+- **Steam oyun önerisi:** Otomasyon sekmesi salt okunur Steam kütüphanesini tarar (32 oyun bulundu) ve kural ekleme ipucunda listeler.
+- **Doğrulama:** 219 birim/Qt testi offscreen geçti (`test_gui_game_mode.py` + `test_games.py` dahil).
