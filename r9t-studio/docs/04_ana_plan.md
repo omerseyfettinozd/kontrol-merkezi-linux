@@ -1,12 +1,12 @@
 # R9T Studio — Ana Plan (Kesin Yol Haritası)
 
-Tarih: 2026-10-17. Durum: **onaylandı, Faz 0 sürüyor** (0.0 tamam). Sürüm: 2 (3 bağımsız incelemeden geçti: donanım/güvenlik, uygulanabilirlik, devir).
+Tarih: 2026-10-17. Durum: **onaylandı, Faz 0 sürüyor** (0.0 ve 0.1 tamam). Sürüm: 2 (3 bağımsız incelemeden geçti: donanım/güvenlik, uygulanabilirlik, devir).
 
 ## 0. Önce Bunu Oku
 
 - **Tek geçerli plan bu dosyadır.** Kanıtlar `03_dogrulama_raporu.md`'dedir.
 - `01_mevcut_sistem_analiz_raporu.md` (= `analiz_raporu.md`) ve `02_yeni_nesil_mimari_plani.md` (= `mimari_ve_uygulama_plani.md`) Gemini'nin yazdığı birebir kopyalardır. Yalnız arka plan bilgisi sayılır.
-- **`r9t-studio/CLAUDE.md`, Faz 0.1 bitene kadar geçersizdir.** Otomatik yüklenir ve "Verified on Live System" der. Ama içindeki donanım değerleri (9955HX3D, 5070 Ti, 240 Hz), ioctl sabitleri (0x8004EC..), `/tmp` soketi, ryzenadj/GPU watt presetleri, şarj eşiği ve "önce kernel v2" sırası yanlıştır.
+- `r9t-studio/CLAUDE.md` Faz 0.1'de (2026-10-17) bu plana göre yeniden yazıldı; Gemini'nin hatalı şartnamesi kaldırıldı.
 - **Çelişki olursa öncelik sırası:** bu dosya > `03_dogrulama_raporu.md` > canlı ölçüm > CLAUDE.md.
 - CLAUDE.md'deki "../outputs/slayer_r9t/ değiştirme" kuralı Faz 0.2 birleştirmesini engellemez.
 

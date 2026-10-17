@@ -1,86 +1,77 @@
-# R9T Studio — Next-Generation Linux Control Center for GameGaraj Slayer R9T
+# R9T Studio
 
-## Project Overview
-`r9t-studio` is a complete, production-grade Linux hardware control daemon (`r9td`), CLI (`r9tctl`), kernel fan module enhancement (`r9t_fan`), and GPU-accelerated desktop application (`r9t-ui` built with Tauri v2 + Svelte 5 / HTML5 Canvas) for the **GameGaraj Slayer R9T** laptop (AMD Ryzen 9 9955HX3D + NVIDIA GeForce RTX 5070 Ti Laptop GPU + 2560x1600 240Hz display, running Arch Linux with Hyprland and KDE Plasma support).
+GameGaraj Slayer R9T için Rust ile sıfırdan yazılan Linux kontrol merkezi: root servis `r9td`, kullanıcı ajanı `r9t-session`, CLI `r9tctl`, Tauri v2 + Svelte 5 arayüzü `ui/` ve `r9t_fan` kernel modülü. Eski Python sistemi (`../outputs/slayer_r9t/`) kalıcı geçişe (Faz 4 sonu) kadar günlük kullanımda ve yedek olarak kalır; ona yeni özellik eklenmez.
 
-Reference existing Python implementation in `../outputs/slayer_r9t/` and kernel module in `../outputs/fan-driver/r9t_fan.c` for all hardware paths, sysfs attributes, and ioctl constants. Do NOT modify `../outputs/slayer_r9t/`; build the entire new system cleanly inside `r9t-studio/`.
+## Önce Oku
 
----
+- **Tek geçerli plan:** `docs/04_ana_plan.md`. Kanıtlar: `docs/03_dogrulama_raporu.md`.
+- `docs/01_*`, `02_*`, `analiz_raporu.md`, `mimari_ve_uygulama_plani.md` Gemini'nin raporlarıdır; yalnız arka plan. Donanım değerlerine güvenme.
+- Çelişkide öncelik: `04_ana_plan.md` > `03_dogrulama_raporu.md` > canlı ölçüm > bu dosya.
+- Yeni fikirler `docs/ileride.md`'ye yazılır; fazın kapsamı büyütülmez.
 
-## Hardware & Sysfs Specification (Verified on Live System)
+## Çalışma Kuralları
 
-1. **Kernel Fan Module (`r9t_fan` & `/dev/tuxedo_io`):**
-   - Kernel module parameters:
-     - `/sys/module/r9t_fan/parameters/status` (read): returns `mode=%d cpu_target=%u gpu_target=%u cpu_rpm=%d gpu_rpm=%d cpu_temp=%u gpu_temp=%u mode_byte=%u cpu_pwm=%u gpu_pwm=%u lease_ms=%d error=%d thermal=%d`
-     - `/sys/module/r9t_fan/parameters/control` (write): accepts `auto`, `boost`, or `manual <cpu_pct> <gpu_pct>` (15-second lease; must be refreshed every 2–5 seconds while manual curve/target is active).
-   - `driver/r9t_fan.c` (v2 enhancement):
-     - Cache the last EC read state (`cpu`, `gpu`, `r0`, `r1`, `reg`, `pwm0`, `pwm1`) in kernel memory with a `jiffies` timestamp (`last_sample_jiffies`). If `status_get` is called within `500ms` of the last sample, return the cached values immediately without issuing 11 slow WMI ACPI calls (`uniwill_read_ec_ram`), reducing read latency from ~550ms to <0.01ms.
-     - Allow `manual <cpu_pct> <gpu_pct>` from `20` to `100` (instead of `50` to `100`) when temperatures are safe (`cpu < 80` and `gpu < 78`), enforcing minimum `60%` when `cpu >= 85` or `gpu >= 82`, and `thermal_override` (`100%`) at `cpu >= 95` or `gpu >= 87`.
-   - `/dev/tuxedo_io` ioctl constants (fallback when `r9t_fan` status is unavailable):
-     - `0x8004EC20` (Temp 1), `0x8004EC21` (Fan 1), `0x8004EC22` (Temp 2), `0x8004EC23` (Fan 2).
-     - IMPORTANT: Never call `/dev/tuxedo_io` if `/sys/module/r9t_fan/parameters/status` already succeeded!
+- **sudo çalıştırma, şifre isteme.** Root gereken adım için `tools/` altına betik yaz, içeriğini göster; kullanıcı `! sudo …` ile çalıştırır. Sonuç `docs/` altına yazılır.
+- Donanıma yazan her adımdan önce kullanıcı onayı. Donanım kabulü yalnız fiziksel ölçümle; mock/CI kabul sayılmaz.
+- Git komutları depo kökünden (`/home/chaple/Belgeler/kontrol merkezi linux`). **`git add -A` / `git add .` yok**, dosyalar yol yol eklenir. Push yalnız onayla, yalnız `origin`'e; `private-archive`'a asla. Depo: monorepo, `origin` açık (public).
+- Eski kod (`../outputs/`) yalnız Faz 0.2 birleştirmesi için değişir; eski unitlere yalnız systemd drop-in eklenir.
+- Eski testler: `cd ../outputs && PYTHONPATH=. PYTHONDONTWRITEBYTECODE=1 QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -q`. `live_*.py` ve `R9T_LIVE_CHECK=1` çalıştırılmaz.
+- Her faz sonunda testler geçer, kanıt `docs/`'a yazılır, `/home/chaple/second-brain/300-Projects/Kontrol-Merkezi-Linux.md` güncellenir.
 
-2. **Extended `hwmon` & Power Supply Sensors:**
-   - Discover dynamically by reading `/sys/class/hwmon/hwmon*/name`:
-     - `k10temp`: AMD Ryzen 9 9955HX3D temperatures (`temp1_input` = Tctl, `temp3_input` / `temp4_input` = CCD1/CCD2).
-     - `amdgpu`: Radeon 610M iGPU temperature (`temp1_input`), power (`power1_average` / `power1_input`).
-     - `nvme`: Two NVMe SSD temperature sensors (`temp1_input`, composite/sensor 1/2).
-     - `spd5118`: Two DDR5 SODIMM temperature sensors (`temp1_input`).
-     - `mt7921_phy0`: Wi-Fi 6E adapter temperature (`temp1_input`).
-   - Power Supplies (`/sys/class/power_supply/`):
-     - `AC0/online`: `1` (AC connected) or `0` (On battery).
-     - `BAT0/`: `capacity`, `status`, `energy_now`, `energy_full`, `energy_full_design`, `power_now`, `voltage_now`, `cycle_count`, `charge_control_end_threshold`.
-     - `ucsi-source-psy-USBC000:001` & `002`: USB-C PD status (`online`, `voltage_now`, `current_now`).
+## Donanım Gerçekleri (canlı sistem, 2026-10-17)
 
-3. **NVIDIA RTX 5070 Ti (Direct NVML FFI via `nvml-wrapper` or `libloading` on `/usr/lib/libnvidia-ml.so.1`):**
-   - Check `/sys/bus/pci/devices/0000:01:00.0/power/runtime_status` first.
-   - If `runtime_status == "suspended"` (D3cold deep sleep), do NOT call NVML functions that wake the GPU; report GPU state as `Suspended (D3cold, 0W)`.
-   - When active (`active`), read via NVML in <0.1ms (zero `nvidia-smi` subprocesses):
-     - Temperature (`nvmlDeviceGetTemperature`), Power usage mW (`nvmlDeviceGetPowerUsage`), Power management limit (`nvmlDeviceGetPowerManagementLimit`, `nvmlDeviceGetPowerManagementLimitConstraints`), Clocks (`Graphics`, `Memory`), Utilization (`gpu`, `memory`), VRAM (`used`, `total`), Fan speed, Performance state (`P0`–`P8`), and BOTH Graphics + Compute running processes (`nvmlDeviceGetGraphicsRunningProcesses_v3` & `nvmlDeviceGetComputeRunningProcesses_v3`).
+| Bileşen | Değer | Kural |
+|---|---|---|
+| Cihaz | GAME GARAJ SLAYER R9T, BIOS N.1.19GAR06 | Model adı DMI'dan okunur, sabit yazılmaz |
+| CPU | Ryzen 9 8940HX (Zen 4, 16C/16T, V-Cache yok) | cpufreq `scaling_max_freq`, `boost`, amd-pstate EPP. RAPL root (0400) |
+| iGPU | Radeon 610M `0000:07:00.0` | amdgpu `power1_input` = **APU paket PPT**, iGPU watt'ı değil |
+| dGPU | RTX 5070 Laptop (GB206M, `10de:2d18`, `0000:01:00.0`, 8 GB) | NVML, `NO_ATTACH`, yalnız `runtime_status == active` iken. Güç limiti salt okunur (`GetEnforcedPowerLimit`, 5–115 W). Kontrol: `Set/ResetGpuLockedClocks` (≤ 3090 MHz). NVML fan alanı yok |
+| Ekran | eDP-1 2560x1600, 60/240/300 Hz | **dGPU'ya bağlı** → dGPU D3cold'a girmez. Arka ışık `nvidia_0`. Hz modları çalışma anında okunur |
+| Fan / EC | DKMS `slayer-r9t-fan` 0.1.0 yüklü; `outputs/fan-driver/r9t_fan.c` daha yeni (0.2.0 olacak) | `/sys/module/r9t_fan/parameters/status` (0400) / `control` (0200). EC işlemi ~57 ms; `status` 11–23 işlem yapar, mutex tutar. `manual` yalnız %50–100 |
+| tuxedo_io | `/dev/tuxedo_io` (0600 root) | **Önce `0x8008EC06` hwcheck (=1)**, sonra `EF01` model (0x1A), `EF00` arayüz ('uniwill_wmi'). Okuma: `EF10`/`EF11` CPU/GPU duty (0–200), `EF12`/`EF13` CPU/GPU °C, `EF14` mod. Yazma yalnız acil: `0xF014` fan auto. 0 ya da > 115 geçersiz. RPM ioctl'i yok |
+| RGB | 126 LED, ite_8291 (USB HID 048D:600B), 6×21 ızgara, kanal = satır×21+sütun | `brightness` global (0–50). Renk `multi_intensity` (0–255). Kare: `controls/buffer_input=1` → 126 yazım → `buffer_input=0`. r9td açılış/çıkış/hata yolunda `buffer_input=0` yazar |
+| Fn-Lock, cTGP | `tuxedo_keyboard/fn_lock`, `tuxedo_nvidia_power_ctrl/ctgp_offset` | Önbelleklenir. cTGP'nin etkisi yok, UI'da yok |
+| Güç profili | power-profiles-daemon D-Bus: power-saver/balanced/performance | `platform_profile` yok; yalnız EPP'yi değiştirir |
+| Pil | BAT0 `charge_*` (µAh), `current_now`, `voltage_now`, `voltage_min_design` | W = akım×gerilim. `cycle_count` güvenilmez. **Şarj eşiği yok** |
+| Diğer sensörler | k10temp, 2× nvme, 2× spd5118, mt7921_phy0, acpitz, 2× ucsi, AC0 | Etiket ve aygıt bağıyla eşle, hwmon indeksiyle değil |
+| Ryzen PPT | ryzenadj okuması eksik | **Desteklenmiyor**, watt preseti yok |
+| Masaüstü | Hyprland 0.56, KDE Plasma 6 | Hyprland'da `graphical-session.target` yok. `~/dotfiles/bin/power-watch.sh` Hz otomasyonu yapıyor |
+| Servisler | nvidia-powerd aktif; eski `slayer-r9t.service`, `slayer-r9t-session.service` | nvidia-powerd `scaling_max_freq`'e yazabilir, geri okunur |
+| Kernel | linux-cachyos 7.2.9, lts 6.18.55, Secure Boot kapalı | DKMS iki kernelde test edilir |
+| Araçlar | rust 1.99, node 26, webkit2gtk-4.1, pipewire 1.6, polkit 127 | tauri-cli yok → proje içine `npm i -D @tauri-apps/cli@2` |
 
-4. **AMD CPU Power Limits & Platform Profiles:**
-   - `/sys/firmware/acpi/platform_profile` (or `powerprofilesctl` D-Bus `net.hadess.PowerProfiles`): `quiet` / `power-saver`, `balanced`, `performance`.
-   - AMD Ryzen PPT limits via `ryzenadj` (`--stapm-limit`, `--fast-limit`, `--slow-limit`, `--tctl-temp`), including presets:
-     - `eco_silent`: 35W / 45W / 40W, GPU 80W
-     - `sweet_spot`: 65W / 80W / 75W, GPU 100W
-     - `balanced`: 75W / 100W / 90W, GPU 115W
-     - `performance`: 100W / 125W / 115W, GPU 140W
-     - `extreme`: 120W / 145W / 135W, GPU 140W
+Eski sistem: root soketi `/run/slayer-r9t/control.sock` (NDJSON, `version=1`), durum `/var/lib/slayer-r9t/`, ayarlar `~/.config/slayer-r9t-control-center/settings.json`. Ölçülmüş profiller (MHz tavanı + EPP + boost + fan) plan §1'dedir.
 
-5. **126-Channel Per-Key RGB Keyboard (`/sys/class/leds/rgb:kbd_backlight*`):**
-   - `rgb:kbd_backlight` and `rgb:kbd_backlight_1` .. `rgb:kbd_backlight_125` (126 total LED zones).
-   - Keep file descriptors to `multi_intensity` and `brightness` cached in an open FD pool (`LedFdPool`) inside `r9td` so updating all 126 keys takes <0.3ms via `seek(0)` + `write_all` instead of opening/closing 378 sysfs files on every poll.
-   - Support modes: Static, 4-Zone, Per-Key custom map (Turkish Q layout), Breathing, Wave, Thermal Gradient (CPU temp -> color), and PipeWire Audio Reactive.
-
-6. **Dual Desktop Backend (Hyprland Native IPC + KDE Plasma Fallback):**
-   - **Hyprland (`$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/`):**
-     - Connect directly to `.socket.sock` to query `j/monitors`, `j/activewindow`, `j/clients` and to apply refresh rate (`keyword monitor eDP-1,2560x1600@240,auto,1` or `@60`) in <0.2ms.
-     - Subscribe to `.socket2.sock` event stream (`activewindowv2`, `fullscreen`, `openwindow`, `closewindow`) for zero-polling game/fullscreen detection.
-   - **KDE Plasma Fallback:**
-     - Use `kscreen-doctor` when `XDG_CURRENT_DESKTOP` contains `KDE`.
-
----
-
-## Architecture & Workspace Layout (`r9t-studio/`)
+## Mimari
 
 ```text
 r9t-studio/
-├── Cargo.toml                  # Rust Workspace (r9t-protocol, r9t-hal, r9td, r9tctl)
-├── driver/
-│   ├── r9t_fan.c               # Enhanced v2 kernel module with cached status & 20-100% PWM
-│   └── Makefile
+├── Cargo.toml          # workspace
 ├── crates/
-│   ├── r9t-protocol/           # Shared serde types: TelemetrySnapshot, Profile, FanCurve, RgbConfig, RpcRequest, RpcResponse
-│   ├── r9t-hal/                # Hardware Abstraction Layer: ec, nvml, hwmon, power, rgb_pool, ryzen, audio, sleep_diag, display
-│   ├── r9td/                   # Async Tokio daemon: Single Thermal Authority (PID + Hysteresis), 300s RingBuffer, Event Automation, Unix Socket IPC (/tmp/r9td.sock & /run/r9td.sock)
-│   └── r9tctl/                 # Sub-2ms CLI + Waybar JSON live streamer (`r9tctl waybar --follow`) + session event bridge
-└── ui/                         # Modern Desktop GUI (Obsidian Dark theme, 6 Sidebar Modules)
+│   ├── r9t-protocol/   # serde tipleri, JSON-RPC 2.0 (NDJSON), Snapshot (alan başına age_ms, null = yok)
+│   ├── r9t-hal/        # donanım trait'leri, gerçek + sahte; R9T_SYSFS_ROOT
+│   ├── r9td/           # root servis, Tokio; soket /run/r9td/r9td.sock (0660 root:r9t)
+│   ├── r9t-session/    # systemd --user ajanı: Hyprland/KDE, Hz, PipeWire, idle, süreç sonlandırma
+│   └── r9tctl/         # CLI, probe, migrate, waybar --follow
+├── ui/                 # Tauri v2 + Svelte 5 (soket istemcisi Rust tarafında)
+├── spikes/  tools/  driver/  packaging/
+├── data/keymap-tr-q.json
+└── docs/
 ```
 
-## 6 Sidebar Modules in `ui/`
-1. **Genel Bakış (Dashboard):** Header quick bar (Profile, AC/BAT, CPU/GPU °C & W, Max Fan Boost toggle, 60Hz/240Hz toggle), Extended Metric Cards (CPU, GPU, DDR5 RAM temps, Dual NVMe temps, Battery health/discharge rate), and Dual-Axis Live History Charts (pre-populated from daemon's 300s ring buffer so there is never "VERİ YOK" on startup or tab switch).
-2. **Performans & Termal:** Power profiles (`Eco`, `Sweet Spot 65W/100W`, `Dengeli`, `Performans`, `Extreme`), AMD Ryzen PPT (`STAPM`, `Fast`, `Slow`, `Tctl`) & NVIDIA Power Limit sliders, and an **Interactive Drag-and-Drop Spline Fan Curve Canvas** + PID Target Temperature controller.
-3. **Klavye & RGB Stüdyosu:** Interactive **GameGaraj Slayer R9T Turkish Q SVG Keyboard Map** (click or drag-paint keys, WASD/Arrows/Function quick groups, 4-zone mode, live effects: Static, Breathing, Rainbow Wave, CPU Thermal Gradient, Audio Reactive).
-4. **Ekran, GPU & Otomasyon:** Hyprland & KDE display refresh rate (`60Hz` / `240Hz`), brightness, AC/Battery automation rules, Game Auto-Profile rules, and **GPU Wake Inspector** (shows `D3cold` vs `D0` state, lists both Graphics `G` and Compute `C` processes holding the NVIDIA GPU awake, and allows safe process termination).
-5. **Donanım, Ses & Tanılama:** Battery charge threshold (`80%`/`90%`/`100%`), `Fn-Lock`, USB-C PD telemetry, PipeWire audio volume/mic/noise-cancellation controls, `s2idle` Sleep Blocker Analyzer, and Top CPU/RAM/GPU Process Monitor (async, never blocking UI).
-6. **Profiller & Kıyaslama:** Dark-themed Profile Comparison Matrix, JSON Import/Export, and 1-Click Thermal/Power Stability Benchmark.
+- Root servis masaüstüne ve `/run/user`'a dokunmaz; masaüstü işleri r9t-session'dadır.
+- Tek okuyucu (r9td sampler), tek yazıcı (termal otorite). RPC'ler önbellekten cevap verir.
+- Kanıtlanmamış yetenek UI'da aktif görünmez. Sabit değer yazılmaz.
+
+## Güvenlik Değişmezleri
+
+1. **Lease:** kernel lease 15 sn. Yalnız kontrol döngüsü, yaşı < 5 sn örnekle, 3 sn'de bir yeniler. `WatchdogSec=10`. Açılışta mode≠0 ise önce `auto`.
+2. **Duruş:** fanlar auto, CPU/GPU sınırları kayıtlı varsayılana, `buffer_input=0` (ExecStopPost + iç kapanış).
+3. **Kernel override:** manuel/boost'ta CPU ≥ 95 °C ya da GPU ≥ 87 °C → %100.
+4. **Kullanıcı alanı koruması:** CPU ≥ 90 / GPU ≥ 84 °C → %100; bırakma CPU < 85 ve GPU < 80 °C + 10 sn. Kararlar EC sıcaklığıyla; Tctl yalnız gösterim.
+5. **PWM tabanı %50** (ölçüm gelene kadar). Durma algılama: duty > 0 iken 2 örnekte RPM < ölçülmüş değerin %50'si (≥ 500) ya da 10 sn `status` hatası → `fan_boost`, sonra `auto`.
+6. **Tek yazıcı:** `Conflicts=` (iki yönlü drop-in), salt okunur gölge unit `r9td-shadow.service`, eski sokete yoklama, `/run/r9td/control.lock` flock.
+7. **Uyku:** logind `delay` inhibitor; `PrepareForSleep(true)` → döngüyü/RGB'yi durdur, `auto`, mode=0 ve `mode_byte & 0x40 == 0` doğrula (≤ 2 sn). Uyanınca 3 sn + 2 geçerli örnek.
+8. **Geçersiz sensör** `null` + `age_ms`; asla 0 °C. `null` ile duty düşmez; 10 sn sürerse `auto`.
+9. **Yazma sınırları:** doğrulanmamış EC adresine yazma yok, zorla sürücü yükleme yok, hwcheck'siz tuxedo_io ioctl'i yok.
+10. **Kabul** yalnız fiziksel ölçümle.
