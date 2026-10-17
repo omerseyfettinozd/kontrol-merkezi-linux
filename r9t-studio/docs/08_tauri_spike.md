@@ -24,17 +24,19 @@ Tarih: 2026-10-18. Kod: `spikes/tauri-canvas/` (atılabilir). Ham ölçüm: `spi
 - **GPU etkisi:** dGPU ölçüm boyunca zaten P0'daydı (≈2.1 GHz, 25–30 W, ekran dGPU'da). Kontrol deneyi: spike'tan önce 29.9 W / %14.5, spike boştayken 29.6 W / %13.9, sonra 24.7 W / %9.0. Boşta spike'a bağlanabilecek ölçülebilir bir GPU yükü yok; dalgalanma diğer masaüstü yükünden geliyor. (Ayrı gözlem: masaüstü boştayken dGPU'nun P0'da kalması GPU Wake Inspector konusu.)
 - **Tepsi:** `org.kde.StatusNotifierWatcher.RegisteredStatusNotifierItems` içinde `…/tray_icon_tray_app_r9t_spike` göründü (Waybar). Pencere `hyprctl dispatch closewindow` ile kapatılınca süreç tepside kaldı. libayatana-appindicator "deprecated" uyarısı veriyor; işlevi etkilemiyor.
 
-## Karar (geçici): Tauri v2
+## Ek ölçümler (2026-10-18)
 
-Tauri ile devam, şu koşullarla:
-1. Uygulama `main()`'in başında, GTK/EGL yüklenmeden önce `__NV_DISABLE_EXPLICIT_SYNC=1` ayarlar (kullanıcı tanımlamışsa ona dokunmaz). Yedek seçenek olarak `WEBKIT_DISABLE_DMABUF_RENDERER=1` ayarı ve CLI bayrağı bulunur. Bu yolda CPU maliyeti yaklaşık iki katı.
-2. Grafikler 1 Hz telemetriyle çizilir. Sürekli animasyon yoktur; boşta CPU < %1 hedefi tuttu (%0.46).
-3. Canlı eğri sürükleme gibi etkileşimlerde 30 FPS (power-saver) kabul edilir.
+- **Görsel kontrol (grim ekran görüntüsü, 1.5 sn arayla iki kare):** grafik, eksen etiketleri, koyu tema ve SVG ızgarası bozulmasız; iki kare arasında grafik kaydı; FPS/p99 rozetleri güncellendi. Siyah kare ya da titreme görülmedi.
+- **Balanced profil (geçici olarak açıldı, sonra power-saver'a geri döndü):** 59.5–60.0 FPS, p50 17 ms, p99 18–19 ms, 5 sn'lik pencerelerde uzun kare (> 25 ms) 0–1.
+- **KDE KWin (Hyprland içinde iç içe `kwin_wayland --socket r9t-kwin-test`):** varsayılan ayar aynı Error 71 ile çöktü; `__NV_DISABLE_EXPLICIT_SYNC=1` ile çalıştı (power-saver'da 31 FPS). Sorun compositor'dan bağımsız, NVIDIA sürücüsüne özgü.
 
-Qt/QML'ye geçiş gerektiren bir engel bulunmadı.
+## Karar: Tauri v2 (plan §6.2 kapandı)
 
-## Açık kalanlar (kesin karar öncesi)
+1. Uygulama `main()`'in başında, GTK/EGL yüklenmeden önce `__NV_DISABLE_EXPLICIT_SYNC=1` ayarlar (kullanıcı tanımlamışsa ona dokunmaz). Yedek seçenek: `WEBKIT_DISABLE_DMABUF_RENDERER=1` (ayar + CLI bayrağı; CPU maliyeti yaklaşık iki katı).
+2. Grafikler 1 Hz telemetriyle çizilir; sürekli animasyon yoktur (boşta CPU %0.46).
+3. power-saver'da WebKit'in 30 FPS kısıtı kabul edilir; balanced'da 60 FPS ölçüldü.
 
-- [ ] **Kullanıcı görsel kontrolü:** `spikes/tauri-canvas` içinde `__NV_DISABLE_EXPLICIT_SYNC=1 ./src-tauri/target/release/r9t-tauri-canvas-spike` komutunu çalıştırıp şunlara bak: grafik kayıyor mu, titreme/bozulma/siyah kare var mı, SVG ızgarası sürüklemeyle boyanıyor mu, Waybar'da turuncu halka ikonu ve menüsü (Göster/Çık) görünüyor mu.
-- [ ] **KDE Plasma 6 oturumu:** aynı komut ve ayrıca varsayılan ayarla (explicit sync değişkeni olmadan) dene.
-- [ ] **Balanced profilde FPS:** güç profili balanced iken `python3 -I measure.py` (yaklaşık 3.5 dk, pencere ekranda açılır).
+## Fiziksel kabulde kalan
+
+- [ ] Gerçek KDE Plasma oturumunda (iç içe değil) açılış ve tepsi ikonu (Faz 4 kabulünde).
+- [ ] Fareyle SVG boyama (Faz 4 RGB modülü kabulünde).
