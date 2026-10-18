@@ -1,0 +1,16 @@
+# R9T Studio user agent. KDE: started by graphical-session.target.
+# Hyprland (no graphical-session.target): see packaging/hyprland/r9t-session.conf.
+[Unit]
+Description=R9T Studio session agent
+PartOf=graphical-session.target
+After=graphical-session.target
+Conflicts=slayer-r9t-session.service
+
+[Service]
+ExecStart=/usr/local/lib/r9t-studio/r9t-session
+# A clean exit (Hyprland's event socket closed) is success; only crashes restart.
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

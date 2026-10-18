@@ -1,0 +1,10 @@
+// Waybar module (plan Faz 3b). Add "custom/r9t" to modules-right and this block to
+// ~/dotfiles/config/waybar/config.jsonc — only with the user's approval.
+"custom/r9t": {
+    "exec": "r9tctl waybar --follow",
+    "return-type": "json",
+    "restart-interval": 5,
+    "format": " {}",
+    "tooltip": true,
+    "on-click": "r9t-ui"
+}

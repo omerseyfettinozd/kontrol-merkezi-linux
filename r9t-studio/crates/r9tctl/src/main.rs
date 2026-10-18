@@ -23,6 +23,8 @@ Komutlar:
   call <yöntem> [params-json]  Ham JSON-RPC çağrısı
   bench [n]                    status gecikmesi (p50/p99)
   waybar [--follow]            Waybar custom modülü için JSON (--follow: akış)
+  migrate [--dry-run] [dosya]  Eski ~/.config/slayer-r9t-control-center/settings.json
+                               profillerini ve kurallarını r9td'ye aktarır (configure)
   help                         Bu metni gösterir
 
 Soket: $R9TD_SOCKET ya da /run/r9td/r9td.sock
@@ -47,6 +49,7 @@ fn main() -> ExitCode {
         "watch" => watch(rest.first().and_then(|v| v.parse().ok()).unwrap_or(u64::MAX)),
         "bench" => bench(rest.first().and_then(|v| v.parse().ok()).unwrap_or(1000)),
         "waybar" => waybar(rest.iter().any(|a| a == "--follow")),
+        "migrate" => migrate(rest),
         "help" | "-h" | "--help" => {
             print!("{USAGE}");
             ExitCode::SUCCESS
@@ -295,5 +298,77 @@ fn waybar(follow: bool) -> ExitCode {
             let _ = writeln!(out.lock(), "{}", waybar_line(None));
         }
         std::thread::sleep(Duration::from_secs(2));
+    }
+}
+
+/// Legacy settings (schema 2/3) → `PolicyDocument`. Field names and units are the
+/// same (MHz, EPP strings, fan objects, 4-point curves kept with linear
+/// interpolation, absolute exe rules); only `legacy_fan_profiles` is dropped.
+fn convert_legacy(text: &str) -> Result<(r9t_protocol::policy::PolicyDocument, Vec<String>), String> {
+    let mut v: serde_json::Value = serde_json::from_str(text).map_err(|e| format!("JSON: {e}"))?;
+    let obj = v.as_object_mut().ok_or("ayar dosyası nesne değil")?;
+    let mut notes = Vec::new();
+    if obj.remove("legacy_fan_profiles").is_some_and(|l| l.as_object().is_some_and(|m| !m.is_empty())) {
+        notes.push("legacy_fan_profiles (şema öncesi eski fan profilleri) aktarılmadı".to_owned());
+    }
+    match obj.get("schema").and_then(|s| s.as_u64()) {
+        Some(2) | Some(3) => {
+            obj.insert("schema".into(), serde_json::Value::from(3));
+        }
+        other => return Err(format!("desteklenmeyen şema: {other:?}")),
+    }
+    let doc: r9t_protocol::policy::PolicyDocument = serde_json::from_value(v).map_err(|e| format!("şema: {e}"))?;
+    doc.validate().map_err(|e| e.0)?;
+    notes.push(format!("{} profil, {} uygulama kuralı", doc.profiles.len(), doc.automation.apps.len()));
+    Ok((doc, notes))
+}
+
+fn migrate(args: &[String]) -> ExitCode {
+    let dry = args.iter().any(|a| a == "--dry-run");
+    let path = args.iter().find(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| {
+        PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config/slayer-r9t-control-center/settings.json")
+    });
+    let text = match std::fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("{}: {e}", path.display());
+            return ExitCode::FAILURE;
+        }
+    };
+    let (doc, notes) = match convert_legacy(&text) {
+        Ok(x) => x,
+        Err(e) => {
+            eprintln!("dönüştürülemedi: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    for n in &notes {
+        eprintln!("· {n}");
+    }
+    if dry {
+        println!("{}", serde_json::to_string_pretty(&doc).unwrap_or_default());
+        return ExitCode::SUCCESS;
+    }
+    simple(Call::Configure(r9t_protocol::rpc::ConfigureParams { document: doc }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn converts_legacy_settings() {
+        let legacy = r#"{"schema": 3, "profiles": {"Oyun - CPU Serin 3500": {"power_profile": "balanced", "boost_enabled": true,
+            "cpu_max_mhz": 3500, "gpu_max_mhz": 2475, "cpu_epp": "balance_performance", "fan": {"mode": "preset", "preset": "cool"}},
+            "Eğri": {"fan": {"mode": "curve", "points": [[45,50],[60,60],[75,80],[85,100]]}}},
+            "legacy_fan_profiles": {"profiles": {}, "curve": [[40, 50]]},
+            "automation": {"startup": null, "ac": "Eğri", "battery": null, "apps": [{"executable": "/usr/bin/cs2", "profile": "Oyun - CPU Serin 3500"}],
+                           "low_hz_on_battery": false, "lighting_timeout": 0}}"#;
+        let (doc, notes) = convert_legacy(legacy).unwrap();
+        assert_eq!(doc.profiles.len(), 2);
+        assert_eq!(doc.automation.apps.len(), 1);
+        assert!(notes[0].contains("legacy_fan_profiles"));
+        assert!(convert_legacy(r#"{"schema": 1, "profiles": {}}"#).is_err());
+        assert!(convert_legacy(r#"{"schema": 3, "profiles": {"x": {"turbo": 1}}}"#).is_err());
     }
 }

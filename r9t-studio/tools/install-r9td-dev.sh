@@ -7,10 +7,10 @@ set -euo pipefail
 [[ $EUID -eq 0 ]] || { echo "root gerekli" >&2; exit 1; }
 user="${SUDO_USER:?sudo ile çalıştırın}"
 here="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
-for b in r9td r9tctl; do [[ -x "$here/target/release/$b" ]] || { echo "Önce derleyin: target/release/$b yok" >&2; exit 1; }; done
+for b in r9td r9tctl r9t-session; do [[ -x "$here/target/release/$b" ]] || { echo "Önce derleyin: target/release/$b yok" >&2; exit 1; }; done
 
 install -d -m 0755 /usr/local/lib/r9t-studio /usr/local/share/doc/r9t-studio
-install -m 0755 "$here/target/release/r9td" "$here/target/release/r9tctl" /usr/local/lib/r9t-studio/
+install -m 0755 "$here/target/release/r9td" "$here/target/release/r9tctl" "$here/target/release/r9t-session" /usr/local/lib/r9t-studio/
 ln -sf /usr/local/lib/r9t-studio/r9tctl /usr/local/bin/r9tctl
 install -m 0644 "$here/docs/04_ana_plan.md" /usr/local/share/doc/r9t-studio/
 install -D -m 0644 "$here/packaging/sysusers.d/r9t.conf" /etc/sysusers.d/r9t.conf
@@ -26,6 +26,8 @@ install -m 0644 "$here/packaging/systemd/r9td.service" "$here/packaging/systemd/
 install -D -m 0644 "$here/packaging/systemd/slayer-r9t.service.d/r9t-conflicts.conf" /etc/systemd/system/slayer-r9t.service.d/r9t-conflicts.conf
 install -m 0755 "$here/tools/r9t-switch" /usr/local/lib/r9t-studio/r9t-switch
 ln -sf /usr/local/lib/r9t-studio/r9t-switch /usr/local/bin/r9t-switch
+# User agent unit (not enabled: the legacy session agent stays until Faz 4).
+install -D -m 0644 "$here/packaging/systemd-user/r9t-session.service" /etc/systemd/user/r9t-session.service
 systemctl daemon-reload
 systemctl enable --now r9td-shadow.service
 sleep 3

@@ -1,5 +1,6 @@
 [package]
 name = "r9t-session"
+description = "R9T Studio user agent: desktop (Hyprland/KDE), display, audio, idle, radios, processes"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,6 +12,14 @@ r9t-protocol.workspace = true
 r9t-hal.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tokio.workspace = true
+nix.workspace = true
+zbus.workspace = true
+wayland-client = "0.31"
+wayland-protocols = { version = "0.32", features = ["client", "staging"] }
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true
