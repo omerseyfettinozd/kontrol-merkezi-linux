@@ -4,7 +4,7 @@
 //! Schedule (EC budget ≤ 6 ops/s for r9td):
 //!  * every 1 s: tuxedo_io EF12/EF13 (temps) = 2 ops/s; EF10/EF11 (duty) every 2 s
 //!    only while the EC is in manual (r9td or legacy driving the fans); in auto the
-//!    duty comes from the 10 s `status` read
+//!    duty comes from the `status` read (10 s; 30 s in shadow mode).
 //!  * every 5 s: EF14 mode byte
 //!  * every 10 s in auto (3 s when r9td owns the fans): r9t_fan `status` (~11 ops)
 //!  * shadow mode while the legacy service has the EC in manual: no `status`; RPM is
@@ -123,7 +123,10 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
         } else if let Some(dev) = ec.get(&fs, now) {
             let temps_r = dev.temps();
             m.ec_ops.fetch_add(2, Ordering::Relaxed);
-            let duty_r = if tick % (2 * ec_every) == 0 && (ec_manual || shared.owns_fans.load(Ordering::Relaxed)) {
+            // Duty only while the EC is manual. In shadow mode it comes from the 30 s
+            // status: reading it every 2 s / 6 s slowed the legacy status by 15.5 % /
+            // 10.8 % (limit 10 %), see docs/11.
+            let duty_r = if tick % 2 == 0 && (ec_manual || owns) {
                 m.ec_ops.fetch_add(2, Ordering::Relaxed);
                 Some(dev.duties())
             } else {

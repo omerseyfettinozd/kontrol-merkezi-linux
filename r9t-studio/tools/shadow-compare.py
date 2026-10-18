@@ -49,6 +49,7 @@ def sample():
             'mode': v(r9['fans']['mode']), 'cpu_duty': v(r9['fans']['cpu_duty_pct']), 'gpu_duty': v(r9['fans']['gpu_duty_pct']),
             'cpu_rpm': v(r9['fans']['cpu_rpm']), 'gpu_rpm': v(r9['fans']['gpu_rpm']),
             'rpm_age_ms': r9['fans']['cpu_rpm']['age_ms'], 'temp_age_ms': r9['cpu']['ec_temp_c']['age_ms'],
+            'duty_age_ms': r9['fans']['cpu_duty_pct']['age_ms'],
         },
         'metrics': caps,
     }
@@ -61,7 +62,10 @@ def within(s):
         'cpu_temp': R['cpu_ec'] is not None and L['cpu_temp'] is not None and abs(R['cpu_ec'] - L['cpu_temp']) <= 2,
         'gpu_temp': R['gpu_ec'] is not None and L['gpu_temp'] is not None and abs(R['gpu_ec'] - L['gpu_temp']) <= 2,
         'mode': R['mode'] == mode,
-        'duty': R['cpu_duty'] is not None and abs(R['cpu_duty'] - L['cpu_pwm'] // 2) <= 1 and abs(R['gpu_duty'] - L['gpu_pwm'] // 2) <= 1,
+        # Shadow mode reads duty only with the 30 s status; compare when it is ≤ 10 s old
+        # (an older duty is a sampling-time offset, not a wrong reading). None = not compared.
+        'duty': None if (R.get('duty_age_ms') or 10**9) > 10000 else
+                (R['cpu_duty'] is not None and abs(R['cpu_duty'] - L['cpu_pwm'] // 2) <= 1 and abs(R['gpu_duty'] - L['gpu_pwm'] // 2) <= 1),
         # RPM is sampled every 30 s in shadow mode; a 10 % band applies to steady fans.
         'rpm': R['cpu_rpm'] is not None and L['cpu_rpm'] and abs(R['cpu_rpm'] - L['cpu_rpm']) / L['cpu_rpm'] <= 0.10,
         'nvml': R['gpu_nvml'] is None or abs(R['gpu_nvml'] - L['gpu_temp']) <= 2,
@@ -77,12 +81,15 @@ def summary(path):
         return
     keys = ['cpu_temp', 'gpu_temp', 'mode', 'duty', 'rpm', 'nvml']
     counts = {k: 0 for k in keys}
+    compared = {k: 0 for k in keys}
     all_ok = 0
     for r in rows:
         c = within(r)
-        all_ok += all(c.values())
+        all_ok += all(v for v in c.values() if v is not None)
         for k in keys:
-            counts[k] += c[k]
+            if c[k] is not None:
+                compared[k] += 1
+                counts[k] += c[k]
     n = len(rows)
     first, last = rows[0], rows[-1]
     hours = (last['t'] - first['t']) / 3600
@@ -93,7 +100,8 @@ def summary(path):
     out = {
         'samples': n, 'hours': round(hours, 2), 'request_errors': errors,
         'all_checks_pct': round(100 * all_ok / n, 2),
-        'per_check_pct': {k: round(100 * counts[k] / n, 2) for k in keys},
+        'per_check_pct': {k: round(100 * counts[k] / max(1, compared[k]), 2) for k in keys},
+        'compared': compared,
         'r9td_ec_ops_per_s': round(ec_rate, 2),
         'legacy_status_ms': {'median': lat[n // 2], 'p90': lat[int(n * 0.9)], 'max': lat[-1]},
         'legacy_lease_zero_while_manual': lease_zero_manual, 'legacy_error_minus110': err110,
