@@ -38,8 +38,17 @@ pub struct ProcSampler {
 }
 
 impl ProcSampler {
-    /// Top `limit` processes by CPU % since the previous call (first call: 0 %).
+    /// Top `limit` processes by CPU % since the previous call. The first call takes
+    /// a 300 ms baseline so the table never opens with every process at 0 %.
     pub fn sample(&mut self, limit: usize) -> Value {
+        if self.last.is_none() {
+            self.sample_once(0);
+            std::thread::sleep(std::time::Duration::from_millis(300));
+        }
+        self.sample_once(limit)
+    }
+
+    fn sample_once(&mut self, limit: usize) -> Value {
         let now = Instant::now();
         let page = 4096u64;
         let tck = 100.0f64;
@@ -210,6 +219,18 @@ mod tests {
         let v = s.sample(5000);
         let me = std::process::id();
         assert!(v["processes"].as_array().unwrap().iter().any(|p| p["pid"] == me));
+        // First call already carries a baseline: this busy thread shows up with CPU > 0.
+        let mut fresh = ProcSampler::default();
+        let spin = std::thread::spawn(|| {
+            let t = Instant::now();
+            while t.elapsed() < std::time::Duration::from_millis(600) {
+                std::hint::black_box(0u64);
+            }
+        });
+        let v = fresh.sample(5000);
+        spin.join().unwrap();
+        let mine = v["processes"].as_array().unwrap().iter().find(|p| p["pid"] == me).unwrap();
+        assert!(mine["cpu_pct"].as_f64().unwrap() > 0.0, "{mine}");
     }
 
     #[test]

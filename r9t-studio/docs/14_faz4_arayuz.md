@@ -18,6 +18,14 @@ Tarih: 2026-10-18. Kod: `ui/` (Svelte 5 + Vite 8, `ui/src-tauri` ayrı workspace
 - Bulunan/düzeltilen hatalar: aynı PID'in G+C olarak gelmesi (each anahtarı), kaydırıcıların gerçek değer gelmeden orta noktaya yazması, hızlı sürüklemede boşluk, istenmeyen metin seçimi.
 - Boşta CPU (60 sn, Genel Bakış, headless çıktı): ilk ölçüm %1,83 → kısma sonrası odak dışı %0,88 (bağlantısız taban %0,37). Etkileşimde 1 Hz, boştayken (odak yok ya da 15 sn girdi yok) 3 sn'de bir tazeleme.
 
+## 2026-10-19 devam
+
+- Altı modül yeniden ekran görüntüsünden geçti: headless `R9TTEST` çıktısı (1280×820, pencere 1256×756, eDP-1'den uzak konumda; kullanıcı ekranı ve odağı değişmedi), gezinme `--view` tek örnek yönlendirmesiyle (sanal girdi yok). r9td gölge, r9t-session çalışıyor (power-watch.sh açık olduğu için Hz'e dokunmuyor). Yatay taşma yok; koyu temada okunamayan metin görülmedi.
+- Boşta CPU (60 sn, Genel Bakış, headless çıktı, odak dışı): **%0,88** (WebKit süreçleri dahil). eDP-1 tekrarı hâlâ açık.
+- Düzeltme: süreç izleyici ilk açılışta her süreci %0 gösteriyordu (önceki örnek yok) → ilk çağrı 300 ms taban örneği alır; birim testi meşgul iş parçacığıyla CPU > 0 doğrular. Canlı: ilk çizimde gerçek yüzdeler.
+- Ekleme: anlık görüntüye `camera` alanı (USB `authorized`, 5 sn'de bir; `r9t_hal::CAMERA_USB` tek kaynak). Eski daemon alanı göndermezse `null` (serde default, test var). Arayüz rozeti açık/kapalı gösterir, mevcut durumla aynı düğme devre dışı. **Kurulu gölge r9td eski sürüm: rozet canlıda "—"; yeni r9td kurulumu sudo bekliyor.** Sysfs değeri: `2b7e:c906 FHD WebCam`, authorized=1.
+- pc-eye notu: `pc-eye context` ses örneklemesinde (`pw-record --target @DEFAULT_AUDIO_SINK@`) zaman aşımsız takılıyor ve bu hedef dizgesi mikrofona bağlanıyor; diğer pc-eye komutları ve `grim -o` kullanıldı.
+
 ## Kalan (Faz 4 kabulü)
 
 - [ ] Klavye "Haritayı uygula" tıklaması son yapıda yeniden doğrulanmalı (önceki yapıda işaretçi yakalaması nedeniyle tıklama ulaşmadı; yakalama kaldırıldı, test edilmedi).

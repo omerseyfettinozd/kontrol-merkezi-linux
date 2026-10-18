@@ -1016,7 +1016,7 @@ fn logind_session_of(pid: u32) -> Option<String> {
 
 /// Internal FHD/IR camera USB authorisation (port of legacy `features.camera`).
 fn camera(fs: &Sysfs, enabled: bool) -> Result<Value, RpcError> {
-    const DEV: &str = "/sys/bus/usb/devices/5-1.4";
+    const DEV: &str = r9t_hal::CAMERA_USB;
     let id = (fs.read(format!("{DEV}/idVendor")).ok(), fs.read(format!("{DEV}/idProduct")).ok());
     if id != (Some("2b7e".into()), Some("c906".into())) {
         return Err(RpcError::new(code::UNSUPPORTED, "Dahili FHD/IR kamera bulunamadı."));

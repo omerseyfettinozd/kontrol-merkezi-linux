@@ -99,6 +99,7 @@ pub struct Live {
     pub sensors: Vec<SensorTimed>,
     pub rgb_brightness: Timed<u8>,
     pub fn_lock: Timed<bool>,
+    pub camera: Timed<bool>,
 
     pub sequence: u64,
     pub authority: Option<AuthoritySnapshot>,
@@ -172,6 +173,7 @@ impl Live {
                 .collect(),
             rgb_brightness: self.rgb_brightness.field(now),
             fn_lock: self.fn_lock.field(now),
+            camera: self.camera.field(now),
             authority: self.authority.clone().unwrap_or(AuthoritySnapshot {
                 state: AuthorityState::Shadow,
                 reason: "salt okunur gölge modu".into(),

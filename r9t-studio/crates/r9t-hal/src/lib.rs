@@ -17,6 +17,9 @@ pub mod tuxedo;
 
 pub use sysfs::Sysfs;
 
+/// USB port of the internal FHD/IR camera (2b7e:c906 "FHD WebCam"); `authorized` toggles it.
+pub const CAMERA_USB: &str = "/sys/bus/usb/devices/5-1.4";
+
 use std::path::PathBuf;
 use thiserror::Error;
 

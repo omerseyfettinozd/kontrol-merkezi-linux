@@ -185,6 +185,8 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
         let profile = if tick % 5 == 0 { ppd.as_ref().map(read_profile) } else { None };
         let brightness = if tick % 5 == 0 { rgb.as_ref().map(|r| r.brightness()) } else { None };
         let fn_lock = if tick % 30 == 0 { Some(fs.read("/sys/devices/platform/tuxedo_keyboard/fn_lock")) } else { None };
+        // Plain USB attribute, no EC traffic: 5 s so a toggle shows up quickly.
+        let camera = if tick % 5 == 0 { Some(fs.read(format!("{}/authorized", r9t_hal::CAMERA_USB))) } else { None };
 
         // --- GPU (gated) ---
         let runtime = gpu.runtime_status();
@@ -322,6 +324,9 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
             }
             if let Some(f) = fn_lock {
                 live.fn_lock.set(f.ok().and_then(|v| match v.as_str() { "1" => Some(true), "0" => Some(false), _ => None }), now);
+            }
+            if let Some(c) = camera {
+                live.camera.set(c.ok().and_then(|v| match v.as_str() { "1" => Some(true), "0" => Some(false), _ => None }), now);
             }
             live.gpu_runtime.set(runtime.ok(), now);
             match gpu_sample {

@@ -213,7 +213,7 @@ fn probe_with(fs: &Sysfs, with_nvml: bool, light: bool) -> ProbeReport {
         Err(e) => Capability::no(CapabilityId::FnLock, e.to_string()),
     });
     r.insert("fn_lock".into(), val(fn_lock));
-    let cam = fs.read("/sys/bus/usb/devices/5-1.4/product").ok();
+    let cam = fs.read(format!("{}/product", crate::CAMERA_USB)).ok();
     caps.push(if cam.as_deref() == Some("FHD WebCam") {
         Capability::yes(CapabilityId::Camera)
     } else {

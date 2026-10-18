@@ -78,8 +78,9 @@
     <div class="spread line">
       <span>Kamera (USB yetkilendirme)</span>
       <div class="row tight">
-        <button class="small" disabled={!ctl || !cap('camera').ok} onclick={() => control('camera', { enabled: true }, { key: 'cam' })}>Aç</button>
-        <button class="small" disabled={!ctl || !cap('camera').ok} onclick={() => control('camera', { enabled: false }, { key: 'cam' })}>Kapat</button>
+        <span class="badge {val(s?.camera) === false ? 'warn' : ''}">{val(s?.camera) == null ? '—' : val(s.camera) ? 'açık' : 'kapalı'}</span>
+        <button class="small" disabled={!ctl || !cap('camera').ok || val(s?.camera) === true} onclick={() => control('camera', { enabled: true }, { key: 'cam' })}>Aç</button>
+        <button class="small" disabled={!ctl || !cap('camera').ok || val(s?.camera) === false} onclick={() => control('camera', { enabled: false }, { key: 'cam' })}>Kapat</button>
       </div>
     </div>
     {#if cap('charge_limit').ok}

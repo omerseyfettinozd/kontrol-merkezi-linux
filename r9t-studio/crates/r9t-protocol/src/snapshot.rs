@@ -177,6 +177,9 @@ pub struct Snapshot {
     pub sensors: Vec<SensorReading>,
     pub rgb_brightness: Field<u8>,
     pub fn_lock: Field<bool>,
+    /// Internal camera USB authorisation (`true` = enabled). Absent from older daemons.
+    #[serde(default)]
+    pub camera: Field<bool>,
     pub authority: AuthoritySnapshot,
 }
 
@@ -205,6 +208,34 @@ mod tests {
         let cpu = CpuSnapshot::default();
         let json = serde_json::to_value(&cpu).unwrap();
         assert!(json["ec_temp_c"]["value"].is_null());
+    }
+
+    #[test]
+    fn snapshot_without_camera_from_older_daemon_parses() {
+        let snap = Snapshot {
+            taken_at_ms: 1,
+            sequence: 2,
+            cpu: CpuSnapshot::default(),
+            gpu: GpuSnapshot::default(),
+            fans: FanSnapshot::default(),
+            power: PowerSnapshot::default(),
+            sensors: vec![],
+            rgb_brightness: Field::missing(),
+            fn_lock: Field::missing(),
+            camera: Field { value: Some(true), age_ms: Some(0) },
+            authority: AuthoritySnapshot {
+                state: AuthorityState::Shadow,
+                reason: String::new(),
+                active_profile: None,
+                guard_active: false,
+                session: None,
+            },
+        };
+        let mut json = serde_json::to_value(&snap).unwrap();
+        assert_eq!(json["camera"]["value"], true);
+        json.as_object_mut().unwrap().remove("camera");
+        let old: Snapshot = serde_json::from_value(json).unwrap();
+        assert_eq!(old.camera, Field::missing());
     }
 
     #[test]
