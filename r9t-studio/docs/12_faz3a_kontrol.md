@@ -40,8 +40,17 @@ Tarih: 2026-10-18. Denemeler `r9t-switch --trial` ile; günlük kullanım eski s
 - Açılıştaki tam yoklama (~1.5 sn, EC/RAPL/NVML okuması) hafif yoklamayla değiştirildi; tek okuyucu örnekleyici.
 - Başlangıç değerleri (`/var/lib/r9t/baseline.json`) ve son istenen ayarlar (`last.json`) kalıcı; `r9t-switch --trial` her denemede ikisini sıfırlar.
 
+## Yük testleri (16 iş parçacığı tam yük, `tools/load-test.py`, ham veri `evidence/12_*.json`)
+
+| Ölçüt | Sonuç |
+|---|---|
+| Sıcaklık hedefi yük altında tutar (CPU 75 / GPU 72, `stock` + boost) | 80 °C'de fan %100; tavan 2 sn'de 100 MHz inerek 5286 → 2086 MHz; 100. sn'de 72–73 °C; hedef −3 °C altında 10 sn sonra fan %86'ya indi ve tavan 2686 MHz'e kademeli yükseldi. Durdurunca önceki sınırlar geri geldi |
+| Fan eğrisi yükte izlenir (serin preset) | 76 °C'de duty %91 (eğri değeri); 60 örnekte eğriden en büyük sapma %4 (kademeli düşüş bekleme süresi), ortalama %0.1 |
+| Oyun açılışında politika ≤ 1 sn | `class:steam_app_*` kuralı: pencere açılışı dahil **0.78 sn**'de 3500 MHz; kapanınca **0.80 sn**'de önceki ayarlar geri |
+
+Yük testinde bulunan hata: yük altında 16 politikadan biri `scaling_max_freq` yazıldıktan hemen sonra birkaç ms eski değeri döndürüyordu; sıcaklık hedefi bunu hata sayıp güvenli şekilde (fan auto) durdu. HAL geri okuması artık 100 ms boyunca tekrar okuyor ve gerekirse bir kez yeniden yazıyor.
+
 ## Fiziksel kabulde kalan (kullanıcı başında)
 
-- Yük altında fan eğrisi ve sıcaklık hedefinin tutması (uzun yük testi).
-- AC/pil geçişinde ve oyun açılışında politikanın ≤ 1 sn'de uygulanması (fişi çekmek gerekir; oyun algılama r9t-session'a bağlı).
+- AC/pil geçişinde politikanın ≤ 1 sn'de uygulanması (fişi çekmek gerekir; mantık birim testli, 3 sn kararlılık süresi plandaki eski davranış).
 - Uyku/uyanma (değişmez 7) — `docs/09` olayı nedeniyle yalnız kullanıcı başındayken.

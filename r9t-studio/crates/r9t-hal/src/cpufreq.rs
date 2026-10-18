@@ -102,10 +102,8 @@ impl Cpufreq {
                 let f = Self::file(&p, "scaling_max_freq");
                 self.fs.write(&f, &desired.to_string())?;
                 let expected = desired.min(self.fs.parse(Self::file(&p, "cpuinfo_max_freq"))?);
-                let actual: u32 = self.fs.parse(&f)?;
-                if actual != expected {
-                    return Err(HalError::Verify(format!("{p}: scaling_max_freq {actual} ≠ {expected}")));
-                }
+                self.settle(&f, &desired.to_string(), expected)
+                    .map_err(|actual| HalError::Verify(format!("{p}: scaling_max_freq {actual} ≠ {expected}")))?;
             }
             Ok(())
         })();
@@ -116,6 +114,28 @@ impl Cpufreq {
             });
         }
         Ok(())
+    }
+
+    /// Read-back with a short grace period: under load amd-pstate (or nvidia-powerd)
+    /// occasionally reports the previous ceiling for a few ms (measured: 1 of 16
+    /// policies). Re-read for up to 100 ms, then write once more and re-read.
+    fn settle(&self, file: &str, value: &str, expected: u32) -> std::result::Result<(), u32> {
+        let mut actual = 0;
+        for attempt in 0..2 {
+            for _ in 0..5 {
+                actual = self.fs.parse::<u32>(file).unwrap_or(0);
+                if actual == expected {
+                    return Ok(());
+                }
+                if self.fs.is_real() {
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                }
+            }
+            if attempt == 0 {
+                let _ = self.fs.write(file, value);
+            }
+        }
+        Err(actual)
     }
 
     /// `Some(true)` only when every policy agrees.
