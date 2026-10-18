@@ -84,6 +84,7 @@ params!(EnabledParams { enabled: bool });
 params!(ProfileParams { settings: ProfileSettings });
 params!(ApplyProfileParams { name: String });
 params!(RgbParams { rgb: [u8; 3], brightness: u8 });
+params!(BrightnessParams { brightness: u8 });
 params!(RgbMapParams { colors: Vec<[u8; 3]>, brightness: u8 });
 params!(RgbEffectParams { effect: RgbEffect });
 params!(RgbFrameParams { colors: Vec<[u8; 3]> });
@@ -129,6 +130,10 @@ pub enum SessionEvent {
 pub enum Call {
     Hello(Hello),
     Status(Empty),
+    /// Saved profiles + automation rules and whether automation is paused.
+    Policy(Empty),
+    /// Current keyboard colours read back from sysfs (126 LEDs) and brightness.
+    RgbState(Empty),
     History(HistoryParams),
     Capabilities(Empty),
     Events(EventsParams),
@@ -146,6 +151,8 @@ pub enum Call {
     ApplyProfile(ApplyProfileParams),
     Rgb(RgbParams),
     RgbMap(RgbMapParams),
+    /// Global keyboard brightness only (%); colours and effect stay.
+    RgbBrightness(BrightnessParams),
     RgbEffect(RgbEffectParams),
     RgbFrame(RgbFrameParams),
     LightingIdle(IdleParams),
@@ -165,9 +172,9 @@ pub enum Call {
 
 impl Call {
     pub const METHODS: &'static [&'static str] = &[
-        "hello", "status", "history", "capabilities", "events", "subscribe", "unsubscribe", "auto",
+        "hello", "status", "policy", "rgb_state", "history", "capabilities", "events", "subscribe", "unsubscribe", "auto",
         "fan_boost", "fan_preset", "manual", "curve", "power", "boost", "thermal_preset", "profile",
-        "apply_profile", "rgb", "rgb_map", "rgb_effect", "rgb_frame", "lighting_idle", "fn_lock",
+        "apply_profile", "rgb", "rgb_map", "rgb_brightness", "rgb_effect", "rgb_frame", "lighting_idle", "fn_lock",
         "camera", "charge_limit", "temperature_target", "temperature_target_stop", "configure",
         "automation_pause", "automation_resume", "session_register", "session_event", "scenario",
     ];
@@ -189,6 +196,8 @@ impl Call {
             self,
             Self::Hello(_)
                 | Self::Status(_)
+                | Self::Policy(_)
+                | Self::RgbState(_)
                 | Self::History(_)
                 | Self::Capabilities(_)
                 | Self::Events(_)

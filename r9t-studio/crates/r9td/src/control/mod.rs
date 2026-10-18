@@ -836,6 +836,19 @@ impl Control {
                 self.remember(&ProfileSettings { rgb_map: Some(p.colors), brightness: Some(p.brightness), ..Default::default() });
                 ok("Klavye haritası uygulandı.", true)
             }
+            Call::RgbBrightness(p) => {
+                if p.brightness > 100 {
+                    return Err(RpcError::new(code::INVALID_PARAMS, "Parlaklık %0–100 olmalı."));
+                }
+                let level = self.brightness_level(p.brightness);
+                let r = self.rgb_hal.as_ref().ok_or_else(|| RpcError::new(code::UNSUPPORTED, "126 kanallı RGB arayüzü yok"))?;
+                r.set_brightness(level).map_err(hal)?;
+                if r.brightness().map_err(hal)? != level {
+                    return Err(RpcError::new(code::HARDWARE, "Klavye parlaklığı geri okuması eşleşmedi."));
+                }
+                self.remember(&ProfileSettings { brightness: Some(p.brightness), ..Default::default() });
+                ok("Klavye parlaklığı uygulandı.", true)
+            }
             Call::RgbEffect(p) => {
                 let r = self.rgb.as_ref().ok_or_else(|| RpcError::new(code::UNSUPPORTED, "RGB yok"))?;
                 if let RgbEffect::Wave { speed } = p.effect {

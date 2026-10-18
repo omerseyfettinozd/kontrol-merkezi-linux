@@ -1,0 +1,21 @@
+{
+  "name": "r9t-studio-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "R9T Studio arayüzü (Tauri v2 + Svelte 5)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tauri-apps/cli": "^2.12.3",
+    "svelte": "^5.57.2",
+    "vite": "^8.3.4"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.4"
+  }
+}

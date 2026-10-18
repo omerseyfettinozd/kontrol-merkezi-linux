@@ -35,12 +35,14 @@ pub async fn run(socket: String, desktop: String, mut rx: mpsc::Receiver<Outgoin
                 }
                 // The registration reply decides whether we are connected.
                 let mut registered = false;
+                let mut read_only = false;
                 for _ in 0..2 {
                     match tokio::time::timeout(Duration::from_secs(30), lines.next_line()).await {
                         Ok(Ok(Some(l))) => {
                             let v: serde_json::Value = serde_json::from_str(&l).unwrap_or_default();
                             if v["id"] == json!(reg_id) {
                                 registered = v.get("result").is_some();
+                                read_only = v["error"]["code"] == json!(r9t_protocol::rpc::code::READ_ONLY);
                                 if !registered {
                                     *last_error.lock().unwrap_or_else(|p| p.into_inner()) = v["error"]["message"].as_str().unwrap_or("kayıt reddedildi").to_owned();
                                 }
@@ -48,6 +50,16 @@ pub async fn run(socket: String, desktop: String, mut rx: mpsc::Receiver<Outgoin
                         }
                         _ => break,
                     }
+                }
+                if read_only {
+                    // Shadow r9td refuses registration until it restarts in control
+                    // mode, which closes this socket. Retrying every few seconds only
+                    // floods the audit log; wait for the close (or 5 min).
+                    let _ = tokio::time::timeout(Duration::from_secs(300), async {
+                        while let Ok(Some(_)) = lines.next_line().await {}
+                    })
+                    .await;
+                    continue;
                 }
                 if !registered {
                     tokio::time::sleep(Duration::from_secs(5)).await;

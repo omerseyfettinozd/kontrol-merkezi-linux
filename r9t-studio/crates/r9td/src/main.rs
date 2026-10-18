@@ -269,6 +269,7 @@ fn main() -> ExitCode {
             refused: refused.clone(),
             polkit: if control_mode { zbus::blocking::Connection::system().ok() } else { None },
             conn_seq: AtomicU64::new(1),
+            state_dir: args.state_dir.clone(),
         });
         let mode = if control_mode { "kontrol" } else if refused.is_some() { "salt okunur (kontrol reddedildi)" } else { "gölge" };
         record(&audit, "start", true, format!("r9td {} {mode} modda başladı", env!("CARGO_PKG_VERSION")));

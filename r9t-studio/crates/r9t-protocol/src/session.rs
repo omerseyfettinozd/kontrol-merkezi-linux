@@ -58,12 +58,14 @@ pub enum SessionCall {
     AudioReactive(RadioParams),
     /// Seconds without input before `Idle{idle:true}` is reported to r9td.
     SetIdleTimeout(SecondsParams),
+    /// Installed Steam games (name, appid, install dir) for automation rules.
+    SteamGames(Empty),
 }
 
 impl SessionCall {
     pub const METHODS: &'static [&'static str] = &[
         "status", "set_refresh_rate", "set_brightness", "set_volume", "set_mic_volume", "wifi",
-        "bluetooth", "airplane", "gpu_processes", "kill_process", "audio_reactive", "set_idle_timeout",
+        "bluetooth", "airplane", "gpu_processes", "kill_process", "audio_reactive", "set_idle_timeout", "steam_games",
     ];
 }
 

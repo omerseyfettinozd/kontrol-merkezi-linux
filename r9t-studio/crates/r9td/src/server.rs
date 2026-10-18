@@ -35,6 +35,7 @@ pub struct Server {
     pub refused: Option<String>,
     pub polkit: Option<zbus::blocking::Connection>,
     pub conn_seq: std::sync::atomic::AtomicU64,
+    pub state_dir: std::path::PathBuf,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -282,6 +283,22 @@ impl Server {
                 let live = self.shared.live.read().unwrap_or_else(|p| p.into_inner());
                 serde_json::to_value(live.snapshot(now, unix_ms())).map_err(|e| RpcError::new(code::INTERNAL, e.to_string()))
             }
+            Call::Policy(_) => {
+                let doc = std::fs::read(self.state_dir.join("policy.json"))
+                    .ok()
+                    .and_then(|b| serde_json::from_slice::<r9t_protocol::policy::PolicyDocument>(&b).ok())
+                    .unwrap_or_default();
+                // Last applied settings (fan curve, RGB, limits) so clients can show the active state.
+                let last = std::fs::read(self.state_dir.join(crate::control::LAST))
+                    .ok()
+                    .and_then(|b| serde_json::from_slice::<r9t_protocol::profile::ProfileSettings>(&b).ok());
+                Ok(json!({"document": doc, "paused": self.state_dir.join("policy.paused").exists(), "last": last}))
+            }
+            Call::RgbState(_) => {
+                let r = r9t_hal::rgb::Rgb::discover(r9t_hal::Sysfs::from_env()).map_err(|e| RpcError::new(code::UNSUPPORTED, e.to_string()))?;
+                let colors = r.read_frame().map_err(|e| RpcError::new(code::HARDWARE, e.to_string()))?;
+                Ok(json!({"colors": colors, "brightness": r.brightness().ok(), "max": r.max_brightness()}))
+            }
             Call::History(p) => {
                 let h = self.shared.history.lock().unwrap_or_else(|p| p.into_inner());
                 Ok(json!({"window_s": p.seconds.min(300), "points": h.since(unix_ms(), p.seconds)}))
@@ -289,8 +306,15 @@ impl Server {
             Call::Capabilities(_) => {
                 let m = &self.shared.metrics;
                 use std::sync::atomic::Ordering::Relaxed;
+                let presets: Vec<Value> = r9t_protocol::presets::THERMAL_PRESETS
+                    .iter()
+                    .map(|p| json!({"key": p.key, "name": p.name, "description": p.description, "settings": r9t_protocol::presets::thermal_preset(p.key)}))
+                    .collect();
                 Ok(json!({"protocol_version": PROTOCOL_VERSION, "mode": if self.shadow { "shadow" } else { "control" },
                           "probe": self.capabilities,
+                          "thermal_presets": presets,
+                          "fan_presets": r9t_protocol::presets::FAN_PRESET_KEYS,
+                          "scenarios": ["quiet", "balanced", "game", "turbo"],
                           "metrics": {"ec_ops": m.ec_ops.load(Relaxed), "fan_status_reads": m.fan_status_reads.load(Relaxed),
                                       "legacy_queries": m.legacy_queries.load(Relaxed), "samples": m.samples.load(Relaxed),
                                       "nvml_calls": m.nvml_calls.load(Relaxed), "nvml_skipped_inactive": m.nvml_skipped_inactive.load(Relaxed)}}))

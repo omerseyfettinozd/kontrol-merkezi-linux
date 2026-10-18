@@ -160,6 +160,7 @@ impl Agent {
                 }
                 Ok(json!({"audio_reactive": p.enabled}))
             }
+            SessionCall::SteamGames(_) => Ok(json!({"games": game::steam_games()})),
             SessionCall::SetIdleTimeout(p) => {
                 if p.seconds > 3600 {
                     return Err(RpcError::new(code::INVALID_PARAMS, "0–3600 sn"));
