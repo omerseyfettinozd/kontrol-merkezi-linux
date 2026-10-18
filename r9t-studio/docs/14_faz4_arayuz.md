@@ -26,9 +26,16 @@ Tarih: 2026-10-18. Kod: `ui/` (Svelte 5 + Vite 8, `ui/src-tauri` ayrı workspace
 - Ekleme: anlık görüntüye `camera` alanı (USB `authorized`, 5 sn'de bir; `r9t_hal::CAMERA_USB` tek kaynak). Eski daemon alanı göndermezse `null` (serde default, test var). Arayüz rozeti açık/kapalı gösterir, mevcut durumla aynı düğme devre dışı. **Kurulu gölge r9td eski sürüm: rozet canlıda "—"; yeni r9td kurulumu sudo bekliyor.** Sysfs değeri: `2b7e:c906 FHD WebCam`, authorized=1.
 - pc-eye notu: `pc-eye context` ses örneklemesinde (`pw-record --target @DEFAULT_AUDIO_SINK@`) zaman aşımsız takılıyor ve bu hedef dizgesi mikrofona bağlanıyor; diğer pc-eye komutları ve `grim -o` kullanıldı.
 
+### Deneme modu (2026-10-19 02:00–02:21, `r9t-switch --trial 20`, kullanıcı sudo ile kurdu)
+
+- Yeni r9td (`install-r9td-dev.sh`) denetimde: `camera` alanı canlı `{"value": true}` (sysfs `authorized=1` ile aynı).
+- **Klavye "Haritayı uygula" geçti:** headless çıktıda sanal fareyle "Satır 1" (fırça `#e63946`) → "Haritayı uygula". `rgb_state` geri okuması: 1. satır 21 LED `(230,57,70)`, kalan 105 LED `(255,255,255)`, parlaklık 8/50 değişmedi. Denetim günlüğü: `rgb_map ok`, pid = arayüz. Bildirim "Klavye haritası uygulandı.". Sonra `rgb` ile tümü beyaza geri alındı (geri okumayla doğrulandı). Klavyenin fiziksel gözlemi kullanıcı tarafından yapılmadı.
+- **Boşta CPU, gerçek eDP-1 (2560×1600@300 Hz), pencere 1280×820 yüzen, görünür, odak dışı, Genel Bakış, 60 sn × 3:** %1,02 / %0,82 / %1,52 (ort. ≈ %1,12; yükün çoğu WebKitWebProcess: 0,63–1,07). **< %1 hedefi tutarlı karşılanmıyor.** Aynı yapı headless 60 Hz'de %0,88. Anlık görüntü ~4 KB/sn; odak dışı yeniden çizim 3 sn'de bir. Sonraki adım: WebKit profili (300 Hz'te 3 sn'lik çizimin maliyeti, kullanıcı etkinliğinin etkisi), gerekirse odak dışında grafikleri dondurma.
+- AT-SPI: WebKitGTK penceresi erişilebilirlik ağacı yayınlamıyor (pc-eye `ui` → 0 öğe); otomasyon koordinatla yapıldı, imleç ve odak geri yüklendi.
+
 ## Kalan (Faz 4 kabulü)
 
-- [ ] Klavye "Haritayı uygula" tıklaması son yapıda yeniden doğrulanmalı (önceki yapıda işaretçi yakalaması nedeniyle tıklama ulaşmadı; yakalama kaldırıldı, test edilmedi).
-- [ ] Boşta CPU ölçümünün gerçek eDP-1 üzerinde tekrarı (headless çıktı yazılımla birleştiriyor olabilir).
+- [x] Klavye "Haritayı uygula" tıklaması son yapıda doğrulandı (2026-10-19, LED geri okuması).
+- [ ] Boşta CPU < %1 gerçek eDP-1'de: ölçüldü (2026-10-19), 300 Hz'te ort. %1,12; hedef tutmuyor, iyileştirme gerekli.
 - [ ] Kullanıcı başındayken: tepsi ikonu/menü, Hz değişimi, gerçek KDE oturumu, ses tepkili efekt.
 - [ ] Kalıcı geçiş (`r9t-switch --commit`, menü başlatıcı, exec-once) — kullanıcı onayıyla.
