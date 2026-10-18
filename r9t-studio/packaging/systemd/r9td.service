@@ -18,7 +18,11 @@ ExecStart=/usr/local/lib/r9t-studio/r9td
 ExecStopPost=/usr/local/lib/r9t-studio/r9td --emergency-auto
 WatchdogSec=10
 Restart=on-failure
-RestartSec=1
+RestartSec=500ms
+# systemd ≥ 254: restart without passing through 'failed', so OnFailure= (fallback to
+# the legacy service) fires only once the start limit is exhausted. Without it,
+# systemd 262 triggers OnFailure= before the auto-restart and Conflicts= cancels it.
+RestartMode=direct
 TimeoutStopSec=15
 SyslogIdentifier=r9td
 RuntimeDirectory=r9td

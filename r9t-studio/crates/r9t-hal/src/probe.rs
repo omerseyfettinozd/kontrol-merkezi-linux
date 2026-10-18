@@ -40,6 +40,16 @@ fn val<T: Serialize>(r: crate::Result<T>) -> Value {
 
 /// `with_nvml = false` skips NVML entirely (e.g. when the caller must not risk a wake).
 pub fn probe(fs: &Sysfs, with_nvml: bool) -> ProbeReport {
+    probe_with(fs, with_nvml, false)
+}
+
+/// Daemon start-up variant: no EC, RAPL or NVML reads (the sampler is the only
+/// reader and a full probe costs ~1.5 s); availability comes from file presence.
+pub fn probe_light(fs: &Sysfs) -> ProbeReport {
+    probe_with(fs, false, true)
+}
+
+fn probe_with(fs: &Sysfs, with_nvml: bool, light: bool) -> ProbeReport {
     let mut caps = Vec::new();
     let mut r = serde_json::Map::new();
     let dmi = |f: &str| fs.read(format!("/sys/class/dmi/id/{f}")).ok();
@@ -50,7 +60,15 @@ pub fn probe(fs: &Sysfs, with_nvml: bool) -> ProbeReport {
 
     // Fan bridge (status is 0400 root).
     let fan = SysfsFan::new(fs.clone());
-    let fan_status = fan.status();
+    let fan_status = if light {
+        if fs.exists("/sys/module/r9t_fan/parameters/status") {
+            Err(HalError::Unsupported("hafif yoklama: status örnekleyicide okunur".into()))
+        } else {
+            Err(HalError::NotFound("/sys/module/r9t_fan".into()))
+        }
+    } else {
+        fan.status()
+    };
     let module = json!({"loaded": fan.loaded(), "version": fan.version(), "srcversion": fan.srcversion()});
     match &fan_status {
         Ok(s) => {
@@ -67,6 +85,15 @@ pub fn probe(fs: &Sysfs, with_nvml: bool) -> ProbeReport {
                 "ec_temps": s.valid_temps(), "lease_ms": s.lease_ms, "error": s.error, "thermal": s.thermal,
             }));
         }
+        Err(HalError::Unsupported(_)) if light => {
+            caps.push(Capability::yes(CapabilityId::FanRead));
+            caps.push(if fan.version().as_deref() == Some("0.2.0") {
+                Capability::yes(CapabilityId::FanControl)
+            } else {
+                Capability::no(CapabilityId::FanControl, "r9t_fan 0.2.0 gerekli (Faz 0.8)")
+            });
+            r.insert("fan".into(), json!({"module": module}));
+        }
         Err(e) => {
             caps.push(Capability::no(CapabilityId::FanRead, e.to_string()));
             caps.push(Capability::no(CapabilityId::FanControl, e.to_string()));
@@ -75,7 +102,12 @@ pub fn probe(fs: &Sysfs, with_nvml: bool) -> ProbeReport {
     }
 
     // tuxedo_io fast path: hwcheck first, enforced by the type system.
-    let ec = RealDevice::open(fs, false).and_then(|d| Unverified::new(d).verify()).and_then(|mut v| {
+    let ec = if light {
+        Err(if fs.exists("/dev/tuxedo_io") { HalError::Unsupported("hafif yoklama".into()) } else { HalError::NotFound("/dev/tuxedo_io".into()) })
+    } else {
+        RealDevice::open(fs, false).and_then(|d| Unverified::new(d).verify())
+    }
+    .and_then(|mut v| {
         let sample = v.sample()?;
         Ok(json!({"model_id": format!("0x{:02x}", v.model_id), "interface": v.interface,
                   "cpu_temp": sample.cpu_temp, "gpu_temp": sample.gpu_temp,
@@ -83,6 +115,7 @@ pub fn probe(fs: &Sysfs, with_nvml: bool) -> ProbeReport {
     });
     caps.push(match &ec {
         Ok(_) => Capability::yes(CapabilityId::EcFastPath),
+        Err(HalError::Unsupported(_)) if light => Capability::yes(CapabilityId::EcFastPath),
         Err(e) => Capability::no(CapabilityId::EcFastPath, e.to_string()),
     });
     r.insert("ec".into(), val(ec));
@@ -116,10 +149,14 @@ pub fn probe(fs: &Sysfs, with_nvml: bool) -> ProbeReport {
     // Package power needs two samples; a permission error is reported as such.
     let mut rapl = PackagePower::new(fs.clone());
     let now = std::time::Instant::now();
-    let rapl_r = rapl.sample(now, 5.0).and_then(|_| {
-        std::thread::sleep(std::time::Duration::from_millis(250));
-        rapl.sample(std::time::Instant::now(), 5.0)
-    });
+    let rapl_r = if light {
+        Ok(fs.list("/sys/class/powercap").iter().any(|z| fs.read(format!("/sys/class/powercap/{z}/name")).is_ok_and(|n| n.starts_with("package-"))).then_some(0.0))
+    } else {
+        rapl.sample(now, 5.0).and_then(|_| {
+            std::thread::sleep(std::time::Duration::from_millis(250));
+            rapl.sample(std::time::Instant::now(), 5.0)
+        })
+    };
     caps.push(match &rapl_r {
         Ok(Some(_)) => Capability::yes(CapabilityId::PackagePower),
         Ok(None) => Capability::no(CapabilityId::PackagePower, "RAPL package bölgesi yok"),
@@ -189,6 +226,7 @@ pub fn probe(fs: &Sysfs, with_nvml: bool) -> ProbeReport {
     let sample = if with_nvml { gpu.sample() } else { Err(HalError::Unsupported("--no-nvml".into())) };
     caps.push(match &sample {
         Ok(_) => Capability::yes(CapabilityId::GpuTelemetry),
+        Err(_) if light && status.is_ok() => Capability::yes(CapabilityId::GpuTelemetry).with_reason("yalnız runtime_status == active iken"),
         Err(e) => Capability::no(CapabilityId::GpuTelemetry, e.to_string()),
     });
     caps.push(Capability::yes(CapabilityId::GpuLockedClocks).with_reason("yazma root ister; bağımsız geri okuma yok"));

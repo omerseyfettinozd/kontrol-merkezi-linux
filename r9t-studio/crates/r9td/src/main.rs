@@ -68,7 +68,13 @@ fn parse() -> Result<Args, String> {
 /// the last resort (after the mandatory hardware check).
 fn emergency_auto() -> i32 {
     let fs = Sysfs::from_env();
+    // Fans first (safety), limits second.
+    let code = fans_auto(&fs);
     restore_defaults(&fs, Path::new("/var/lib/r9t"));
+    code
+}
+
+fn fans_auto(fs: &Sysfs) -> i32 {
     let fan = SysfsFan::new(fs.clone());
     if fan.loaded() && fan.control(FanCommand::Auto).is_ok() {
         std::thread::sleep(Duration::from_millis(300));
@@ -77,7 +83,7 @@ fn emergency_auto() -> i32 {
             return 0;
         }
     }
-    match r9t_hal::tuxedo::RealDevice::open(&fs, true)
+    match r9t_hal::tuxedo::RealDevice::open(fs, true)
         .and_then(|d| r9t_hal::tuxedo::Unverified::new(d).verify())
         .and_then(|mut v| v.emergency_fan_auto())
     {
@@ -170,7 +176,7 @@ fn main() -> ExitCode {
         owns_fans: AtomicBool::new(false),
     });
     let audit = Arc::new(Mutex::new(Audit::new(Some(args.state_dir.join("actions.jsonl")))));
-    let capabilities = serde_json::to_value(r9t_hal::probe::probe(&fs, args.nvml)).unwrap_or_default();
+    let capabilities = serde_json::to_value(r9t_hal::probe::probe_light(&fs)).unwrap_or_default();
     let r9t_gid = nix::unistd::Group::from_name("r9t").ok().flatten().map(|g| g.gid.as_raw());
 
     // ---- control mode preconditions ----
