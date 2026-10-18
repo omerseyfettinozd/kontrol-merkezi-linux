@@ -21,6 +21,11 @@ if ! id -nG "$user" | tr ' ' '\n' | grep -qx r9t; then
 fi
 install -m 0644 "$here/packaging/polkit/org.r9t.studio.policy" /usr/share/polkit-1/actions/org.r9t.studio.policy
 install -m 0644 "$here/packaging/systemd/r9td-shadow.service" /etc/systemd/system/r9td-shadow.service
+# Faz 3: control unit (not enabled; used by r9t-switch --trial), fallback, legacy drop-in.
+install -m 0644 "$here/packaging/systemd/r9td.service" "$here/packaging/systemd/r9t-fallback.service" /etc/systemd/system/
+install -D -m 0644 "$here/packaging/systemd/slayer-r9t.service.d/r9t-conflicts.conf" /etc/systemd/system/slayer-r9t.service.d/r9t-conflicts.conf
+install -m 0755 "$here/tools/r9t-switch" /usr/local/lib/r9t-studio/r9t-switch
+ln -sf /usr/local/lib/r9t-studio/r9t-switch /usr/local/bin/r9t-switch
 systemctl daemon-reload
 systemctl enable --now r9td-shadow.service
 sleep 3

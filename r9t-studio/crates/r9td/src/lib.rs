@@ -2,6 +2,8 @@
 //! runtime pieces. The binary in `main.rs` only wires them together.
 
 pub mod audit;
+pub mod auth;
+pub mod control;
 pub mod history;
 pub mod legacy;
 pub mod policy;

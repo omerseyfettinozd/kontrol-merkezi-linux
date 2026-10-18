@@ -1,0 +1,6 @@
+# Started by r9td.service OnFailure=: hand the hardware back to the legacy service.
+[Unit]
+Description=R9T Studio fallback to the legacy control service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/r9t-studio/r9t-switch --rollback

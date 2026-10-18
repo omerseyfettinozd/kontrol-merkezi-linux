@@ -22,6 +22,7 @@ Komutlar:
   watch [n]                    Anlık görüntü akışına abone olur (n bildirim)
   call <yöntem> [params-json]  Ham JSON-RPC çağrısı
   bench [n]                    status gecikmesi (p50/p99)
+  waybar [--follow]            Waybar custom modülü için JSON (--follow: akış)
   help                         Bu metni gösterir
 
 Soket: $R9TD_SOCKET ya da /run/r9td/r9td.sock
@@ -45,6 +46,7 @@ fn main() -> ExitCode {
         "call" => raw(rest),
         "watch" => watch(rest.first().and_then(|v| v.parse().ok()).unwrap_or(u64::MAX)),
         "bench" => bench(rest.first().and_then(|v| v.parse().ok()).unwrap_or(1000)),
+        "waybar" => waybar(rest.iter().any(|a| a == "--follow")),
         "help" | "-h" | "--help" => {
             print!("{USAGE}");
             ExitCode::SUCCESS
@@ -208,4 +210,90 @@ fn bench(n: usize) -> ExitCode {
     let q = |p: f64| times[((times.len() as f64 * p) as usize).min(times.len() - 1)];
     println!("{{\"n\": {n}, \"p50_ms\": {:.3}, \"p99_ms\": {:.3}, \"max_ms\": {:.3}}}", q(0.5), q(0.99), times[times.len() - 1]);
     ExitCode::SUCCESS
+}
+
+/// One Waybar `custom` module line (`"return-type": "json"`).
+fn waybar_line(snap: Option<&serde_json::Value>) -> String {
+    let Some(s) = snap else {
+        return serde_json::json!({"text": "R9T —", "tooltip": "r9td çalışmıyor", "class": "offline"}).to_string();
+    };
+    let v = |p: &[&str]| -> Option<f64> {
+        let mut cur = s;
+        for k in p {
+            cur = cur.get(*k)?;
+        }
+        cur.get("value")?.as_f64()
+    };
+    let cpu = v(&["cpu", "ec_temp_c"]);
+    let gpu = v(&["gpu", "temp_c"]).or(v(&["gpu", "ec_temp_c"]));
+    let rpm = v(&["fans", "cpu_rpm"]);
+    let fmt = |x: Option<f64>, unit: &str| x.map(|x| format!("{x:.0}{unit}")).unwrap_or_else(|| "—".into());
+    let auth = &s["authority"];
+    let class = if auth["guard_active"].as_bool() == Some(true) {
+        "guard"
+    } else {
+        match auth["state"].as_str() {
+            Some("control") => match s["fans"]["mode"]["value"].as_str() {
+                Some("auto") | None => "auto",
+                _ => "manual",
+            },
+            Some("refused") => "refused",
+            _ => "shadow",
+        }
+    };
+    let tooltip = format!(
+        "CPU {} (Tctl {}) · {}\nGPU {} · {}\nFan {} / {} rpm · {}\nGüç profili: {} · Pil {}\nr9td: {} — {}",
+        fmt(cpu, " °C"),
+        fmt(v(&["cpu", "tctl_c"]), " °C"),
+        fmt(v(&["cpu", "package_w"]), " W"),
+        fmt(gpu, " °C"),
+        fmt(v(&["gpu", "power_w"]), " W"),
+        fmt(rpm, ""),
+        fmt(v(&["fans", "gpu_rpm"]), ""),
+        s["fans"]["mode"]["value"].as_str().unwrap_or("—"),
+        s["power"]["profile"]["value"].as_str().unwrap_or("—"),
+        fmt(v(&["power", "battery", "percent"]), " %"),
+        auth["state"].as_str().unwrap_or("—"),
+        auth["reason"].as_str().unwrap_or(""),
+    );
+    serde_json::json!({
+        "text": format!("{} {}", fmt(cpu, "°"), fmt(gpu, "°")),
+        "tooltip": tooltip,
+        "class": class,
+        "percentage": cpu.map(|c| c.round() as i64).unwrap_or(0),
+    })
+    .to_string()
+}
+
+fn waybar(follow: bool) -> ExitCode {
+    use std::io::Write;
+    let out = std::io::stdout();
+    if !follow {
+        let snap = Client::connect(&socket(), Some(Duration::from_secs(3))).ok().and_then(|mut c| c.call(Call::Status(Empty {})).ok());
+        println!("{}", waybar_line(snap.as_ref()));
+        return ExitCode::SUCCESS;
+    }
+    loop {
+        let session = (|| -> Result<(), client::ClientError> {
+            let mut c = Client::connect(&socket(), Some(Duration::from_secs(15)))?;
+            let first = c.call(Call::Status(Empty {}))?;
+            let _ = writeln!(out.lock(), "{}", waybar_line(Some(&first)));
+            c.call(Call::Subscribe(SubscribeParams { topics: vec![Topic::Snapshot] }))?;
+            let mut last = String::new();
+            loop {
+                let note = c.notification()?;
+                let line = waybar_line(Some(&note.params));
+                if line != last {
+                    if writeln!(out.lock(), "{line}").is_err() {
+                        std::process::exit(0); // Waybar went away
+                    }
+                    last = line;
+                }
+            }
+        })();
+        if session.is_err() {
+            let _ = writeln!(out.lock(), "{}", waybar_line(None));
+        }
+        std::thread::sleep(Duration::from_secs(2));
+    }
 }

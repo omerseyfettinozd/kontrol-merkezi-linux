@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# r9t-switch: move hardware control between the legacy service and r9td.
+#   r9t-switch --trial <minutes>   r9td controls for a limited time, then legacy returns
+#   r9t-switch --rollback          legacy service back in control, r9td shadow resumes
+#   r9t-switch --status
+# Daily use stays on the legacy service until Faz 4 (`--commit` comes then).
+set -euo pipefail
+[[ $EUID -eq 0 ]] || { echo "root gerekli" >&2; exit 1; }
+LEGACY_SOCK=/run/slayer-r9t/control.sock
+
+legacy_rpc() {  # op, as root (the socket belongs to the desktop user)
+    /usr/bin/python3 -I - "$1" <<'PY' || true
+import json, socket, sys
+try:
+    s = socket.socket(socket.AF_UNIX); s.settimeout(20); s.connect('/run/slayer-r9t/control.sock')
+    s.sendall((json.dumps({'version': 1, 'id': 'r9t-switch', 'op': sys.argv[1]}) + '\n').encode())
+    print(s.recv(65536).decode().strip()[:300])
+except OSError as e:
+    print(f'eski servis: {e}')
+PY
+}
+
+rollback() {
+    systemctl stop r9t-switch-return.timer 2>/dev/null || true
+    systemctl stop r9td.service || true
+    # r9td's ExecStopPost already returned the fans to auto.
+    systemctl start slayer-r9t.service
+    systemctl start r9td-shadow.service || true
+    echo "Kontrol eski serviste: $(systemctl is-active slayer-r9t.service)"
+}
+
+case "${1:-}" in
+    --trial)
+        minutes="${2:?dakika gerekli}"
+        [[ "$minutes" =~ ^[0-9]+$ && "$minutes" -ge 1 && "$minutes" -le 720 ]] || { echo "1–720 dakika" >&2; exit 2; }
+        echo "1. Eski serviste sıcaklık hedefi durduruluyor"; legacy_rpc temperature_target_stop
+        echo "2. Eski servis durduruluyor (ExecStopPost fanı auto'ya alır, GPU saat kilidini sıfırlar)"
+        systemctl stop slayer-r9t.service
+        echo "3. Varsayılanlar eski servis durduktan sonra yeniden okunacak (önceki deneme kayıtları siliniyor)"
+        rm -f /var/lib/r9t/baseline.json /var/lib/r9t/last.json /var/lib/r9t/automation-snapshot.json
+        echo "4. r9td kontrol modunda başlıyor"
+        if ! systemctl start r9td.service; then
+            echo "r9td başlamadı; eski servise dönülüyor" >&2
+            rollback
+            exit 1
+        fi
+        systemd-run --unit=r9t-switch-return --on-active="${minutes}m" --timer-property=AccuracySec=1s \
+            /usr/local/lib/r9t-studio/r9t-switch --rollback >/dev/null
+        echo "Deneme: r9td ${minutes} dk kontrolde; süre dolunca eski servis geri gelir."
+        /usr/local/lib/r9t-studio/r9tctl status 2>/dev/null | /usr/bin/python3 -I -c 'import json,sys; print("authority:", json.load(sys.stdin)["authority"])' || true
+        ;;
+    --rollback) rollback ;;
+    --status)
+        for u in slayer-r9t.service r9td.service r9td-shadow.service r9t-switch-return.timer; do
+            printf '%-26s %s\n' "$u" "$(systemctl is-active "$u" 2>/dev/null || true)"
+        done
+        ;;
+    *) echo "Kullanım: r9t-switch --trial <dk> | --rollback | --status" >&2; exit 2 ;;
+esac

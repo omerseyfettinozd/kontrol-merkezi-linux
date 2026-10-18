@@ -29,6 +29,12 @@ pub struct Server {
     pub r9t_gid: Option<u32>,
     pub allow_uid: Option<u32>,
     pub snapshots: broadcast::Sender<Arc<Vec<u8>>>,
+    /// Present in control mode; `None` in shadow mode or when control was refused.
+    pub control: Option<crate::control::ControlHandle>,
+    /// Why control was refused at start (shown to clients instead of READ_ONLY).
+    pub refused: Option<String>,
+    pub polkit: Option<zbus::blocking::Connection>,
+    pub conn_seq: std::sync::atomic::AtomicU64,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -36,7 +42,12 @@ pub struct Peer {
     pub uid: u32,
     pub gid: u32,
     pub pid: i32,
+    /// `/proc/<pid>/stat` start time at connect (pid-reuse guard for polkit).
+    pub start: Option<u64>,
 }
+
+/// Polkit answers are cached per connection for this long.
+pub const AUTH_CACHE: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// Binds the socket (or adopts the systemd-passed one) with 0660 root:r9t.
 pub fn listener(path: &Path, r9t_gid: Option<u32>) -> std::io::Result<UnixListener> {
@@ -69,7 +80,7 @@ pub fn listener(path: &Path, r9t_gid: Option<u32>) -> std::io::Result<UnixListen
 fn peer_of(stream: &UnixStream) -> std::io::Result<Peer> {
     let c = nix::sys::socket::getsockopt(&stream.as_fd(), nix::sys::socket::sockopt::PeerCredentials)
         .map_err(std::io::Error::other)?;
-    Ok(Peer { uid: c.uid(), gid: c.gid(), pid: c.pid() })
+    Ok(Peer { uid: c.uid(), gid: c.gid(), pid: c.pid(), start: crate::auth::start_time(c.pid()) })
 }
 
 /// Supplementary + primary groups of the peer process (snapshot at connect time).
@@ -108,6 +119,8 @@ impl Server {
 
     async fn connection(self: Arc<Self>, stream: UnixStream) {
         let Ok(peer) = peer_of(&stream) else { return };
+        let conn_id = self.conn_seq.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let mut authorized_at: Option<Instant> = None;
         let (mut rd, mut wr) = stream.into_split();
         let (tx, mut rx) = mpsc::channel::<Arc<Vec<u8>>>(SUBSCRIBER_BACKLOG);
         let writer = tokio::spawn(async move {
@@ -172,10 +185,14 @@ impl Server {
                                 }
                                 Ok(json!({"subscribed": []}))
                             }
+                            other if !other.is_read_only() => {
+                                self.clone().control_call(other.clone(), peer, conn_id, &mut authorized_at).await
+                            }
                             other => self.dispatch(other),
                         };
                         let ok = result.is_ok();
-                        if !req.call.is_read_only() {
+                        // The control thread audits the calls it executes itself.
+                        if !req.call.is_read_only() && self.control.is_none() {
                             let msg = result.as_ref().err().map(|e| e.message.clone()).unwrap_or_default();
                             self.audit(&peer, method, ok, started.elapsed().as_millis() as u64, &msg);
                         }
@@ -197,8 +214,44 @@ impl Server {
         if let Some(h) = sub {
             h.abort();
         }
+        if let Some(c) = &self.control {
+            c.conn_closed(conn_id);
+        }
         drop(tx);
         let _ = writer.await;
+    }
+
+    /// Control methods: polkit (`org.r9t.control`) then the single-writer thread.
+    async fn control_call(self: Arc<Self>, call: Call, peer: Peer, conn_id: u64, authorized_at: &mut Option<Instant>) -> Result<Value, RpcError> {
+        let Some(handle) = self.control.clone() else {
+            return Err(RpcError::new(
+                code::READ_ONLY,
+                self.refused.clone().unwrap_or_else(|| "r9td gölge (salt okunur) modda; kontrol eski servistedir.".into()),
+            ));
+        };
+        // High-rate session traffic is bound to a polkit-checked session_register.
+        let needs_polkit = !matches!(call, Call::RgbFrame(_) | Call::SessionEvent(_));
+        let cached = authorized_at.is_some_and(|t| t.elapsed() < AUTH_CACHE);
+        if needs_polkit && !cached {
+            let Some(start) = peer.start else {
+                return Err(RpcError::new(code::UNAUTHORIZED, "istemci süreci okunamadı"));
+            };
+            let polkit = self.polkit.clone();
+            let decision = tokio::task::spawn_blocking(move || match polkit {
+                Some(conn) => crate::auth::check(&conn, peer.pid, peer.uid, start, crate::auth::ACTION_CONTROL),
+                None if peer.uid == 0 => crate::auth::Decision::Allowed,
+                None => crate::auth::Decision::Denied("polkit'e ulaşılamıyor".into()),
+            })
+            .await
+            .map_err(|e| RpcError::new(code::INTERNAL, e.to_string()))?;
+            match decision {
+                crate::auth::Decision::Allowed => *authorized_at = Some(Instant::now()),
+                crate::auth::Decision::Denied(m) => return Err(RpcError::new(code::UNAUTHORIZED, m)),
+            }
+        }
+        tokio::task::spawn_blocking(move || handle.call(call, peer, conn_id))
+            .await
+            .map_err(|e| RpcError::new(code::INTERNAL, e.to_string()))?
     }
 
     /// Forwards snapshot notifications; a subscriber more than 256 behind is dropped.
@@ -246,8 +299,7 @@ impl Server {
                 let a = self.audit.lock().unwrap_or_else(|p| p.into_inner());
                 Ok(json!({"events": a.latest(p.limit as usize)}))
             }
-            _ if self.shadow => Err(RpcError::new(code::READ_ONLY, "r9td gölge (salt okunur) modda; kontrol eski servistedir.")),
-            _ => Err(RpcError::new(code::METHOD_NOT_FOUND, "Kontrol yolu henüz etkin değil.")),
+            _ => Err(RpcError::new(code::READ_ONLY, "r9td gölge (salt okunur) modda; kontrol eski servistedir.")),
         }
     }
 

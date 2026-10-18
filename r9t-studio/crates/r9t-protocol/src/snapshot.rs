@@ -160,6 +160,8 @@ pub struct AuthoritySnapshot {
     pub reason: String,
     pub active_profile: Option<String>,
     pub guard_active: bool,
+    /// Registered r9t-session, e.g. `hyprland:3`.
+    pub session: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

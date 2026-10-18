@@ -177,6 +177,7 @@ impl Live {
                 reason: "salt okunur gölge modu".into(),
                 active_profile: None,
                 guard_active: false,
+                session: None,
             }),
         }
     }
