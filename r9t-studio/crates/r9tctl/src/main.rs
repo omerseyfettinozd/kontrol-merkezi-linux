@@ -4,6 +4,7 @@ mod client;
 mod desktop;
 mod keymap;
 mod load;
+mod sweep;
 mod switch;
 
 use std::path::PathBuf;
@@ -38,6 +39,8 @@ Komutlar:
                                126 RGB kanalını tek tek yakıp tuş haritasını kaydeder
   load-test <target|fan> <sn> <çıktı.json>
                                Tüm çekirdeklerde yük altında termal davranışı örnekler
+  fan-sweep [--out dosya] [--steps 45,40,...]
+                               r9t_fan 0.3.0 düşük duty taraması (root, r9td durdurulmuş)
   help                         Bu metni gösterir
 
 Soket: $R9TD_SOCKET ya da /run/r9td/r9td.sock
@@ -73,6 +76,7 @@ fn main() -> ExitCode {
         "desktop" => desktop::run(rest),
         "keymap-calibrate" => keymap::run(rest),
         "load-test" => load::run(rest),
+        "fan-sweep" => sweep::run(rest),
         "help" | "-h" | "--help" => {
             print!("{USAGE}");
             ExitCode::SUCCESS

@@ -163,6 +163,12 @@ impl Control {
         if !r9t_hal::fan::supported_version(version.as_deref()) {
             return Err(r9t_hal::fan::version_refusal(version.as_deref()));
         }
+        // 0.3.0: a sweep cut short (SIGKILL) may have left the test-only low duty on.
+        if version.as_deref() == Some("0.3.0") {
+            if let Err(e) = fan.set_allow_low_duty(false) {
+                eprintln!("r9td: allow_low_duty kapatılamadı: {e}");
+            }
+        }
         // Safety invariant 1: start from firmware control.
         let st = fan.status().map_err(|e| format!("r9t_fan status: {e}"))?;
         if !st.is_auto() {
