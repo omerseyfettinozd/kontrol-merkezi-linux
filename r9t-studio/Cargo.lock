@@ -685,6 +685,7 @@ dependencies = [
  "r9t-protocol",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

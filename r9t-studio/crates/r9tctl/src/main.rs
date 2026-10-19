@@ -3,6 +3,7 @@
 mod client;
 mod desktop;
 mod keymap;
+mod legacy;
 mod load;
 mod sweep;
 mod switch;
@@ -34,6 +35,7 @@ Komutlar:
                                --trial <dk> | --commit | --rollback | --fallback | --status
                                (r9t-switch adıyla da çağrılır)
   desktop <seçenek> [--dry-run] Masaüstü tarafı (kullanıcı): --commit | --rollback | --status
+                               | --remove-legacy [--yes]
                                (r9t-switch-user adıyla da çağrılır)
   keymap-calibrate [--start n] [--out dosya]
                                126 RGB kanalını tek tek yakıp tuş haritasını kaydeder
@@ -41,6 +43,8 @@ Komutlar:
                                Tüm çekirdeklerde yük altında termal davranışı örnekler
   fan-sweep [--out dosya] [--steps 45,40,...]
                                r9t_fan 0.3.0 düşük duty taraması (root, r9td durdurulmuş)
+  legacy-remove [--yes] [--force-early]
+                               Eski Python sistemini yedekleyip kaldırır (root; --yes olmadan plan)
   help                         Bu metni gösterir
 
 Soket: $R9TD_SOCKET ya da /run/r9td/r9td.sock
@@ -77,6 +81,7 @@ fn main() -> ExitCode {
         "keymap-calibrate" => keymap::run(rest),
         "load-test" => load::run(rest),
         "fan-sweep" => sweep::run(rest),
+        "legacy-remove" => legacy::run(rest),
         "help" | "-h" | "--help" => {
             print!("{USAGE}");
             ExitCode::SUCCESS

@@ -134,6 +134,9 @@ fn commit(c: &Ctx) -> Result<(), String> {
 }
 
 fn rollback(c: &Ctx) -> Result<(), String> {
+    if std::path::Path::new(crate::legacy::REMOVED).exists() {
+        return Err("eski sistem kaldırıldı; masaüstü geri dönüşü yok (önce sistem yedeğini geri yükleyin)".into());
+    }
     println!("1. r9t-session ve tepsi kapatılıyor, eski oturum ajanı geri");
     c.user_systemctl(&["disable", "--now", "r9t-studio-tray.service"])?;
     c.user_systemctl(&["disable", "--now", "r9t-session.service"])?;
@@ -175,7 +178,7 @@ fn status(c: &Ctx) -> Result<(), String> {
     Ok(())
 }
 
-pub const USAGE: &str = "Kullanım: r9tctl desktop --commit | --rollback | --status [--dry-run]";
+pub const USAGE: &str = "Kullanım: r9tctl desktop --commit | --rollback | --status [--dry-run] | --remove-legacy [--yes]";
 
 pub fn run(args: &[String]) -> ExitCode {
     if crate::switch::euid() == 0 {
@@ -187,6 +190,7 @@ pub fn run(args: &[String]) -> ExitCode {
         Some("--commit") => commit(&c),
         Some("--rollback") => rollback(&c),
         Some("--status") => status(&c),
+        Some("--remove-legacy") => crate::legacy::home(args.iter().any(|a| a == "--yes")),
         _ => {
             eprintln!("{USAGE}");
             return ExitCode::from(2);

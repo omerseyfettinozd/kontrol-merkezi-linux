@@ -6,7 +6,9 @@
 //! - `--rollback`: legacy service back in control, r9td shadow resumes; after
 //!   `--commit` this is permanent too
 //! - `--fallback`: `r9t-fallback.service` (r9td start limit hit): legacy now, boot
-//!   configuration untouched
+//!   configuration untouched. Once the legacy system is removed (`r9tctl
+//!   legacy-remove`), the fans stay in EC auto instead.
+//! - `--trial`/`--rollback` refuse after that removal, naming the backup to restore.
 //! - `--status`
 //!
 //! The desktop side (session agent, Hyprland line, menu entry) is `r9tctl desktop`.
@@ -83,7 +85,23 @@ fn print_authority() {
     }
 }
 
+/// After `legacy-remove` there is nothing to hand back to.
+fn legacy_present() -> Step {
+    match std::fs::read_to_string(crate::legacy::REMOVED) {
+        Ok(t) => Err(Fail(format!("eski sistem kaldırıldı ({}). Geri yükleme: tar -xpf <yedek> -C / && rm {} && systemctl daemon-reload", t.trim(), crate::legacy::REMOVED))),
+        Err(_) => Ok(()),
+    }
+}
+
+/// r9td gave up (start limit). Its ExecStopPost already wrote auto; repeat it once.
+fn fallback_without_legacy() -> Step {
+    let st = Command::new(lib_dir().join("r9td")).arg("--emergency-auto").status();
+    println!("Eski sistem yok: fanlar EC otomatikte bırakıldı ({}). r9td: journalctl -u r9td", if st.is_ok_and(|s| s.success()) { "doğrulandı" } else { "ExecStopPost'a güvenildi" });
+    Ok(())
+}
+
 fn rollback() -> Step {
+    legacy_present()?;
     systemctl_quiet(&["stop", "r9t-switch-return.timer"]);
     systemctl_quiet(&["stop", "r9td.service"]);
     // r9td's ExecStopPost already returned the fans to auto.
@@ -125,6 +143,7 @@ fn take_control() -> Step {
 }
 
 fn trial(minutes: &str) -> Step {
+    legacy_present()?;
     let m: u32 = minutes.parse().ok().filter(|m| (1..=720).contains(m)).ok_or_else(|| Fail("1–720 dakika".into()))?;
     // Its return timer runs --rollback, which would undo a permanent switch.
     if Path::new(COMMITTED).exists() {
@@ -197,7 +216,7 @@ pub fn run(args: &[String]) -> ExitCode {
         (Some("--trial"), Some(m)) => trial(m),
         (Some("--commit"), _) => commit(),
         (Some("--rollback"), _) => rollback().and_then(|_| uncommit()),
-        (Some("--fallback"), _) => rollback(),
+        (Some("--fallback"), _) => if Path::new(crate::legacy::REMOVED).exists() { fallback_without_legacy() } else { rollback() },
         (Some("--status"), _) => status(),
         _ => {
             eprintln!("{USAGE}");
