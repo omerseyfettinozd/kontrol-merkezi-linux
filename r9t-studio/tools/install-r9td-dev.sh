@@ -26,6 +26,18 @@ install -m 0644 "$here/packaging/systemd/r9td.service" "$here/packaging/systemd/
 install -D -m 0644 "$here/packaging/systemd/slayer-r9t.service.d/r9t-conflicts.conf" /etc/systemd/system/slayer-r9t.service.d/r9t-conflicts.conf
 install -m 0755 "$here/tools/r9t-switch" /usr/local/lib/r9t-studio/r9t-switch
 ln -sf /usr/local/lib/r9t-studio/r9t-switch /usr/local/bin/r9t-switch
+install -m 0755 "$here/tools/r9t-switch-user" /usr/local/lib/r9t-studio/r9t-switch-user
+ln -sf /usr/local/lib/r9t-studio/r9t-switch-user /usr/local/bin/r9t-switch-user
+# Faz 4: the UI (built with `cd ui && npx tauri build --no-bundle`), menu entry and icon.
+ui="$here/ui/src-tauri/target/release/r9t-studio"
+if [[ -x "$ui" ]]; then
+    install -m 0755 "$ui" /usr/local/lib/r9t-studio/r9t-studio
+    install -D -m 0644 "$here/ui/src-tauri/icons/icon.png" /usr/local/share/icons/hicolor/64x64/apps/r9t-studio.png
+    install -D -m 0644 "$here/packaging/applications/r9t-studio.desktop" /usr/local/share/applications/r9t-studio.desktop
+    gtk-update-icon-cache -q /usr/local/share/icons/hicolor 2>/dev/null || true
+else
+    echo "Arayüz derlenmemiş ($ui yok); yalnız servisler kuruldu."
+fi
 # User agent unit (not enabled: the legacy session agent stays until Faz 4).
 install -D -m 0644 "$here/packaging/systemd-user/r9t-session.service" /etc/systemd/user/r9t-session.service
 systemctl daemon-reload

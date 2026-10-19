@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# r9t-switch-user: desktop side of the permanent switch (run as the desktop user,
+# after `sudo r9t-switch --commit`). Every change is undone by --rollback.
+#   r9t-switch-user --commit     r9t-session replaces the legacy session agent, the
+#                                Hyprland exec-once line starts it, menu shows R9T Studio
+#   r9t-switch-user --rollback
+#   r9t-switch-user --status
+#   --dry-run (after the command)  print what would change, touch nothing
+set -euo pipefail
+[[ $EUID -ne 0 ]] || { echo "kullanıcı olarak çalıştırın (sudo değil)" >&2; exit 1; }
+
+HYPR="$(readlink -f "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.conf")"
+# Legacy line 50 and its replacement (packaging/hyprland/r9t-session.conf, plan "r9t-session Sözleşmesi").
+OLD_LINE='exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE 2>/dev/null'
+NEW_LINE='exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE && systemctl --user start r9t-session.service'
+LEGACY_DESKTOP="${XDG_DATA_HOME:-$HOME/.local/share}/applications/slayer-r9t-control-center.desktop"
+DRY=0
+[[ "${2:-}" == "--dry-run" ]] && DRY=1
+
+run() {
+    if ((DRY)); then echo "  [dry-run] $*"; else "$@"; fi
+}
+
+# Replace one exact line; refuse if it is missing or not unique (hand-edited file).
+swap_line() {
+    local from="$1" to="$2" n
+    n="$(grep -cxF -- "$from" "$HYPR" || true)"
+    if [[ "$n" == 0 ]] && grep -qxF -- "$to" "$HYPR"; then
+        echo "  hyprland.conf zaten güncel"; return 0
+    fi
+    [[ "$n" == 1 ]] || { echo "hyprland.conf: beklenen satır $n kez bulundu, dosyaya dokunulmadı:" >&2; echo "  $from" >&2; return 1; }
+    if ((DRY)); then echo "  [dry-run] $HYPR: satır değişir → $to"; return 0; fi
+    cp -p -- "$HYPR" "$HYPR.r9t-bak"
+    FROM="$from" TO="$to" /usr/bin/python3 -I -c '
+import os, sys
+p = sys.argv[1]; lines = open(p, encoding="utf-8").read().split("\n")
+lines = [os.environ["TO"] if l == os.environ["FROM"] else l for l in lines]
+open(p, "w", encoding="utf-8").write("\n".join(lines))' "$HYPR"
+    echo "  hyprland.conf güncellendi (yedek: $HYPR.r9t-bak)"
+}
+
+commit() {
+    [[ -x /usr/local/lib/r9t-studio/r9t-session && -f /etc/systemd/user/r9t-session.service ]] \
+        || { echo "r9t-session kurulu değil: önce sudo install-r9td-dev.sh" >&2; exit 1; }
+    [[ "$(systemctl is-enabled r9td.service 2>/dev/null)" == enabled ]] \
+        || echo "Uyarı: r9td açılışta etkin değil; önce sudo r9t-switch --commit" >&2
+    echo "1. Eski oturum ajanı kapatılıyor, r9t-session etkinleşiyor (KDE: graphical-session.target)"
+    run systemctl --user disable --now slayer-r9t-session.service
+    run systemctl --user enable r9t-session.service
+    run systemctl --user start r9t-session.service
+    echo "2. Hyprland exec-once satırı"
+    swap_line "$OLD_LINE" "$NEW_LINE"
+    echo "3. Menü: eski 'Slayer R9T Kontrol Merkezi' gizleniyor, R9T Studio görünüyor"
+    if [[ -f "$LEGACY_DESKTOP" ]] && ! grep -qx 'NoDisplay=true' "$LEGACY_DESKTOP"; then
+        run cp -p -- "$LEGACY_DESKTOP" "$LEGACY_DESKTOP.r9t-bak"
+        if ((DRY)); then echo "  [dry-run] $LEGACY_DESKTOP += NoDisplay=true"; else echo 'NoDisplay=true' >> "$LEGACY_DESKTOP"; fi
+    elif [[ ! -f "$LEGACY_DESKTOP" ]]; then
+        # Shadows /usr/share/applications/slayer-r9t-control-center.desktop for this user only.
+        if ((DRY)); then echo "  [dry-run] $LEGACY_DESKTOP oluşturulur (NoDisplay=true)"; else
+            mkdir -p "$(dirname "$LEGACY_DESKTOP")"
+            printf '[Desktop Entry]\nType=Application\nName=Slayer R9T Kontrol Merkezi\nNoDisplay=true\n# r9t-switch-user\n' > "$LEGACY_DESKTOP"
+        fi
+    fi
+    [[ -f /usr/local/share/applications/r9t-studio.desktop ]] || echo "  Uyarı: R9T Studio menü girişi kurulu değil (arayüz derlenip install-r9td-dev.sh ile kurulmalı)" >&2
+    run update-desktop-database -q "$(dirname "$LEGACY_DESKTOP")" 2>/dev/null || true
+    echo "Masaüstü geçişi tamam. Geri dönüş: r9t-switch-user --rollback"
+}
+
+rollback() {
+    echo "1. r9t-session kapatılıyor, eski oturum ajanı geri"
+    run systemctl --user disable --now r9t-session.service
+    run systemctl --user enable slayer-r9t-session.service
+    echo "2. Hyprland exec-once satırı"
+    swap_line "$NEW_LINE" "$OLD_LINE"
+    echo "3. Menü"
+    if [[ -f "$LEGACY_DESKTOP.r9t-bak" ]]; then
+        run mv -f -- "$LEGACY_DESKTOP.r9t-bak" "$LEGACY_DESKTOP"
+    elif [[ -f "$LEGACY_DESKTOP" ]] && grep -qx '# r9t-switch-user' "$LEGACY_DESKTOP"; then
+        run rm -f -- "$LEGACY_DESKTOP"
+    fi
+    run update-desktop-database -q "$(dirname "$LEGACY_DESKTOP")" 2>/dev/null || true
+    echo "Masaüstü eski düzene döndü. Sistem tarafı: sudo r9t-switch --rollback"
+}
+
+status() {
+    for u in r9t-session.service slayer-r9t-session.service; do
+        printf '%-28s %-9s %s\n' "$u" "$(systemctl --user is-active "$u" 2>/dev/null || true)" "$(systemctl --user is-enabled "$u" 2>/dev/null || true)"
+    done
+    if grep -qxF -- "$NEW_LINE" "$HYPR"; then echo "hyprland.conf: r9t-session"; elif grep -qxF -- "$OLD_LINE" "$HYPR"; then echo "hyprland.conf: eski"; else echo "hyprland.conf: tanınmadı"; fi
+    if [[ -f "$LEGACY_DESKTOP" ]] && grep -qx 'NoDisplay=true' "$LEGACY_DESKTOP"; then echo "menü: eski giriş gizli"; else echo "menü: eski giriş görünür"; fi
+}
+
+case "${1:-}" in
+    --commit) commit ;;
+    --rollback) rollback ;;
+    --status) status ;;
+    *) echo "Kullanım: r9t-switch-user --commit | --rollback | --status [--dry-run]" >&2; exit 2 ;;
+esac
