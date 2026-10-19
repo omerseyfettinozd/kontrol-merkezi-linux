@@ -81,6 +81,7 @@ package() {
     install -Dm0644 ui/src-tauri/icons/icon.png "$pkgdir/usr/share/icons/hicolor/64x64/apps/r9t-studio.png"
     install -Dm0644 packaging/waybar/r9t.jsonc "$pkgdir/usr/share/r9t-studio/waybar/r9t.jsonc"
     install -Dm0644 packaging/hyprland/r9t-session.conf "$pkgdir/usr/share/r9t-studio/hyprland/r9t-session.conf"
+    install -Dm0644 packaging/hyprland/r9t-session.lua "$pkgdir/usr/share/r9t-studio/hyprland/r9t-session.lua"
     install -Dm0644 docs/04_ana_plan.md "$pkgdir/usr/share/doc/r9t-studio/04_ana_plan.md"
     install -Dm0644 packaging/arch/README.md "$pkgdir/usr/share/doc/r9t-studio/PACKAGING.md"
 }
