@@ -62,10 +62,17 @@ Değişiklik: odak dışında (`WindowEvent::Focused`) Rust abonelik iş parçac
 - Neden (bizimle ilgisiz): 00:54 uykudan uyanmada `snd_hda_intel 0000:07:00.6: CORB reset timeout#2, CORBRP = 65535` (Ryzen HD Audio / SN6140, card2); 00:58, 01:00, 01:02'de tekrar. `/proc/asound/card2/pcm0p/sub0/status`: RUNNING, `hw_ptr 0`, tetik 01:01. PipeWire yeniden başlatması yetmiyor; sürücüyü yeniden bağlama ya da yeniden başlatma gerekir (root). Sabahki `pc-eye context` takılmasının kökü de bu.
 - **Hata ve düzeltme (r9t-session):** `Capture::next` `read_exact` ile veri gelene kadar bloklanıyordu; ses gelmeyince kapatma işlenmiyor, `pw-record` öldürülmüyordu, yeniden açmak ikinci kaydediciyi başlatırdı. Okuma ayrı iş parçacığında, `next(200 ms)` zaman aşımlı (`Chunk/Idle/Closed`); döngü nesil sayacıyla (`audio_gen`) eskiyse çıkar. Testler: veri üretmeyen kaydedici 100 ms'de döner ve öldürülür; veri bitince `Closed`. Canlı (takılı kartla, elle çalıştırılan yeni ikili): kapatınca `pw-record` 0,6 sn'de 0; hızlı aç/kapat/aç → tek kaydedici. **Kurulu r9t-session eski sürüm** (yeniden kurulum sudo).
 
+### Ses tepkili efekt, fiziksel kabul (2026-10-19, yeniden başlatma sonrası, yeni r9t-session kurulu, `r9t-switch --trial 20`)
+
+- Ses kartı yeniden başlatmayla düzeldi (çekirdekte CORB hatası yok, çıkış Ryzen HD Audio).
+- Arayüzden "Ses tepkili: aç": `pw-record` hoparlör monitörüne bağlı (mikrofon değil), r9td `rgb_frame ok` akışı. Müzik çalarken 15 sn × 2 Hz LED geri okuması: 30 örneğin 30'u farklı desen, 7 band × 3 sütun yükseklik 0–6, yanık LED 9–63. **Kullanıcı gözlemi: klavye ışıkları ritimle değişiyor.** Test için parlaklık 3/50 → 20/50; "kapat" sonrası arayüz haritayı geri uyguladı: 126 LED beyaz, parlaklık 3/50, `pw-record` 0.
+- **Waybar ipucu (kullanıcı gözlemi): profil ve sıcaklıklar görünüyor.**
+
 ## Kalan (Faz 4 kabulü)
 
 - [x] Klavye "Haritayı uygula" tıklaması son yapıda doğrulandı (2026-10-19, LED geri okuması).
 - [x] Boşta CPU < %1 gerçek eDP-1'de (2026-10-19): 300 Hz, odak dışı, 3×60 sn %0,45 / %0,45 / %0,48 (odak dışında olay seyreltme).
 - [x] Tepsi ikonu/menü/ipucu (D-Bus) ve Hz değişimi (2026-10-19).
-- [ ] Kullanıcı başındayken: Waybar ipucunun gözle kontrolü, gerçek KDE oturumu, ses tepkili efektin fiziksel gözlemi (ses kartı düzelince, yeni r9t-session kurulu, denetim modu).
+- [x] Waybar ipucu ve ses tepkili efekt kullanıcı gözlemiyle (2026-10-19).
+- [ ] Gerçek KDE oturumunda kısa kontrol (kullanıcı KDE'ye girince).
 - [ ] Kalıcı geçiş (`r9t-switch --commit`, menü başlatıcı, exec-once) — kullanıcı onayıyla.
