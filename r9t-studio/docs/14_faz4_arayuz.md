@@ -68,6 +68,13 @@ Değişiklik: odak dışında (`WindowEvent::Focused`) Rust abonelik iş parçac
 - Arayüzden "Ses tepkili: aç": `pw-record` hoparlör monitörüne bağlı (mikrofon değil), r9td `rgb_frame ok` akışı. Müzik çalarken 15 sn × 2 Hz LED geri okuması: 30 örneğin 30'u farklı desen, 7 band × 3 sütun yükseklik 0–6, yanık LED 9–63. **Kullanıcı gözlemi: klavye ışıkları ritimle değişiyor.** Test için parlaklık 3/50 → 20/50; "kapat" sonrası arayüz haritayı geri uyguladı: 126 LED beyaz, parlaklık 3/50, `pw-record` 0.
 - **Waybar ipucu (kullanıcı gözlemi): profil ve sıcaklıklar görünüyor.**
 
+### Kalıcı geçiş (2026-10-19 03:47, kullanıcı çalıştırdı)
+
+- `sudo sh -c './tools/install-r9td-dev.sh && r9t-switch --commit'` + `r9t-switch-user --commit`.
+- Sonuç: `r9td` active/enabled (denetim, r9t-session `hyprland:` kayıtlı), `slayer-r9t`, `r9td-shadow`, `r9t-shadow-compare` inactive/disabled, `/var/lib/r9t/committed` var. Kullanıcı: `r9t-session` active/enabled, `slayer-r9t-session` disabled, `hyprland.conf` 50. satır r9t-session'ı başlatıyor (yedek `hyprland.conf.r9t-bak`), eski menü girişi `NoDisplay=true`, R9T Studio `/usr/local/share/applications`.
+- Bulunan hata: kurulum betiği her çalışmada `enable --now r9td-shadow` yapıyordu; deneme sırasında r9td birkaç saniye durdu (fanlar EC auto, güvenli) ve commit sonrası tekrar çalıştırılsaydı gölge açılışta yeniden etkinleşirdi. Düzeltildi: commit ya da r9td etkinken yalnız `restart r9td`; aksi halde gölge yeniden başlatılır (yeni ikili gerçekten yüklenir).
+- Geri dönüş: `sudo r9t-switch --rollback` + `r9t-switch-user --rollback`.
+
 ## Kalan (Faz 4 kabulü)
 
 - [x] Klavye "Haritayı uygula" tıklaması son yapıda doğrulandı (2026-10-19, LED geri okuması).
@@ -75,4 +82,4 @@ Değişiklik: odak dışında (`WindowEvent::Focused`) Rust abonelik iş parçac
 - [x] Tepsi ikonu/menü/ipucu (D-Bus) ve Hz değişimi (2026-10-19).
 - [x] Waybar ipucu ve ses tepkili efekt kullanıcı gözlemiyle (2026-10-19).
 - [ ] Gerçek KDE oturumunda kısa kontrol (kullanıcı KDE'ye girince).
-- [ ] Kalıcı geçiş (`r9t-switch --commit`, menü başlatıcı, exec-once) — kullanıcı onayıyla.
+- [x] Kalıcı geçiş (`r9t-switch --commit` + `r9t-switch-user --commit`, 2026-10-19). Sıradaki açılışta r9td + r9t-session'ın kendiliğinden geldiği doğrulanacak.

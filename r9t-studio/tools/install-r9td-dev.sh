@@ -41,7 +41,17 @@ fi
 # User agent unit (not enabled: the legacy session agent stays until Faz 4).
 install -D -m 0644 "$here/packaging/systemd-user/r9t-session.service" /etc/systemd/user/r9t-session.service
 systemctl daemon-reload
-systemctl enable --now r9td-shadow.service
-sleep 3
-systemctl --no-pager --lines=5 status r9td-shadow.service || true
+# The shadow only belongs next to the legacy service. After `r9t-switch --commit`, or
+# while a trial has r9td in control, starting it would stop r9td (Conflicts=) and
+# re-enabling it would undo the switch at the next boot: just restart r9td instead.
+if [[ -e /var/lib/r9t/committed || "$(systemctl is-active r9td.service)" == active ]]; then
+    systemctl restart r9td.service
+    sleep 3
+    systemctl --no-pager --lines=5 status r9td.service || true
+else
+    systemctl enable r9td-shadow.service
+    systemctl restart r9td-shadow.service
+    sleep 3
+    systemctl --no-pager --lines=5 status r9td-shadow.service || true
+fi
 ls -la /run/r9td/
