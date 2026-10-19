@@ -56,10 +56,16 @@ Değişiklik: odak dışında (`WindowEvent::Focused`) Rust abonelik iş parçac
 
 **eDP-1 (2560×1600@300 Hz), pencere 1280×820 yüzen, görünür, odak dışı, Genel Bakış, 60 sn:** eski yapı %0,82 / %0,82 / %0,82 → yeni **%0,45 / %0,45 / %0,48** (WebKitWebProcess 0,33–0,35, ana süreç 0,12–0,13). Headless 300 Hz yeni yapı %0,57 / %0,45 / %0,50. Doğrulama: odak dışında üst şerit değerleri ~5 sn'de bir, odaktayken her saniye değişti (ekran görüntüsü); odak sonrası grafikler 5 dk boyunca 1 Hz yoğunlukta dolu. Termal alarm yolu canlı tetiklenmedi (kod yolu: alarm etkinken her örnek yollanır). Önceki eDP-1 ölçümündeki %1,12 (deneme modu) bu kez eski yapıyla da tekrarlanmadı (%0,82); fark muhtemelen o sıradaki ekran etkinliği.
 
+### Ses tepkili efekt ve ses kartı (2026-10-19 02:38–03:35)
+
+- Deneme modunda arayüzden "Ses tepkili: aç": r9td `rgb_effect ok`, r9t-session `audio_reactive: true`, `pw-record` hoparlör monitörüne bağlı (mikrofon değil). Fiziksel efekt gözlenemedi: **ses kartı açılıştan beri takılı**.
+- Neden (bizimle ilgisiz): 00:54 uykudan uyanmada `snd_hda_intel 0000:07:00.6: CORB reset timeout#2, CORBRP = 65535` (Ryzen HD Audio / SN6140, card2); 00:58, 01:00, 01:02'de tekrar. `/proc/asound/card2/pcm0p/sub0/status`: RUNNING, `hw_ptr 0`, tetik 01:01. PipeWire yeniden başlatması yetmiyor; sürücüyü yeniden bağlama ya da yeniden başlatma gerekir (root). Sabahki `pc-eye context` takılmasının kökü de bu.
+- **Hata ve düzeltme (r9t-session):** `Capture::next` `read_exact` ile veri gelene kadar bloklanıyordu; ses gelmeyince kapatma işlenmiyor, `pw-record` öldürülmüyordu, yeniden açmak ikinci kaydediciyi başlatırdı. Okuma ayrı iş parçacığında, `next(200 ms)` zaman aşımlı (`Chunk/Idle/Closed`); döngü nesil sayacıyla (`audio_gen`) eskiyse çıkar. Testler: veri üretmeyen kaydedici 100 ms'de döner ve öldürülür; veri bitince `Closed`. Canlı (takılı kartla, elle çalıştırılan yeni ikili): kapatınca `pw-record` 0,6 sn'de 0; hızlı aç/kapat/aç → tek kaydedici. **Kurulu r9t-session eski sürüm** (yeniden kurulum sudo).
+
 ## Kalan (Faz 4 kabulü)
 
 - [x] Klavye "Haritayı uygula" tıklaması son yapıda doğrulandı (2026-10-19, LED geri okuması).
 - [x] Boşta CPU < %1 gerçek eDP-1'de (2026-10-19): 300 Hz, odak dışı, 3×60 sn %0,45 / %0,45 / %0,48 (odak dışında olay seyreltme).
 - [x] Tepsi ikonu/menü/ipucu (D-Bus) ve Hz değişimi (2026-10-19).
-- [ ] Kullanıcı başındayken: Waybar ipucunun gözle kontrolü, gerçek KDE oturumu, ses tepkili efekt (denetim modu gerekir).
+- [ ] Kullanıcı başındayken: Waybar ipucunun gözle kontrolü, gerçek KDE oturumu, ses tepkili efektin fiziksel gözlemi (ses kartı düzelince, yeni r9t-session kurulu, denetim modu).
 - [ ] Kalıcı geçiş (`r9t-switch --commit`, menü başlatıcı, exec-once) — kullanıcı onayıyla.

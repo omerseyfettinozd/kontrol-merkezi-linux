@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::os::fd::AsFd;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -58,6 +58,8 @@ struct Agent {
     idle: Arc<AtomicBool>,
     game: Arc<Mutex<Option<String>>>,
     audio_on: Arc<AtomicBool>,
+    /// Bumped on every switch; a capture loop from an older generation exits.
+    audio_gen: Arc<AtomicU64>,
     hz_policy: Arc<Mutex<String>>,
     nvml: Arc<r9t_hal::gpu::Nvml>,
     config: Mutex<Config>,
@@ -153,10 +155,12 @@ impl Agent {
             SessionCall::KillProcess(p) => procs::kill(p.pid, p.start_time).map(|m| json!({"message": m})).map_err(|m| RpcError::new(code::UNAUTHORIZED, m)),
             SessionCall::AudioReactive(p) => {
                 if p.enabled && !self.audio_on.swap(true, Ordering::AcqRel) {
+                    let generation = self.audio_gen.fetch_add(1, Ordering::AcqRel) + 1;
                     let me = self.clone();
-                    std::thread::spawn(move || audio_loop(me));
+                    std::thread::spawn(move || audio_loop(me, generation));
                 } else if !p.enabled {
                     self.audio_on.store(false, Ordering::Release);
+                    self.audio_gen.fetch_add(1, Ordering::AcqRel);
                 }
                 Ok(json!({"audio_reactive": p.enabled}))
             }
@@ -174,7 +178,7 @@ impl Agent {
     }
 }
 
-fn audio_loop(agent: Arc<Agent>) {
+fn audio_loop(agent: Arc<Agent>, generation: u64) {
     let mut cap = match audio::Capture::start() {
         Ok(c) => c,
         Err(e) => {
@@ -184,12 +188,21 @@ fn audio_loop(agent: Arc<Agent>) {
         }
     };
     let mut peaks = [1e-4f32; 7];
-    while agent.audio_on.load(Ordering::Acquire) {
-        let Some(samples) = cap.next() else { break };
-        // Dropped when r9td is slow: frames are only useful in real time.
-        let _ = agent.tx.try_send(daemon::Outgoing::Frame(audio::frame(&samples, &mut peaks)));
+    let current = || agent.audio_gen.load(Ordering::Acquire) == generation;
+    while agent.audio_on.load(Ordering::Acquire) && current() {
+        match cap.next(Duration::from_millis(200)) {
+            // Dropped when r9td is slow: frames are only useful in real time.
+            audio::Next::Chunk(samples) => {
+                let _ = agent.tx.try_send(daemon::Outgoing::Frame(audio::frame(&samples, &mut peaks)));
+            }
+            audio::Next::Idle => {}
+            audio::Next::Closed => break,
+        }
     }
-    agent.audio_on.store(false, Ordering::Release);
+    // A newer generation owns the flag; only the current loop may clear it.
+    if current() {
+        agent.audio_on.store(false, Ordering::Release);
+    }
 }
 
 async fn serve_client(agent: Arc<Agent>, stream: UnixStream) {
@@ -344,6 +357,7 @@ fn main() {
             idle: Arc::new(AtomicBool::new(false)),
             game: Arc::new(Mutex::new(None)),
             audio_on: Arc::new(AtomicBool::new(false)),
+            audio_gen: Arc::new(AtomicU64::new(0)),
             hz_policy: Arc::new(Mutex::new(String::new())),
             nvml: Arc::new(r9t_hal::gpu::Nvml::new(r9t_hal::Sysfs::from_env())),
             config: Mutex::new(config),

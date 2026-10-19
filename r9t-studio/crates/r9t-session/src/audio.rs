@@ -4,6 +4,8 @@
 
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::time::Duration;
 
 pub const SINK: &str = "@DEFAULT_AUDIO_SINK@";
 pub const SOURCE: &str = "@DEFAULT_AUDIO_SOURCE@";
@@ -90,31 +92,58 @@ fn hsv(h: f32) -> [u8; 3] {
 
 pub struct Capture {
     child: Child,
+    rx: Receiver<Vec<i16>>,
+}
+
+pub enum Next {
+    Chunk(Vec<i16>),
+    /// Nothing arrived in time: sink suspended, or the audio device is stuck.
+    Idle,
+    /// The recorder exited.
+    Closed,
 }
 
 impl Capture {
     /// Records the default sink monitor (what is playing), mono s16 at 24 kHz.
     pub fn start() -> Result<Self, String> {
-        let child = Command::new("pw-record")
-            .args(["--rate", &RATE.to_string(), "--channels", "1", "--format", "s16", "-P", "{ stream.capture.sink=true node.name=r9t-audio-reactive }", "-"])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .map_err(|e| format!("pw-record: {e}"))?;
-        Ok(Self { child })
+        let mut cmd = Command::new("pw-record");
+        cmd.args(["--rate", &RATE.to_string(), "--channels", "1", "--format", "s16", "-P", "{ stream.capture.sink=true node.name=r9t-audio-reactive }", "-"]);
+        Self::spawn(cmd)
     }
 
-    /// Blocks for the next 50 ms chunk.
-    pub fn next(&mut self) -> Option<Vec<i16>> {
-        let out = self.child.stdout.as_mut()?;
-        let mut buf = vec![0u8; CHUNK * 2];
-        out.read_exact(&mut buf).ok()?;
-        Some(buf.chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]])).collect())
+    /// Reads on its own thread so a recorder that never produces data (stuck
+    /// device) cannot block `next`, and therefore cannot block switching off.
+    fn spawn(mut cmd: Command) -> Result<Self, String> {
+        let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|e| format!("pw-record: {e}"))?;
+        let mut out = child.stdout.take().ok_or("pw-record: stdout yok")?;
+        let (tx, rx) = mpsc::sync_channel(4);
+        std::thread::Builder::new()
+            .name("r9t-audio-read".into())
+            .spawn(move || {
+                let mut buf = vec![0u8; CHUNK * 2];
+                while out.read_exact(&mut buf).is_ok() {
+                    if tx.send(buf.chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]])).collect()).is_err() {
+                        break;
+                    }
+                }
+            })
+            .map_err(|e| e.to_string())?;
+        Ok(Self { child, rx })
+    }
+
+    /// Waits up to `wait` for the next 50 ms chunk.
+    pub fn next(&mut self, wait: Duration) -> Next {
+        match self.rx.recv_timeout(wait) {
+            Ok(c) => Next::Chunk(c),
+            Err(RecvTimeoutError::Timeout) => Next::Idle,
+            Err(RecvTimeoutError::Disconnected) => Next::Closed,
+        }
     }
 }
 
 impl Drop for Capture {
     fn drop(&mut self) {
+        // The reader thread sees EOF once the child is gone and exits.
         let _ = self.child.kill();
         let _ = self.child.wait();
     }
@@ -140,5 +169,29 @@ mod tests {
         assert_ne!(f[5 * 21 + 9], [0, 0, 0]);
         let silent = frame(&vec![0; CHUNK], &mut peaks);
         assert!(silent.iter().all(|c| *c == [0, 0, 0]));
+    }
+
+    #[test]
+    fn silent_recorder_does_not_block_and_is_killed() {
+        let mut cmd = Command::new("sleep");
+        cmd.arg("30");
+        let mut cap = Capture::spawn(cmd).unwrap();
+        let pid = cap.child.id();
+        let t = std::time::Instant::now();
+        assert!(matches!(cap.next(Duration::from_millis(100)), Next::Idle));
+        assert!(t.elapsed() < Duration::from_secs(1));
+        drop(cap);
+        assert!(!std::path::Path::new(&format!("/proc/{pid}")).exists(), "recorder left running");
+    }
+
+    #[test]
+    fn chunks_then_closed() {
+        let mut cmd = Command::new("head");
+        cmd.args(["-c", &(CHUNK * 2 * 2).to_string(), "/dev/zero"]);
+        let mut cap = Capture::spawn(cmd).unwrap();
+        for _ in 0..2 {
+            assert!(matches!(cap.next(Duration::from_secs(2)), Next::Chunk(c) if c.len() == CHUNK));
+        }
+        assert!(matches!(cap.next(Duration::from_secs(2)), Next::Closed));
     }
 }
