@@ -5,6 +5,21 @@ use crate::{HalError, Result, Sysfs};
 const STATUS: &str = "/sys/module/r9t_fan/parameters/status";
 const CONTROL: &str = "/sys/module/r9t_fan/parameters/control";
 const MODULE: &str = "/sys/module/r9t_fan";
+const STATUS2: &str = "/sys/module/r9t_fan/parameters/status2";
+
+/// `MODULE_VERSION`s whose `status`/`control` contract is known. 0.3.0 keeps the v1
+/// `status` line and the 50–100 % commands by default, and adds `status2`, hwmon and
+/// the low-duty parameters (`min_duty`, `allow_low_duty`). Anything else is refused.
+pub const SUPPORTED_VERSIONS: [&str; 2] = ["0.2.0", "0.3.0"];
+
+pub fn supported_version(version: Option<&str>) -> bool {
+    version.is_some_and(|v| SUPPORTED_VERSIONS.contains(&v))
+}
+
+/// Refusal text when the bridge version is unknown.
+pub fn version_refusal(version: Option<&str>) -> String {
+    format!("r9t_fan {} gerekli, yüklü: {}", SUPPORTED_VERSIONS.join(" ya da "), version.unwrap_or("yok"))
+}
 
 /// Parsed `status` line. Field set is exactly the v1 format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,6 +91,55 @@ impl FanStatus {
     }
 }
 
+/// Parsed 0.3.0 `status2`: the v1 fields plus cache and floor state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FanStatus2 {
+    pub v1: FanStatus,
+    pub sample_age_ms: u32,
+    pub cache_ms: u32,
+    pub allow_low_duty: bool,
+    /// Lowest manual duty (%) the module accepts without `allow_low_duty`.
+    pub min_duty: u32,
+    /// Floors (%) currently applied, after the temperature ramp.
+    pub cpu_floor: u32,
+    pub gpu_floor: u32,
+    /// In-kernel stall fallbacks since load.
+    pub stalls: u32,
+}
+
+impl FanStatus2 {
+    pub const EXTRA: [&'static str; 7] = ["sample_age_ms", "cache_ms", "allow_low_duty", "min_duty", "cpu_floor", "gpu_floor", "stalls"];
+
+    pub fn parse(line: &str) -> Result<Self> {
+        let (mut v1, mut extra) = (Vec::new(), std::collections::BTreeMap::new());
+        for pair in line.split_whitespace() {
+            let (k, v) = pair.split_once('=').ok_or_else(|| HalError::Invalid(format!("status2: {pair}")))?;
+            if Self::EXTRA.contains(&k) {
+                let v: u32 = v.parse().map_err(|_| HalError::Invalid(format!("status2: {pair}")))?;
+                if extra.insert(k, v).is_some() {
+                    return Err(HalError::Invalid(format!("status2: yinelenen {k}")));
+                }
+            } else {
+                v1.push(pair);
+            }
+        }
+        if extra.len() != Self::EXTRA.len() {
+            return Err(HalError::Invalid(format!("status2 alan kümesi beklenmiyor: {line}")));
+        }
+        let g = |k: &str| extra[k];
+        Ok(Self {
+            v1: FanStatus::parse(&v1.join(" "))?,
+            sample_age_ms: g("sample_age_ms"),
+            cache_ms: g("cache_ms"),
+            allow_low_duty: g("allow_low_duty") != 0,
+            min_duty: g("min_duty"),
+            cpu_floor: g("cpu_floor"),
+            gpu_floor: g("gpu_floor"),
+            stalls: g("stalls"),
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FanCommand {
     Auto,
@@ -110,6 +174,25 @@ pub struct SysfsFan {
 impl SysfsFan {
     pub fn new(fs: Sysfs) -> Self {
         Self { fs }
+    }
+
+    /// 0.3.0 only.
+    pub fn status2(&self) -> Result<FanStatus2> {
+        FanStatus2::parse(&self.fs.read(STATUS2)?)
+    }
+
+    /// Low-duty sweep only (`r9tctl fan-sweep`): `allow_low_duty` must be on and the
+    /// module enforces 20–100 %, its temperature floor and stall detection. r9td never
+    /// calls this; its commands go through [`FanBridge::control`] (50–100 %).
+    pub fn control_low(&self, cpu: u8, gpu: u8) -> Result<()> {
+        if !(20..=100).contains(&cpu) || !(20..=100).contains(&gpu) {
+            return Err(HalError::Invalid(format!("manual {cpu} {gpu}: %20–100 olmalı")));
+        }
+        self.fs.write(CONTROL, &FanCommand::Manual { cpu, gpu }.wire())
+    }
+
+    pub fn set_allow_low_duty(&self, on: bool) -> Result<()> {
+        self.fs.write(format!("{MODULE}/parameters/allow_low_duty"), if on { "1" } else { "0" })
     }
 }
 
@@ -304,6 +387,33 @@ mod tests {
         assert_eq!(std::fs::read_to_string(dir.path().join("sys/module/r9t_fan/parameters/control")).unwrap(), "manual 60 70");
         assert!(fan.control(FanCommand::Manual { cpu: 49, gpu: 70 }).is_err());
         assert_eq!(fan.version().as_deref(), Some("0.2.0"));
+    }
+
+    #[test]
+    fn parses_status2_and_rejects_unknown_versions() {
+        let line = format!("{LIVE} sample_age_ms=412 cache_ms=1000 allow_low_duty=0 min_duty=50 cpu_floor=50 gpu_floor=50 stalls=0");
+        let s = FanStatus2::parse(&line).unwrap();
+        assert_eq!((s.v1.cpu_rpm, s.sample_age_ms, s.min_duty, s.allow_low_duty), (3019, 412, 50, false));
+        assert!(FanStatus2::parse(LIVE).is_err(), "v1 line alone is not status2");
+        assert!(FanStatus2::parse(&format!("{line} stalls=1")).is_err());
+        assert!(FanStatus::parse(&line).is_err(), "status keeps its strict v1 key set");
+        assert!(supported_version(Some("0.2.0")) && supported_version(Some("0.3.0")));
+        assert!(!supported_version(Some("0.1.0")) && !supported_version(Some("0.4.0")) && !supported_version(None));
+        assert_eq!(version_refusal(None), "r9t_fan 0.2.0 ya da 0.3.0 gerekli, yüklü: yok");
+    }
+
+    #[test]
+    fn low_duty_control_is_separate_and_bounded() {
+        let dir = tempfile::tempdir().unwrap();
+        file(dir.path(), CONTROL, "");
+        file(dir.path(), "/sys/module/r9t_fan/parameters/allow_low_duty", "N\n");
+        let fan = SysfsFan::new(Sysfs::new(dir.path()));
+        assert!(fan.control(FanCommand::Manual { cpu: 30, gpu: 60 }).is_err(), "r9td path stays 50–100");
+        fan.set_allow_low_duty(true).unwrap();
+        fan.control_low(30, 60).unwrap();
+        assert_eq!(std::fs::read_to_string(dir.path().join("sys/module/r9t_fan/parameters/control")).unwrap(), "manual 30 60");
+        assert!(fan.control_low(19, 60).is_err());
+        assert_eq!(std::fs::read_to_string(dir.path().join("sys/module/r9t_fan/parameters/allow_low_duty")).unwrap(), "1");
     }
 
     #[test]

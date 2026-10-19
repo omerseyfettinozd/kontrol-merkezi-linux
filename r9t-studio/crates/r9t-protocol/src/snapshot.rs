@@ -149,7 +149,7 @@ pub enum AuthorityState {
     Shadow,
     /// r9td is the single writer.
     Control,
-    /// Control path refused (e.g. r9t_fan is not 0.2.0, legacy socket answered).
+    /// Control path refused (e.g. unknown r9t_fan version, legacy socket answered).
     Refused,
 }
 

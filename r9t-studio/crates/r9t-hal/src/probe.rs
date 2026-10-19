@@ -73,11 +73,11 @@ fn probe_with(fs: &Sysfs, with_nvml: bool, light: bool) -> ProbeReport {
     match &fan_status {
         Ok(s) => {
             caps.push(Capability::yes(CapabilityId::FanRead));
-            let controllable = fan.version().as_deref() == Some("0.2.0");
-            caps.push(if controllable {
+            let version = fan.version();
+            caps.push(if crate::fan::supported_version(version.as_deref()) {
                 Capability::yes(CapabilityId::FanControl)
             } else {
-                Capability::no(CapabilityId::FanControl, "r9t_fan 0.2.0 gerekli (Faz 0.8)")
+                Capability::no(CapabilityId::FanControl, crate::fan::version_refusal(version.as_deref()))
             });
             r.insert("fan".into(), json!({
                 "module": module, "mode": s.mode, "auto": s.is_auto(), "cpu_rpm": s.cpu_rpm, "gpu_rpm": s.gpu_rpm,
@@ -87,10 +87,11 @@ fn probe_with(fs: &Sysfs, with_nvml: bool, light: bool) -> ProbeReport {
         }
         Err(HalError::Unsupported(_)) if light => {
             caps.push(Capability::yes(CapabilityId::FanRead));
-            caps.push(if fan.version().as_deref() == Some("0.2.0") {
+            let version = fan.version();
+            caps.push(if crate::fan::supported_version(version.as_deref()) {
                 Capability::yes(CapabilityId::FanControl)
             } else {
-                Capability::no(CapabilityId::FanControl, "r9t_fan 0.2.0 gerekli (Faz 0.8)")
+                Capability::no(CapabilityId::FanControl, crate::fan::version_refusal(version.as_deref()))
             });
             r.insert("fan".into(), json!({"module": module}));
         }

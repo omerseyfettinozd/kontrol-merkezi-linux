@@ -17,7 +17,7 @@ fn real_driver_faults_and_lifecycle() {
     let root = dir.path();
     std::fs::create_dir(root.join("linux")).unwrap();
     // The driver includes <linux/*.h>; module.h pulls in the stubs, the rest are empty.
-    for name in ["module", "dmi", "kernel", "workqueue", "mutex", "suspend", "delay"] {
+    for name in ["module", "dmi", "kernel", "workqueue", "mutex", "suspend", "delay", "err", "platform_device", "hwmon"] {
         let body = if name == "module" { format!("#include \"{}\"\n", drv.join("test/stubs.h").display()) } else { String::new() };
         std::fs::write(root.join(format!("linux/{name}.h")), body).unwrap();
     }

@@ -2,7 +2,7 @@
 //!
 //! `--shadow`: read-only next to the legacy service (Faz 2).
 //! default: control mode (single writer). Control is opened only when the legacy
-//! service does not answer, `/run/r9td/control.lock` is free and r9t_fan is 0.2.0;
+//! service does not answer, `/run/r9td/control.lock` is free and r9t_fan is a supported version;
 //! otherwise the daemon stays read-only and reports why.
 //! `--emergency-auto`: ExecStopPost helper that returns the fans to EC control.
 

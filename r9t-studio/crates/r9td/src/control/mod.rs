@@ -156,11 +156,12 @@ fn ok(message: impl Into<String>, verified: bool) -> Result<Value, RpcError> {
 
 impl Control {
     /// Start-up sequence for control mode. Fails (→ daemon stays read-only) when the
-    /// fan bridge is not 0.2.0.
+    /// fan bridge version is not one of `r9t_hal::fan::SUPPORTED_VERSIONS`.
     pub fn start(shared: Arc<Shared>, fs: Sysfs, state_dir: &Path, audit: Arc<Mutex<Audit>>) -> Result<(Self, ControlHandle, mpsc::Receiver<Msg>), String> {
         let fan = SysfsFan::new(fs.clone());
-        if fan.version().as_deref() != Some("0.2.0") {
-            return Err(format!("r9t_fan 0.2.0 gerekli, yüklü: {:?}", fan.version()));
+        let version = fan.version();
+        if !r9t_hal::fan::supported_version(version.as_deref()) {
+            return Err(r9t_hal::fan::version_refusal(version.as_deref()));
         }
         // Safety invariant 1: start from firmware control.
         let st = fan.status().map_err(|e| format!("r9t_fan status: {e}"))?;
