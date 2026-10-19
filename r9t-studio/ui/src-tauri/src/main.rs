@@ -3,14 +3,12 @@
 
 mod local;
 mod rpc;
+mod tray;
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
-use tauri::image::Image;
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
-use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 
 use rpc::{CallError, Conn, Persistent};
@@ -110,23 +108,6 @@ fn app_info() -> Value {
     })
 }
 
-/// Solid disc tray icon; the colour encodes the power profile or a thermal alarm.
-fn tray_image(rgb: [u8; 3]) -> Image<'static> {
-    const N: u32 = 32;
-    let mut px = Vec::with_capacity((N * N * 4) as usize);
-    for y in 0..N {
-        for x in 0..N {
-            let (dx, dy) = (x as f32 - 15.5, y as f32 - 15.5);
-            let r = (dx * dx + dy * dy).sqrt();
-            let a = (14.5 - r).clamp(0.0, 1.0);
-            let inner = r < 5.0;
-            let c = if inner { [245, 245, 245] } else { rgb };
-            px.extend_from_slice(&[c[0], c[1], c[2], (a * 255.0) as u8]);
-        }
-    }
-    Image::new_owned(px, N, N)
-}
-
 fn field_f64(v: &Value, path: &[&str]) -> Option<f64> {
     let mut cur = v;
     for p in path {
@@ -137,7 +118,7 @@ fn field_f64(v: &Value, path: &[&str]) -> Option<f64> {
 
 fn tray_state(snap: Option<&Value>) -> ([u8; 3], String) {
     let Some(s) = snap else {
-        return ([110, 118, 129], "R9T Studio · r9td bağlantısı yok".into());
+        return (tray::IDLE, "R9T Studio\nr9td bağlantısı yok".into());
     };
     let profile = s.pointer("/power/profile/value").and_then(Value::as_str).unwrap_or("?");
     let alarm = s.pointer("/authority/guard_active").and_then(Value::as_bool).unwrap_or(false)
@@ -149,7 +130,7 @@ fn tray_state(snap: Option<&Value>) -> ([u8; 3], String) {
             "power-saver" => [63, 185, 80],
             "balanced" => [78, 161, 255],
             "performance" => [240, 136, 62],
-            _ => [110, 118, 129],
+            _ => tray::IDLE,
         }
     };
     let t = |p: &[&str]| field_f64(s, p).map(|v| format!("{v:.0} °C")).unwrap_or_else(|| "—".into());
@@ -160,16 +141,17 @@ fn tray_state(snap: Option<&Value>) -> ([u8; 3], String) {
 
 /// Snapshot subscription: forwards to the webview while it is visible and keeps the
 /// tray up to date. Reconnects every 2 s while r9td is away.
-fn subscriber(app: AppHandle, tray: TrayIcon) {
+fn subscriber(app: AppHandle, tray: Option<ksni::blocking::Handle<tray::R9tTray>>) {
     let mut last_tray = (None::<[u8; 3]>, String::new(), Instant::now() - Duration::from_secs(10));
     let mut update_tray = |snap: Option<&Value>, force: bool| {
         let (color, tip) = tray_state(snap);
+        let Some(tray) = &tray else { return };
         if last_tray.0 != Some(color) {
-            let _ = tray.set_icon(Some(tray_image(color)));
+            tray.update(|t| t.color = color);
             last_tray.0 = Some(color);
         }
         if (force || last_tray.2.elapsed() >= Duration::from_secs(2)) && last_tray.1 != tip {
-            let _ = tray.set_tooltip(Some(&tip));
+            tray.update(|t| t.tip = tip.clone());
             last_tray.1 = tip;
             last_tray.2 = Instant::now();
         }
@@ -252,43 +234,7 @@ fn main() {
             app_info
         ])
         .setup(move |app| {
-            let item = |id: &str, text: &str| MenuItem::with_id(app, id, text, true, None::<&str>);
-            let sep = || PredefinedMenuItem::separator(app);
-            let menu = Menu::with_items(
-                app,
-                &[
-                    &item("show", "R9T Studio'yu göster")?,
-                    &sep()?,
-                    &item("quiet", "Senaryo: Sessiz")?,
-                    &item("balanced", "Senaryo: Dengeli")?,
-                    &item("game", "Senaryo: Oyun")?,
-                    &item("turbo", "Senaryo: Turbo")?,
-                    &item("auto", "Fanlar otomatik")?,
-                    &sep()?,
-                    &item("quit", "Çık")?,
-                ],
-            )?;
-            let tray = TrayIconBuilder::with_id("r9t-studio")
-                .icon(tray_image([110, 118, 129]))
-                .tooltip("R9T Studio")
-                .menu(&menu)
-                .show_menu_on_left_click(false)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "show" => show_main(app),
-                    "auto" => tray_call(app, "auto", json!({})),
-                    s @ ("quiet" | "balanced" | "game" | "turbo") => {
-                        let name = s.to_owned();
-                        tray_call(app, "scenario", json!({"name": name}))
-                    }
-                    "quit" => app.exit(0),
-                    _ => {}
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
-                        show_main(tray.app_handle());
-                    }
-                })
-                .build(app)?;
+            let tray = tray::spawn(app.handle().clone());
             let handle = app.handle().clone();
             std::thread::Builder::new().name("r9t-subscribe".into()).spawn(move || subscriber(handle, tray))?;
             if !hidden {

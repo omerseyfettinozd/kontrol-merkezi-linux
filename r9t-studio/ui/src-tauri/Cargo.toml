@@ -12,7 +12,8 @@ description = "R9T Studio arayüzü: r9td ve r9t-session soket istemcisi"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri = { version = "2", features = ["image-png"] }
+ksni = { version = "0.3", features = ["blocking"] }
 tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

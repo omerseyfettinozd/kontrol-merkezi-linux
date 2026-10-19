@@ -57,6 +57,8 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 button.primary:hover:not(:disabled) { background: var(--accent-2); border-color: var(--accent-2); }
 button.danger { border-color: #6e2a2e; color: #ffb3b8; }
 button.active { border-color: var(--accent); background: #2a1619; color: #fff; }
+/* Etkin düğme üzerine gelince de etkin görünür (hover kuralı daha özgül). */
+button.active:hover:not(:disabled) { border-color: var(--accent-2); background: #341a1e; }
 button.small { padding: 3px 8px; font-size: 12px; }
 
 input, select {

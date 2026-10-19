@@ -367,7 +367,7 @@ Kabul:
 5. **Donanım, Ses & Tanılama:** Fn-Lock, USB-C PD, PipeWire ses ve mikrofon, Wi-Fi/BT, s2idle analizi (sleepdiag port'u, s0ix istatistikleri), süreç izleyici. Şarj eşiği yalnız yetenek varsa gösterilir.
 6. **Profiller & Kıyaslama:** karşılaştırma tablosu, JSON içe/dışa aktarma, 60 sn kararlılık testi.
 
-- **Tepsi** (StatusNotifierItem, libayatana-appindicator): pencere kapanınca uygulama tepside kalır. Aktif profil ikon rengiyle, sıcaklıklar tooltip'te gösterilir. Anlık sayılar Waybar modülündedir.
+- **Tepsi** (StatusNotifierItem, `ksni`; 2026-10-19: Tauri tray-icon Linux'ta tooltip desteklemediği için libayatana-appindicator bırakıldı, `14_faz4_arayuz.md`): pencere kapanınca uygulama tepside kalır. Aktif profil ikon rengiyle, sıcaklıklar tooltip'te gösterilir. Anlık sayılar Waybar modülündedir.
 - **Kabul:**
   - Her modül gerçek donanım verisiyle ekran görüntüsü ve etkileşim testinden geçer.
   - Koyu temada okunamayan metin yoktur.
@@ -389,7 +389,7 @@ Kabul:
   - Sıcaklığa bağlı sürekli taban fonksiyonu ve histerezis. Override için bırakma eşiği (ör. 90/82) ve en kısa bekleme süresi.
   - Hwmon kaydı yalnız önbellekten okur.
 - **tuxedo-drivers yerel yaması** (`multi_max_intensity` / R9T_RGB_INTENSITY_FIX) `driver/` altına DKMS patch olarak alınır. r9td açılışta `multi_max_intensity` değerini kontrol eder; 50'ye dönmüşse uyarır ve değerleri ölçekler.
-- **Paket:** PKGBUILD (r9td, r9t-session, r9tctl, ui; depends: libayatana-appindicator, webkit2gtk-4.1, power-profiles-daemon, polkit) + ayrı DKMS paketi. Downgrade yolu belgelenir. MOK isteğe bağlıdır (Secure Boot kapalı).
+- **Paket:** PKGBUILD (r9td, r9t-session, r9tctl, ui; depends: webkit2gtk-4.1, power-profiles-daemon, polkit) + ayrı DKMS paketi. Downgrade yolu belgelenir. MOK isteğe bağlıdır (Secure Boot kapalı).
 - **Eski sistemin kaldırılması:** `/usr/local/lib/slayer-r9t` ve `~/.local/lib/slayer-r9t` yedeklenip kaldırılır; eski unitler silinir.
 - **Kabul:**
   - Temiz kurulum, güncelleme ve geri alma çalışır.

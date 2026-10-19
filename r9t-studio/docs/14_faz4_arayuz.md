@@ -33,9 +33,16 @@ Tarih: 2026-10-18. Kod: `ui/` (Svelte 5 + Vite 8, `ui/src-tauri` ayrı workspace
 - **Boşta CPU, gerçek eDP-1 (2560×1600@300 Hz), pencere 1280×820 yüzen, görünür, odak dışı, Genel Bakış, 60 sn × 3:** %1,02 / %0,82 / %1,52 (ort. ≈ %1,12; yükün çoğu WebKitWebProcess: 0,63–1,07). **< %1 hedefi tutarlı karşılanmıyor.** Aynı yapı headless 60 Hz'de %0,88. Anlık görüntü ~4 KB/sn; odak dışı yeniden çizim 3 sn'de bir. Sonraki adım: WebKit profili (300 Hz'te 3 sn'lik çizimin maliyeti, kullanıcı etkinliğinin etkisi), gerekirse odak dışında grafikleri dondurma.
 - AT-SPI: WebKitGTK penceresi erişilebilirlik ağacı yayınlamıyor (pc-eye `ui` → 0 öğe); otomasyon koordinatla yapıldı, imleç ve odak geri yüklendi.
 
+### Tepsi ve Hz (2026-10-19, gölge r9td + r9t-session, power-watch.sh açık)
+
+- **Hz:** arayüzden 240 → Hyprland `eDP-1 240.0`; 300 → `300.0`, 5 sn sonra hâlâ 300 (power-watch geri çevirmedi). r9t-session `status` doğru değeri döndürüyor.
+- **Düzeltme (CSS):** `button:hover:not(:disabled)` `button.active`'den özgül olduğu için etkin düğmenin üzerine gelince etkin görünümü kayboluyordu → `button.active:hover` kuralı. Canlı: imleç "300" üzerindeyken kırmızı çerçeve duruyor.
+- **Tepsi:** Tauri `tray-icon` 0.25 Linux'ta `set_tooltip`'i boş bırakıyor (kaynakta no-op) → SNI ToolTip hep boştu. Tepsi `ksni` 0.3 ile yeniden yazıldı (`ui/src-tauri/src/tray.rs`); uygulama artık libayatana-appindicator'a bağlı değil (ldd). D-Bus doğrulaması: ToolTip = "R9T Studio · power-saver" / "CPU 68 °C · GPU 62 °C", Category Hardware, IconPixmap 32×32 ARGB (halka 63,185,80 = güç tasarrufu, merkez beyaz), dbusmenu 9 öğe (göster, 4 senaryo, fanlar otomatik, çık). Waybar'da simge görünüyor. Pencereyi kapatınca süreç tepside kalıyor, `Activate` (sol tık) pencereyi geri getiriyor. Waybar ipucunun gözle kontrolü kullanıcıda.
+
 ## Kalan (Faz 4 kabulü)
 
 - [x] Klavye "Haritayı uygula" tıklaması son yapıda doğrulandı (2026-10-19, LED geri okuması).
 - [ ] Boşta CPU < %1 gerçek eDP-1'de: ölçüldü (2026-10-19), 300 Hz'te ort. %1,12; hedef tutmuyor, iyileştirme gerekli.
-- [ ] Kullanıcı başındayken: tepsi ikonu/menü, Hz değişimi, gerçek KDE oturumu, ses tepkili efekt.
+- [x] Tepsi ikonu/menü/ipucu (D-Bus) ve Hz değişimi (2026-10-19).
+- [ ] Kullanıcı başındayken: Waybar ipucunun gözle kontrolü, gerçek KDE oturumu, ses tepkili efekt (denetim modu gerekir).
 - [ ] Kalıcı geçiş (`r9t-switch --commit`, menü başlatıcı, exec-once) — kullanıcı onayıyla.
