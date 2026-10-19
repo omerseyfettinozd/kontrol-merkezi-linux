@@ -69,6 +69,14 @@ Kurulan: `r9t-studio 0.1.0.r68.gb44b715`, `slayer-r9t-fan-dkms 0.2.0-2` (snapper
 
   İlk açılış ~340 ms. **Kapatınca yok etme denendi, bırakıldı:** her aç-kapa bir WebKitWebProcess'i geride bırakıyordu (3 döngüde 1 → 5 süreç, ~250 MB/döngü). Kapatma yine gizler. `--view`, pencere henüz yokken ikinci örnekten gelirse saklanır ve `app_info` ile bir kez okunur. Üç durum ekranda denendi: ilk örnek `--hidden --view performance`, pencere yokken ikinci örnek `--view keyboard`, gizli pencereye `--view profiles`. Üçü de doğru görünümü açtı.
 
+## Açılış: eski modül dosyası olmadan (2026-10-19 19:54)
+
+Kurulan: `tuxedo-drivers-r9t-dkms 4.24.0-2`, `r9t-studio 0.1.0.r70.g3f67f52` (snapper 465/466). Eski `/etc/modules-load.d/slayer-r9t.conf` yedeğe taşındı: `/var/lib/r9t/slayer-r9t.modules-load.conf.bak`.
+
+- `systemd-modules-load` yalnız paket dosyalarıyla `tuxedo_io`, `uniwill_wmi` ve `r9t_fan`'ı yükledi (19:54:41). `/dev/tuxedo_io` hazırdı, r9td 19:54:43'te başladı → `state: control`, fan 3208/3175 rpm. Başarısız birim yok.
+- Tepsi: `r9t-studio-tray` active, SNI kayıtlı, **WebKit süreci yok**. Birimin cgroup belleği 77 MB (önce ~330 MB), RSS 56 MB.
+- Kurulum sırasında pacman'in "Loading new kernel modules" kancası yeni dosyayı DKMS yeniden kurulumundan önce işledi (`tuxedo_keyboard.ko.zst: No such file`). Modüller bellekteydi, etkisi olmadı; bu yalnız aynı işlemdeki sıralama.
+
 ## Kalan (Faz 5)
 
 - [x] Paketlerin kurulumu ve doğrulaması (2026-10-19).
@@ -78,3 +86,4 @@ Kurulan: `r9t-studio 0.1.0.r68.gb44b715`, `slayer-r9t-fan-dkms 0.2.0-2` (snapper
 - [ ] r9t_fan v2 (status2, hwmon, düşük duty taraması) — ayrı iş, fiziksel ölçüm gerektirir.
 - [ ] Bir hafta günlük kullanım → eski Python sisteminin yedeklenip kaldırılması.
 - [ ] Kurulum ön kontrolü, DKMS arşivli geri alma, güvenli kaldırma (`ileride.md` girdileri).
+- [x] tuxedo modüllerinin paketten yüklenmesi; eski `/etc/modules-load.d/slayer-r9t.conf` emekli (2026-10-19).
