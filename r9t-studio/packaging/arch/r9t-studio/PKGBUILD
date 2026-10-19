@@ -1,17 +1,16 @@
 # R9T Studio (plan Faz 5): r9td, r9t-session, r9tctl, the Tauri UI and their units.
 # Built from this repository's working tree (tracked files only):
 #   cd r9t-studio/packaging/arch/r9t-studio && makepkg -s
-# Installing it replaces the dev install under /usr/local: see packaging/arch/README.md.
 pkgname=r9t-studio
-pkgver=0.1.0.r63.g1b1d9a3
+pkgver=0.1.0.r64.gbed85bc
 pkgrel=1
 pkgdesc='GameGaraj Slayer R9T control center: hardware daemon, session agent, CLI and UI'
 arch=('x86_64')
 url='https://github.com/omerseyfettinozd/kontrol-merkezi-linux'
 license=('GPL-2.0-only')
 depends=('glibc' 'gcc-libs' 'gtk3' 'webkit2gtk-4.1' 'dbus' 'systemd' 'polkit'
-         'power-profiles-daemon' 'pipewire' 'wireplumber' 'python')
-makedepends=('cargo' 'nodejs' 'npm' 'git')
+         'power-profiles-daemon' 'pipewire' 'wireplumber')
+makedepends=('cargo' 'nodejs' 'npm' 'git' 'gcc')  # gcc: r9t_fan C fault test in check()
 optdepends=('slayer-r9t-fan-dkms: fan control (r9t_fan kernel module)'
             'tuxedo-drivers-dkms: EC, keyboard RGB and Fn-Lock'
             'nvidia-utils: dGPU telemetry and clock limits (NVML)'
@@ -58,23 +57,22 @@ check() {
 package() {
     cd "$srcdir/r9t-studio"
     local lib=/usr/lib/r9t-studio
-    install -Dm0755 -t "$pkgdir$lib" "$srcdir/target/release/"{r9td,r9tctl,r9t-session} \
-        "$srcdir/target-ui/release/r9t-studio" tools/r9t-switch tools/r9t-switch-user
+    install -Dm0755 -t "$pkgdir$lib" "$srcdir/target/release/"{r9td,r9tctl,r9t-session} "$srcdir/target-ui/release/r9t-studio"
     install -d "$pkgdir/usr/bin"
-    for b in r9tctl r9t-studio r9t-switch r9t-switch-user; do
-        ln -s "$lib/$b" "$pkgdir/usr/bin/$b"
-    done
+    ln -s "$lib/r9tctl" "$pkgdir/usr/bin/r9tctl"
+    ln -s "$lib/r9t-studio" "$pkgdir/usr/bin/r9t-studio"
+    # r9tctl dispatches on its name: r9t-switch = `r9tctl switch`, r9t-switch-user = `r9tctl desktop`.
+    ln -s "$lib/r9tctl" "$pkgdir/usr/bin/r9t-switch"
+    ln -s "$lib/r9tctl" "$pkgdir/usr/bin/r9t-switch-user"
 
-    # Units and desktop file name the dev install path (/usr/local); rewrite it.
-    _fix() { sed -e "s#/usr/local/lib/r9t-studio#$lib#g" -e 's#/usr/local/share/doc#/usr/share/doc#g' "$1"; }
     local u
     for u in r9td.service r9td-shadow.service r9t-fallback.service; do
-        _fix "packaging/systemd/$u" | install -Dm0644 /dev/stdin "$pkgdir/usr/lib/systemd/system/$u"
+        install -Dm0644 "packaging/systemd/$u" "$pkgdir/usr/lib/systemd/system/$u"
     done
     install -Dm0644 packaging/systemd/slayer-r9t.service.d/r9t-conflicts.conf \
         "$pkgdir/usr/lib/systemd/system/slayer-r9t.service.d/r9t-conflicts.conf"
-    _fix packaging/systemd-user/r9t-session.service | install -Dm0644 /dev/stdin "$pkgdir/usr/lib/systemd/user/r9t-session.service"
-    _fix packaging/applications/r9t-studio.desktop | install -Dm0644 /dev/stdin "$pkgdir/usr/share/applications/r9t-studio.desktop"
+    install -Dm0644 packaging/systemd-user/r9t-session.service "$pkgdir/usr/lib/systemd/user/r9t-session.service"
+    install -Dm0644 packaging/applications/r9t-studio.desktop "$pkgdir/usr/share/applications/r9t-studio.desktop"
 
     install -Dm0644 packaging/sysusers.d/r9t.conf "$pkgdir/usr/lib/sysusers.d/r9t.conf"
     install -Dm0644 packaging/polkit/org.r9t.studio.policy "$pkgdir/usr/share/polkit-1/actions/org.r9t.studio.policy"

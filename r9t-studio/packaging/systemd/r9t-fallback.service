@@ -3,4 +3,4 @@
 Description=R9T Studio fallback to the legacy control service
 [Service]
 Type=oneshot
-ExecStart=/usr/local/lib/r9t-studio/r9t-switch --fallback
+ExecStart=/usr/lib/r9t-studio/r9tctl switch --fallback

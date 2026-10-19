@@ -11,6 +11,7 @@ r9t-protocol.workspace = true
 r9t-hal.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+nix.workspace = true
 
 [lints]
 workspace = true

@@ -1,163 +1,106 @@
-# Kontrol Merkezi Linux
+# Kontrol Merkezi Linux — R9T Studio
 
-**GameGaraj Slayer R9T için Linux / KDE Plasma donanım ve masaüstü kontrol merkezi.** Mevcut sürüm: **0.11.0**.
+**GameGaraj Slayer R9T için saf Rust ile yazılmış Linux kontrol merkezi.** Güç profilleri, CPU/GPU sınırları, fanlar, RGB klavye, ekran, ses ve tanılama tek arayüzde. Donanım servisi `r9td`, masaüstü ajanı `r9t-session`, komut satırı `r9tctl` ve Tauri v2 + Svelte 5 arayüzü; Arch paketleriyle kurulur.
 
-Güç, CPU boost, fanlar, RGB klavye, ekran ve cihaz ayarlarını tek arayüzde yönetir. Profiller ve isteğe bağlı otomasyonla ayarları birlikte uygular; sıcaklık, fan RPM ve güç ölçümleriyle sonuçları görünür kılar. Windows kontrol merkezinin bütün özelliklerini kapsadığı veya tüm oyun laptoplarında çalıştığı iddia edilmez.
+![R9T Studio — Genel Bakış](r9t-studio/docs/img/overview.png)
 
-![Dynamic Boost ve güç ölçümleri arayüzü](outputs/previews/dynamic-boost.png)
+| Performans & Termal | Klavye & RGB |
+|---|---|
+| ![Performans & Termal](r9t-studio/docs/img/performance.png) | ![Klavye & RGB](r9t-studio/docs/img/keyboard.png) |
+
+Windows kontrol merkezinin bütün özelliklerini kapsadığı ya da başka oyun laptoplarında çalıştığı iddia edilmez. Kanıtlanmamış yetenek arayüzde etkin görünmez.
 
 ## Hangi bilgisayar için?
 
-| Bileşen | Geliştirilen / ölçüm yapılan yapılandırma |
-| --- | --- |
-| Laptop | **GameGaraj Slayer R9T**; DMI üretici `GAME GARAJ`, ürün `SLAYER R9T` |
-| İşlemci | AMD Ryzen 9 8945HX |
-| GPU | NVIDIA GeForce RTX 5070 Laptop GPU |
-| BIOS / EC | BIOS `N.1.19GAR06`, EC proje kimliği `0x1a` |
-| Masaüstü | KDE Plasma 6 / Wayland; KScreen, KWin ve KF6 oturum arayüzleri |
-| Linux çalışma ölçümü | CachyOS, çekirdek `7.2.8-2-cachyos` |
-| Araştırmada kayıtlı NVIDIA sürücüsü | `615.71.09` |
-| Klavye | ITE8291, USB `048d:600b`, 6 × 21 statik RGB kanal haritası |
+| Bileşen | Doğrulanan yapılandırma |
+|---|---|
+| Laptop | GameGaraj Slayer R9T (DMI `GAME GARAJ` / `SLAYER R9T`), BIOS `N.1.19GAR06` |
+| İşlemci | AMD Ryzen 9 8940HX (16 çekirdek) |
+| GPU | NVIDIA GeForce RTX 5070 Laptop (dahili eDP-1 dGPU'ya bağlı, 2560×1600 60/240/300 Hz) |
+| Klavye | ITE8291, USB `048d:600b`, 126 kanal (6 × 21) RGB |
+| Sistem | CachyOS, kernel 7.2.9 ve LTS 6.18.55, Hyprland 0.56 (KDE Plasma 6 da destekli) |
 
-Bu tablo bir **doğrulama kaydıdır**, her sürüm için zorunlu minimum veya genel uyumluluk listesi değildir. Başka R9T BIOS'ları, farklı CPU/GPU seçenekleri, diğer dağıtımlar ve GNOME gibi masaüstleri ayrıca sınanmadı. Yalnız işlemcinin veya ekran kartının aynı olması fan/EC uyumluluğunu kanıtlamaz. Donanım servisi DMI modelini, fan köprüsü ayrıca EC kimliğini kontrol eder.
+Başka modeller için EC adresleri doğrudan taşınmaz; servis DMI modelini ve EC kimliğini denetler.
 
-Başka model için R9T kurucusunu çalıştırmadan önce [yapay zekâ ile laptop uyarlama rehberini](outputs/docs/AI_LAPTOP_ADAPTATION_GUIDE.md) okuyun. Rehber yeni cihazda hangi kaynakların ve salt okunur arayüzlerin araştırılacağını anlatır; R9T'ye ait EC adresleri yeni modele doğrudan taşınmaz.
+## Neler yapıyor?
 
-## Program neler yapıyor?
+| Modül | İçerik |
+|---|---|
+| Genel Bakış | CPU/GPU EC sıcaklığı ve güç (RAPL paket wattı, NVML), fan RPM/görev, pil, DDR5 ve iki NVMe sıcaklığı; 5 dakikalık çift eksenli grafikler |
+| Performans & Termal | Ölçülmüş presetler ve senaryolar, güç profili, CPU boost/EPP, CPU ve GPU frekans tavanları, sürüklenebilir fan eğrisi (%50 taban, canlı sıcaklık imleci), sıcaklık hedefi |
+| Klavye & RGB | 6×21 ızgarada tıklayarak/sürükleyerek boyama, hızlı gruplar, global parlaklık; efektler: termal gradyan, nefes, dalga, ses tepkili (hoparlör çıkışını dinler) |
+| Ekran, GPU & Otomasyon | Hz (60/240/300) ve parlaklık, açılış/priz/pil/oyun kuralları (Steam listesi), GPU Wake Inspector (dGPU'yu meşgul eden süreçler) |
+| Donanım, Ses & Tanılama | Fn-Lock, kamera, USB-C PD, hoparlör/mikrofon, Wi-Fi/Bluetooth/uçak modu, s2idle analizi, süreç izleyici, denetim günlüğü |
+| Profiller & Kıyaslama | Profil tablosu, JSON içe/dışa aktarma, 60 sn kararlılık testi ve A/B karşılaştırma |
+| Tepsi | Renk = güç profili (kırmızı = termal koruma), ipucunda profil ve CPU/GPU °C, senaryo menüsü |
+| Waybar | `r9tctl waybar --follow` modülü |
 
-| Alan | Mevcut özellikler |
-| --- | --- |
-| Genel durum | CPU/GPU sıcaklık ve kullanım, frekans, fan RPM, NVIDIA tüketimi, RAM kullanımı ve pil durumu |
-| Güç / CPU | Linux güç profili, AMD P-State boost, desteklenen CPU EPP enerji tercihleri ve CPU üst frekans sınırı |
-| Soğutma | Sessiz/Ofis, Serin Dengeli ve Serin Oyun hazır ayarları; CPU/GPU frekans sınırlama |
-| Fanlar | EC otomatik mod, maksimum soğutma, ayrı CPU/GPU %50–100 hedefleri, hazır ve dört noktalı kullanıcı eğrileri; soğumada histerezis ve kademeli düşüş |
-| Sıcaklık hedefi | İsteğe bağlı yazılım kontrolü: CPU 60–85°C, GPU 60–80°C; fanları ve frekans tavanlarını sıcaklığa göre yönetir |
-| RGB klavye | Tek renk/parlaklık; 126 kanallı statik düzenler, 6×21 görsel hücre/bölge boyama düzenleyicisi, önizleme ve profil kaydı |
-| Profiller | Güç, boost, frekans, EPP, RGB ve isteğe bağlı fan ayarlarını birlikte kaydetme/uygulama; kayıtlı profili ayrı taslakta düzenleme, kopyalama, silme ve JSON içe/dışa aktarma |
-| Otomasyon | Açılış, priz/pil ve yürütülebilir dosya eşleşmesine göre profil; uygulama kuralını düzenleme ve ilk eşleşme önceliğini değiştirme; elle seçimde duraklatma; varsayılan kapalı |
-| Ekran / oturum | Mevcut ekran modları ve Hz, parlaklık, KDE gece rengi, ICC dosyası; isteğe bağlı dahili ekran düşük Hz ve klavye ışığı zaman aşımı |
-| Cihazlar / klavye | Wi-Fi, Bluetooth, uçak modu, touchpad, Fn Lock ve KDE Caps Lock / Control / Escape eşlemeleri; modele özel dahili FHD/IR kamera erişim kontrolü |
-| Pil / SSD / RAM | Pil sağlık, döngü, voltaj, akım ve güç; mevcut NVMe ve `spd5118` sıcaklık sensörleri |
-| Ölçüm geçmişi | GUI açıkken 5/30 dakika grafikler, min/ortalama/maks ve CSV dışa aktarımı; CPU paket gücü dahil |
-| GPU tanılama | GPU neden açık? panelinde DRM ekran bağlantıları, runtime güç durumu ve görünür aygıt bağlantısı olan süreçler |
-| Dynamic Boost | Firmware destek durumu, `nvidia-powerd` servis sağlığı ve ayrı CPU paket / NVIDIA güç ölçümleri |
-| Kaynaklar | Salt okunur CPU/RAM ve görünür GPU compute süreçleri; komut satırları toplanmaz |
-| Profil karşılaştırma | Kullanıcı başlatmalı A/B ölçümleri, ortalama/tepe farkları ve CSV; FPS ölçülmez |
-| Ses / mikrofon | WirePlumber ses düzeyi, yazılımsal susturma ve varsayılan aygıt seçimi; geri okuma |
-| Uyku / pil tanılaması | Kullanıcı başlatmalı öncesi/sonrası enerji ve uyku sayaçları; araç uykuyu başlatmaz |
-| Kullanım / tanılama | Sistem tepsisi, hızlı profil/fan menüsü, işlem bildirimi ve JSON tanılama raporu |
+Ölçülen değerler: boşta arayüz CPU'su eDP-1 300 Hz'te %0,45 (odak dışında), r9td `status` p99 0,21 ms.
 
-Eksik sensörler `—` / veri yok olarak gösterilir. Arayüz seçilen ayarı ve sistemden geri okunan etkin değeri ayırır. Profillerin başarısız uygulanmasında önceki ayarlara dönüş denenir ve eksik geri dönüş bildirilir.
+## Mimari
 
-Profil düzenleyicisi yalnız işaretli alanları saklar; özel RGB haritası ve fan eğrisi korunabilir. İptal kayıtlı ayarları değiştirmez, kopyalama mevcut profilin üzerine yazmaz. Etkin otomasyonun kullandığı bir profil kaydedilirse yeni ayarlar sonraki uygun yenilemede otomatik uygulanabilir. Uygulama kuralları taslak olarak düzenlenir; sıra değişikliği ancak **Otomasyonu kaydet** ile kalıcı olur. Aynı yürütülebilir dosya yeniden eklenirse mevcut kural güncellenir ve önceliği korunur.
-
-## Sınırlar ve henüz açılmayan özellikler
-
-- **GPU watt/TGP yazımı, MUX, OEM Office/Gaming/Turbo modları, undervolt ve overclock açılmadı.** Komut adlarının veya register değerlerinin bulunması bu BIOS'ta çalışan bir kontrol kanıtı değildir.
-- Standart pil şarj eşiği arayüzü varsa kontrol kullanılabilir; doğrulanan R9T'de bu arayüz bulunmadığından **%60/%80 şarj sınırı desteği doğrulanmadı**.
-- Statik çok renkli RGB ve görsel hücre boyama düzenleyicisi mevcut; donanım RGB animasyonları henüz tamamlanmadı. Hücre numaraları fiziksel tuş adları değildir.
-- Sıcaklık hedefi yazılımla fan/frekans yönetir; kesin sıcaklık veya FPS garantisi vermez. GPU frekans komutunun kabulü, bağımsız limit geri okuması ile aynı değildir.
-- Dynamic Boost destek bilgisi ve çalışan daemon, gerçek yük altında CPU → GPU güç aktarımını kanıtlamaz. CPU paket + NVIDIA tüketimi de toplam priz tüketimi değildir.
-- GPU neden açık? paneli GPU'yu uyutmaz ve MUX değiştirmez. Açık aygıt bağlantısı tek başına gerçek GPU iş yükü kanıtı değildir.
-- Fan zaman aşımı ve sıcaklık korumaları vardır; EC erişim hatası veya kernel kilitlenmesi altında başarılı geri dönüş garanti edilemez. Firmware korumalarının yerine geçmez.
-- Fiziksel uyku/uyanma, prizden pile geçiş, uzun kullanım ve yük altında FPS/ısı karşılaştırması ayrı kabul işi olarak duruyor. Yeni otomasyon/kurulum geri dönüşleri kaynak testleriyle kontrol edildi; fiziksel cihazda yeniden kurulum ve kabul ayrıca gerekiyor.
-
-Güncel kapsam ve kanıtlar: [IMPLEMENTATION_STATUS.md](outputs/docs/IMPLEMENTATION_STATUS.md). Öncelikli açık işler: [WORK_QUEUE.md](outputs/docs/WORK_QUEUE.md); yeni özellik adayları: [NEXT_FEATURES.md](outputs/docs/NEXT_FEATURES.md).
-
-## Kurulum
-
-Kurucu mevcut R9T kurulumuna göre hazırlanmıştır; **temiz bir yeni makinede uçtan uca kurulum henüz doğrulanmadı**. Hazır genel dağıtım paketi değildir. Özellikle uyarlanmış TUXEDO sürücüsü ön koşulunu kurucu kendiliğinden sağlamaz.
-
-### Ön koşullar
-
-- Python 3 ve **aynı sistem Python ortamında PySide6**. Betikler ve systemd birimleri `/usr/bin/python` kullanır; yalnız `python3` sunan bir dağıtımda yollar önce uyarlanmalıdır.
-- `systemd`, çalışan masaüstü kullanıcı oturumu, `power-profiles-daemon` / `powerprofilesctl`; NVIDIA sürücüsü, `nvidia-smi` ve NVML desteği.
-- C++17 derleyici, `pkg-config`, Qt6Gui geliştirme dosyaları, KF6 KIdleTime başlıkları ve kütüphanesi. Kurucu `/usr/include/KF6/KIdleTime` başlık yolunu kullanır.
-- DKMS, çalışan çekirdeğin geliştirme başlıkları ve kernel modülü derleme araçları; yüklenebilir R9T modülü.
-- **R9T için uyarlanmış TUXEDO/Uniwill/ITE8291 sürücüleri**. Önce [yerel sürücü yamaları](outputs/driver-patches/README.md) ve [fan köprüsü](outputs/docs/FANS.md) açıklamalarını okuyun. Yamalar `tuxedo-drivers` **4.24.0** kaynak sürümüne aittir; yeni sürüme körlemesine uygulanmaz.
-- KDE Plasma 6 / Wayland araçları: `kscreen-doctor`, `busctl`, `kwriteconfig6`, `kreadconfig6`, `qdbus6`; Wi-Fi için NetworkManager / `nmcli`, Bluetooth için BlueZ. Eksik masaüstü desteği ilgili kontrolü sınırlar.
-
-Paket adları ve geliştirme dosyalarının yerleri dağıtıma göre değişir; bu depo her dağıtım için sınanmış tek satırlık bağımlılık kurulum komutu sunmaz.
-
-### Uygulamayı kurma
-
-Doğru model ve ön koşullar hazırlandıktan sonra, depo kökünden masaüstü kullanıcınızla:
-
-```sh
-cd outputs
-sudo /usr/bin/python install-r9t.py
-systemctl status slayer-r9t.service
-systemctl --user status slayer-r9t-session.service
+```text
+r9t-studio/
+├── crates/
+│   ├── r9t-protocol/   JSON-RPC 2.0 (NDJSON) tipleri, alan başına yaş bilgili anlık görüntü
+│   ├── r9t-hal/        donanım katmanı (cpufreq, RAPL, hwmon, tuxedo_io, r9t_fan, RGB, NVML), sahte sysfs ile test
+│   ├── r9td/           root servis: tek okuyucu, tek yazıcı (termal otorite), polkit, uyku inhibitörü
+│   ├── r9t-session/    kullanıcı ajanı: Hyprland/KDE, Hz, PipeWire, idle, oyun algılama, ses tepkili RGB
+│   └── r9tctl/         CLI: status/probe/watch, waybar, geçiş (switch/desktop), tuş kalibrasyonu, yük testi
+├── ui/                 Tauri v2 + Svelte 5 (soketlere yalnız Rust kabuğu bağlanır), ksni tepsisi
+├── driver/
+│   ├── r9t_fan/        fan köprüsü kernel modülü (C, DKMS): 15 sn lease, uyku ve hata halinde EC auto
+│   └── tuxedo-drivers/ tuxedo-drivers 4.24.0 için R9T yaması (DMI eşleşmesi, 8 bit RGB yoğunluğu)
+├── packaging/          systemd, polkit, sysusers, menü girişi, arch/ PKGBUILD'leri
+└── docs/               plan (04), faz kanıtları (05–15)
 ```
 
-Program menüde **Slayer R9T Kontrol Merkezi** adıyla açılır.
+Kod Rust'tır; C yalnız kernel modülü ve sürücü yamasıdır, kabuk yalnız PKGBUILD/DKMS derleme betiğidir.
 
-Uygulama kullanıcı başına tek GUI süreci ve tek sistem tepsisi simgesi oluşturur. Yeniden başlatmak mevcut pencereyi öne getirir; `--fan` mevcut pencerenin fan sekmesini açar. Pencereyi veya tepsi menüsündeki **Arayüzü kapat** seçeneğini kapatmak GUI sürecini sonlandırır. Menü, pencere ve sistem tepsisi uygulamanın paketlenmiş ikonunu kullanır.
+**Güvenlik değişmezleri** (`r9t-studio/CLAUDE.md`): kernel lease 15 sn ve watchdog; duruşta fanlar EC otomatik; CPU ≥ 90 / GPU ≥ 84 °C'de fanlar %100; PWM tabanı %50; fan durma algılama; geçersiz sensör asla 0 °C sayılmaz; uykuda auto doğrulanır; tek yazıcı (`Conflicts=`, flock); doğrulanmamış EC adresine yazma yok.
 
-Terminalden:
+## Kurulum (Arch / CachyOS)
 
-```sh
-/usr/bin/python /usr/local/lib/slayer-r9t/r9t-control-center.py
+```bash
+cd r9t-studio/packaging/arch/tuxedo-drivers-r9t-dkms && makepkg
+cd ../slayer-r9t-fan-dkms && makepkg
+cd ../r9t-studio && makepkg -s
+sudo pacman -U ../*/*.pkg.tar.zst
+sudo usermod -aG r9t "$USER"          # yeniden giriş gerekir
+sudo r9tctl switch --commit            # r9td kalıcı denetçi (deneme için: --trial 20)
+r9tctl desktop --commit                # r9t-session, Hyprland satırı, menü girişi
 ```
 
-Kurucu fan köprüsünü DKMS ile derler, root donanım servisini ve kullanıcı oturumu servisini kurar. Uygulama dosyaları `/usr/local/lib/slayer-r9t/` altındadır. Uygulama, root servis, masaüstü başlatıcısı ve kullanıcı servisinin son aktivasyon adımları aynı geri alma kapsamındadır: hata halinde önceki dosyalar ile servislerin aktif/açılış durumları geri getirilir; eksik geri alma bildirilir. **DKMS kaynakları/derlemesi ve yüklenmiş kernel modülü bu kapsamın dışındadır.** `linked` / `indirect` veya maskelenmiş servis düzenleri değişiklikten önce reddedilir. Önceki uygulama yedeği `/usr/local/lib/.slayer-r9t-previous` altında tutulur.
+Geri dönüş: `sudo r9tctl switch --rollback && r9tctl desktop --rollback`. Ayrıntılar: [packaging/arch/README.md](r9t-studio/packaging/arch/README.md).
 
-Günlükler ve servisi durdurma:
+## Geliştirme
 
-```sh
-journalctl -u slayer-r9t.service
-journalctl --user -u slayer-r9t-session.service
-sudo systemctl disable --now slayer-r9t.service
-systemctl --user disable --now slayer-r9t-session.service
+```bash
+cd r9t-studio
+cargo test --workspace                  # r9t_fan C hata testi dahil (cc gerekir)
+cargo clippy --workspace --all-targets
+cd ui && npm ci && npx tauri build --no-bundle && (cd src-tauri && cargo test)
 ```
 
-Son iki komut servisleri durdurur/devre dışı bırakır; dosyaları veya DKMS modülünü kaldıran tam kaldırma işlemi değildir. GUI'yi kapatmak donanım servisini veya etkin sıcaklık hedefini durdurmaz; seçimi arayüzden durdurabilirsiniz.
+Plan ve kurallar: [r9t-studio/docs/04_ana_plan.md](r9t-studio/docs/04_ana_plan.md), [r9t-studio/CLAUDE.md](r9t-studio/CLAUDE.md). Donanım kabulü yalnız fiziksel ölçümle yapılır; CI (GitHub Actions) yalnız sahte sysfs ve bellek içi EC ile koşar.
 
-## Mimari ve yerel veriler
+## Durum
 
-- **PySide6 GUI** kullanıcı yetkisiyle çalışır; servis ve tanılama sorgularını alt süreçlerle yürütür.
-- **Root donanım servisi** model denetimi ve sınırlı Unix soketi protokolüyle önceden tanımlı işlemleri kabul eder. İstemci genel shell komutu veya keyfi EC adresi gönderemez.
-- **Kullanıcı oturumu servisi** KDE/Wayland ayarlarını, boşta kalma ve ekran otomasyonunu yürütür.
-- **R9T fan köprüsü** sabit fan arayüzünü, kontrol yenileme zaman aşımını ve sıcaklık korumalarını kernel tarafında tutar.
-- Ayarlar `~/.config/slayer-r9t-control-center/settings.json`, servis politikası `/var/lib/slayer-r9t/`, sınırlı boyutlu işlem günlükleri `actions.jsonl` altında tutulur. Ölçüm geçmişi GUI oturumundadır; CSV dışa aktarımı ayrıca yapılır.
+| Faz | Konu | Durum |
+|---|---|---|
+| 0–3 | Hazırlık, protokol/HAL, gölge modu, kontrol yolu ve oturum ajanı | Tamam |
+| 4 | Arayüz (6 modül), tepsi, kalıcı geçiş | Tamam (KDE oturumunda kısa kontrol açık) |
+| 5 | Arch paketleri, eski sistemin kaldırılması, r9t_fan v2 | Paketler kurulu ve günlük kullanımda; v2 ve bir haftalık kullanım sonrası temizlik açık |
 
-Tanılama ve ekran görüntülerini paylaşırken kendi süreç adlarınızı, dosya yollarınızı ve cihaz bilgilerinizi gözden geçirin. Depodaki kabul kayıtları belirli bir test cihazına aittir; gizlilik için anonimleştirilmiş örnekler metadata ile belirtilir ve ham canlı kayıt sayılmaz.
+Eski Python/Qt sistemi (Slayer R9T Kontrol Merkezi 0.12.0) depodan kaldırıldı; son hali [`legacy-0.12.0`](https://github.com/omerseyfettinozd/kontrol-merkezi-linux/tree/legacy-0.12.0) etiketinde.
 
-Kaynak kod: [`outputs/slayer_r9t/`](outputs/slayer_r9t/), testler: [`outputs/tests/`](outputs/tests/), köprü: [`outputs/fan-driver/`](outputs/fan-driver/). Ayrıntılı [mimari](outputs/docs/ARCHITECTURE.md) ve [kullanım belgesi](outputs/README.md).
+## Araştırma kaynakları
 
-## Doğrulama ve geliştirme
+- [GameGaraj R9T sürücü / kontrol merkezi sayfası](https://www.gamegaraj.com/suruculer/laptop/game-garaj-slayer-r9t-5070-amd-ryzen-9-8945hx-rtx5/?id=4324): ControlCenterX 5.62.60.32'deki EC sabitleri ve profil tanımları yerel olarak incelendi; üretici paketleri yeniden dağıtılmaz.
+- [TUXEDO sürücüleri v4.24.0](https://github.com/tuxedocomputers/tuxedo-drivers/tree/v4.24.0): Uniwill erişimi, ITE8291 RGB, tuxedo_io; R9T farkları `r9t-studio/driver/tuxedo-drivers/`.
+- [Linux Uniwill sürücüsü](https://github.com/torvalds/linux/blob/master/drivers/platform/x86/uniwill/uniwill-acpi.c): fan sıcaklık / PWM / RPM adresleri.
+- Linux CPUFreq / AMD P-State, RAPL, hwmon, power_supply, DRM ve PCI runtime güç arayüzleri; NVIDIA NVML; power-profiles-daemon, logind, PipeWire ve Hyprland IPC belgeleri.
 
-4 Ekim 2026 tarihli bütünleşik kaynak doğrulamasında **277 Python/Qt testi geçti**; ayrı fan C hata simülasyonu ve 86 Python dosyasının sözdizimi kontrolü de geçti. Tarihli önceki dilimler [durum belgesinde](outputs/docs/IMPLEMENTATION_STATUS.md) korunur. Önceki güvenilirlik diliminde kernel **7.2.8-2-cachyos** başlıklarıyla LLVM nesne derlemesi başarılı oldu; bu dilimde sürücü değiştirilmedi. Bu sonuçlar gerçek donanım yükü, modül yükleme, temiz kurulum veya farklı laptop desteği anlamına gelmez. Özel canlı kontrollerin kapsamı ve sonuçları [durum belgesinde](outputs/docs/IMPLEMENTATION_STATUS.md) ayrı tutulur.
+## Lisans
 
-Son güvenilirlik düzeltmeleri oyun sonrası GPU frekans sınırını geri alır, etkin profil düzenlemelerini yeniden uygular ve fanın otomatik kontrole dönüşü başarısız olduğunda yeniden denemeyi sürdürür. Uygulama/kullanıcı-servisi kurulumu son adımda hata verse de önceki dosyaları ve servis durumlarını geri alır; DKMS sürücü kurulumu bu geri alma kapsamının dışındadır. 4 Ekim salt okunur önkontrolünde kurulu uygulama ve servis 0.10.0, kaynak 0.11.0 olarak görüldü. Yeni kaynak henüz fiziksel cihazda yeniden kurulup doğrulanmadı.
-
-Python 3 + PySide6 ortamında, depo kökünden:
-
-```sh
-cd outputs
-PYTHONPATH=. PYTHONDONTWRITEBYTECODE=1 QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -q
-```
-
-Donanıma erişmeyen ayrı fan hata simülasyonu, C derleyicisi bulunan ortamda depo kökünden `python outputs/fan-driver/test_fallback.py` ile çalıştırılır.
-
-[Headless regression iş akışı](.github/workflows/regression.yml), `main` push'larında ve pull request'lerde Ubuntu 24.04 / Python 3.14.7 / PySide6 6.11.2 ile bu iki kontrolü çalıştırır. Qt testleri `offscreen` kullanır; fan C kodu bellekte simüle edilmiş EC hatalarıyla sınanır. İş akışı uygulamayı veya kernel modülünü kurmaz, canlı donanım testlerini çalıştırmaz. Kaynakta iş akışının bulunması GitHub koşusunun geçtiği anlamına gelmez; uzak koşu sonucu ayrıca kontrol edilir.
-
-`tests/live_*.py` kontrolleri ayrıca çalıştırılır; bazıları gerçek fan, frekans, ekran, RGB veya kamera durumunu kısa süre değiştirir. Her betiğin model/izin koşullarını ve başlangıç durumuna dönüşünü okuyun; bu kontroller rutin birim testi komutunun parçası değildir.
-
-Katkı önerilerinde model / BIOS / kernel / masaüstü bilgisi, tekrar üretme adımları ve mevcut değer / istenen değer ayrımını yazın. Seri numarası, kullanıcı adı, erişim anahtarı veya kişisel profil dosyası paylaşmanız gerekmez. Yeni laptop desteği için önce salt okunur keşif ve bağımsız model adaptörü geliştirin.
-
-## Araştırırken nerelere baktık?
-
-Linux arayüzlerini, üreticinin Windows kontrol merkezinin model tanımlarını ve mevcut sürücü kaynaklarını karşılaştırdık. OEM adlarını yalnız aday işlev saydık; Linux geri okuması ve gerçek cihaz ölçümü olmadan kontrol açmadık.
-
-- [GameGaraj R9T resmi sürücü / kontrol merkezi sayfası](https://www.gamegaraj.com/suruculer/laptop/game-garaj-slayer-r9t-5070-amd-ryzen-9-8945hx-rtx5/?id=4324): ControlCenterX **5.62.60.32** paketindeki EC sabitleri, profil tanımları ve kamera komutları yerel olarak incelendi. Üretici paketleri burada yeniden dağıtılmaz.
-- [TUXEDO sürücü kaynakları v4.24.0](https://github.com/tuxedocomputers/tuxedo-drivers/tree/v4.24.0): Uniwill erişimi, ITE8291 RGB kanalları, cihaz eşlemesi ve sürücü başlangıcı için karşılaştırma; yerel farklar [`driver-patches/`](outputs/driver-patches/) altında korunur.
-- [Linux Uniwill sürücüsü](https://github.com/torvalds/linux/blob/master/drivers/platform/x86/uniwill/uniwill-acpi.c): fan sıcaklık / PWM / RPM adresleri ve byte sırası için karşılaştırma kaynağı.
-- [KDE KScreen kaynakları](https://github.com/KDE/libkscreen/blob/master/src/doctor/doctor.cpp), kurulu KWin D-Bus arayüzleri ve KF6 KIdleTime başlıkları: ekran ve kullanıcı oturumu kontrolleri.
-- Linux CPUFreq / AMD P-State, hwmon, power_supply, DRM ve PCI runtime güç arayüzleri; NVIDIA NVML ve `nvidia-powerd` belgeleri: standart kontrol, sensör ve güç tanılaması yolları. İlgili birincil kaynak bağlantıları [soğutma](outputs/docs/COOLING.md), [GPU tanılama](outputs/docs/GPU_DIAGNOSTICS.md) ve [Dynamic Boost](outputs/docs/DYNAMIC_BOOST.md) belgelerinde.
-
-**Başka laptopu olanlar için:** [AI_LAPTOP_ADAPTATION_GUIDE.md](outputs/docs/AI_LAPTOP_ADAPTATION_GUIDE.md) dosyasını yapay zekâya vererek model keşfi, kaynak taraması, güvenli adaptör tasarımı ve doğrulama planı oluşturabilirsiniz. [Donanım araştırma notu](outputs/docs/HARDWARE_RESEARCH.md) bu yöntemin R9T'deki örneğidir; diğer modellerin desteğini kanıtlamaz.
-
-Yerel OEM çıkarımları, indirilmiş araçlar, derleme çıktıları ve eski paketler `work/` / `outputs/releases/` altında Git dışında tutulur. TUXEDO kaynaklarının lisans bildirimi [`TUXEDO-LICENSE`](outputs/driver-patches/TUXEDO-LICENSE) dosyasındadır; bu bildirim tüm uygulama için otomatik bir lisans ataması değildir.
-
-Kaldırma sahipliğini incelemek için kaynak depoda `PYTHONPATH=outputs python outputs/r9t-uninstall-plan.py --dry-run` kullanılabilir. JSON envanteri salt okunurdur; kaldırma executor'ı yoktur. Mevcut kurulumda ownership manifest bulunmadığından hash/marker eşleşmesi silme izni sayılmaz; kullanıcı verileri ve sürücüler korunur. Bu CLI mevcut kurucu tarafından kurulu uygulamaya dağıtılmaz. Gerçek temiz kurulum/kaldırma kabulü açık kalır.
+Rust kodu GPL-2.0-only (`r9t-studio/Cargo.toml`), `r9t_fan` modülü GPL. TUXEDO yamasının lisans bildirimi `r9t-studio/driver/tuxedo-drivers/TUXEDO-LICENSE` (GPL-2.0+).

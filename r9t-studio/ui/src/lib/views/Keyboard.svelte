@@ -170,7 +170,7 @@
     <div class="row">
       <button class="primary" disabled={!ctl} onclick={apply}>Haritayı uygula</button>
       <button disabled={!ctl} onclick={() => control('rgb', { rgb: rgb(color), brightness: Number(brightness) }, { key: 'rgb' })}>Tek renk: tümü</button>
-      <small>Sol tık/sürükle: boya · sağ tık: renk al. {calibrated ? '' : 'Tuş etiketleri kalibrasyondan sonra görünür (tools/keymap-calibrate.py).'}</small>
+      <small>Sol tık/sürükle: boya · sağ tık: renk al. {calibrated ? '' : 'Tuş etiketleri kalibrasyondan sonra görünür (r9tctl keymap-calibrate).'}</small>
     </div>
   </section>
 

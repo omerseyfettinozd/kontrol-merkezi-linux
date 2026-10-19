@@ -680,6 +680,7 @@ dependencies = [
 name = "r9tctl"
 version = "0.1.0"
 dependencies = [
+ "nix",
  "r9t-hal",
  "r9t-protocol",
  "serde",

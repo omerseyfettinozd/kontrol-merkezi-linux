@@ -1,7 +1,7 @@
 # R9T Studio daemon, control mode: the single hardware writer.
 [Unit]
 Description=R9T Studio daemon (control)
-Documentation=file:///usr/local/share/doc/r9t-studio/04_ana_plan.md
+Documentation=file:///usr/share/doc/r9t-studio/04_ana_plan.md
 # Safety invariant 6: never next to the legacy service or the shadow.
 Conflicts=slayer-r9t.service r9td-shadow.service
 After=systemd-modules-load.service power-profiles-daemon.service dbus.service polkit.service slayer-r9t.service r9td-shadow.service
@@ -13,9 +13,9 @@ StartLimitBurst=3
 [Service]
 Type=notify
 NotifyAccess=main
-ExecStart=/usr/local/lib/r9t-studio/r9td
+ExecStart=/usr/lib/r9t-studio/r9td
 # Safety invariant 2: fans to EC auto even after SIGKILL.
-ExecStopPost=/usr/local/lib/r9t-studio/r9td --emergency-auto
+ExecStopPost=/usr/lib/r9t-studio/r9td --emergency-auto
 WatchdogSec=10
 Restart=on-failure
 RestartSec=500ms

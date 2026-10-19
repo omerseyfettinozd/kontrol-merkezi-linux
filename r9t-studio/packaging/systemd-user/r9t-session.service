@@ -7,7 +7,7 @@ After=graphical-session.target
 Conflicts=slayer-r9t-session.service
 
 [Service]
-ExecStart=/usr/local/lib/r9t-studio/r9t-session
+ExecStart=/usr/lib/r9t-studio/r9t-session
 # A clean exit (Hyprland's event socket closed) is success; only crashes restart.
 Restart=on-failure
 RestartSec=2

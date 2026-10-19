@@ -25,6 +25,13 @@ Tarih: 2026-10-19. Ayrıntılı kurulum/geçiş sırası: `packaging/arch/README
 - Geliştirme kurulumu kaldırıldı → `r9t-studio` paketi; `r9t-switch --commit` yeniden uygulandı. Sonuç: `r9td` active/enabled `/usr/lib/systemd/system/r9td.service`, denetim, oturum `hyprland:`; `r9td-shadow` ve `slayer-r9t` disabled; `r9t-session` `/usr/lib/r9t-studio/r9t-session`'dan çalışıyor (kullanıcı birimi yeniden etkinleştirildi). Arayüz `/usr/bin/r9t-studio` → `/usr/lib/r9t-studio`, tepsi ipucu dolu, menü girişi `/usr/share/applications`.
 - `pacman -Qkk`: üç pakette 0 değiştirilmiş dosya. `/usr/local/lib/r9t-studio`, `/usr/local/bin/r9t*`, `/etc/systemd/{system/r9td,user/r9t-session}.service` yok. Kalan (zararsız): `/etc/systemd/system/r9t-shadow-compare.service` (devre dışı, Faz 2 aracı).
 
+## Saf Rust (2026-10-19)
+
+- Python ve kabuk araçları kaldırıldı. `r9t-switch` → `r9tctl switch`, `r9t-switch-user` → `r9tctl desktop` (paket `/usr/bin/r9t-switch*` adlarını `r9tctl`'ye bağlar; `r9tctl` adına göre yönlenir), `keymap-calibrate.py` → `r9tctl keymap-calibrate` (artık r9td `rgb_map` üzerinden; root gerekmez, RGB motoruyla yarışmaz; SIGINT/SIGTERM'de renkler geri yüklenir), `load-test.py` → `r9tctl load-test`. r9t_fan C hata testi `crates/r9t-hal/tests/r9t_fan_c_faults.rs` (C senaryoları `driver/r9t_fan/test/`); kasıtlı bozulan senaryoyu yakaladığı doğrulandı.
+- Silinen (git geçmişinde): bitmiş faz araçları (gölge karşılaştırma ve birimi, probe karşılaştırma, fan RPM taraması, yetenek yoklaması, eski durum dökümü, Tauri spike), geliştirme kurulum/geçiş betikleri, elle fan sürücüsü kur/geri al/test betikleri (yerini DKMS paketi aldı), eski Python sistemi `outputs/` (etiket `legacy-0.12.0`).
+- Paket: `python` bağımlılığı kalktı; birimler doğrudan `/usr/lib/r9t-studio` yolunu kullanır (sed yok); `r9t-fallback` → `r9tctl switch --fallback`.
+- Masaüstü tarafı sandbox'ta (sahte systemctl) commit → commit → rollback: hyprland.conf ve menü girişi bayt bayt geri döndü. Testler: workspace 104 + UI 5, clippy temiz. CI (GitHub Actions) eski Python/Qt işinden Rust workspace + C hata testine geçti.
+
 ## Kalan (Faz 5)
 
 - [x] Paketlerin kurulumu ve doğrulaması (2026-10-19).

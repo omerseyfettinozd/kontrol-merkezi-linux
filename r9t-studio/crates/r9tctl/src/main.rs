@@ -1,6 +1,10 @@
 //! `r9tctl` — command-line client for R9T Studio.
 
 mod client;
+mod desktop;
+mod keymap;
+mod load;
+mod switch;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -25,6 +29,15 @@ Komutlar:
   waybar [--follow]            Waybar custom modülü için JSON (--follow: akış)
   migrate [--dry-run] [dosya]  Eski ~/.config/slayer-r9t-control-center/settings.json
                                profillerini ve kurallarını r9td'ye aktarır (configure)
+  switch <seçenek>             Kontrolü eski servis ile r9td arasında taşır (root):
+                               --trial <dk> | --commit | --rollback | --fallback | --status
+                               (r9t-switch adıyla da çağrılır)
+  desktop <seçenek> [--dry-run] Masaüstü tarafı (kullanıcı): --commit | --rollback | --status
+                               (r9t-switch-user adıyla da çağrılır)
+  keymap-calibrate [--start n] [--out dosya]
+                               126 RGB kanalını tek tek yakıp tuş haritasını kaydeder
+  load-test <target|fan> <sn> <çıktı.json>
+                               Tüm çekirdeklerde yük altında termal davranışı örnekler
   help                         Bu metni gösterir
 
 Soket: $R9TD_SOCKET ya da /run/r9td/r9td.sock
@@ -32,6 +45,12 @@ Soket: $R9TD_SOCKET ya da /run/r9td/r9td.sock
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    // Installed under these names too (symlinks): the shell tools they replaced.
+    match std::env::args().next().as_deref().and_then(|a| std::path::Path::new(a).file_name()?.to_str().map(str::to_owned)).as_deref() {
+        Some("r9t-switch") => return switch::run(&args),
+        Some("r9t-switch-user") => return desktop::run(&args),
+        _ => {}
+    }
     let (cmd, rest) = match args.split_first() {
         Some((c, r)) => (c.as_str(), r),
         None => {
@@ -50,6 +69,10 @@ fn main() -> ExitCode {
         "bench" => bench(rest.first().and_then(|v| v.parse().ok()).unwrap_or(1000)),
         "waybar" => waybar(rest.iter().any(|a| a == "--follow")),
         "migrate" => migrate(rest),
+        "switch" => switch::run(rest),
+        "desktop" => desktop::run(rest),
+        "keymap-calibrate" => keymap::run(rest),
+        "load-test" => load::run(rest),
         "help" | "-h" | "--help" => {
             print!("{USAGE}");
             ExitCode::SUCCESS
@@ -138,6 +161,13 @@ fn connect() -> Result<Client, ExitCode> {
         eprintln!("r9td'ye bağlanılamadı ({}): {e}", socket().display());
         ExitCode::from(3)
     })
+}
+
+/// Call by method name with JSON params (same decoding as `r9tctl call`).
+fn rpc(c: &mut Client, method: &str, params: serde_json::Value) -> Result<serde_json::Value, String> {
+    let line = serde_json::json!({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).to_string();
+    let call = r9t_protocol::rpc::decode_request(line.as_bytes()).map_err(|(_, e)| e.to_string())?.call;
+    c.call(call).map_err(|e| e.to_string())
 }
 
 fn simple(call: Call) -> ExitCode {

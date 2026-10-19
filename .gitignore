@@ -1,11 +1,5 @@
 # Yerel OEM araştırması, araç indirmeleri ve eski kaynak kopyaları
 /work/
-# Python ve test önbellekleri
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.venv/
-venv/
 # Kernel derleme çıktıları
 *.o
 *.ko
@@ -14,8 +8,7 @@ venv/
 *.cmd
 Module.symvers
 modules.order
-# Eski paketler ve geçici dosyalar
-/outputs/releases/
+# Geçici dosyalar
 *.tmp
 *.log
 .env
@@ -24,10 +17,7 @@ modules.order
 r9t-studio/target/
 r9t-studio/ui/node_modules/
 r9t-studio/ui/src-tauri/target/
-r9t-studio/spikes/**/node_modules/
-r9t-studio/spikes/**/target/
 r9t-studio/.claude/worktrees/
-r9t-studio/spikes/**/src-tauri/gen/
 
 # makepkg (packaging/arch)
 r9t-studio/packaging/arch/*/src/

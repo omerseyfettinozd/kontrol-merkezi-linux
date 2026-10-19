@@ -4,8 +4,8 @@ post_install() {
     cat <<'MSG'
 ==> R9T Studio kuruldu; hiçbir servis kendiliğinden başlatılmadı.
     Eski sistemle yan yana gölge:  systemctl enable --now r9td-shadow.service
-    Deneme:                        r9t-switch --trial 20
-    Kalıcı geçiş:                  r9t-switch --commit  &&  r9t-switch-user --commit (kullanıcı olarak)
+    Deneme:                        r9tctl switch --trial 20
+    Kalıcı geçiş:                  r9tctl switch --commit  &&  r9tctl desktop --commit (kullanıcı olarak)
     Kullanıcı r9t grubunda olmalı:  usermod -aG r9t <kullanıcı>  (yeniden giriş gerekir)
 MSG
 }
@@ -27,5 +27,5 @@ pre_remove() {
         systemctl enable --now slayer-r9t.service 2>/dev/null || true
     fi
     rm -f /var/lib/r9t/committed
-    echo "==> Masaüstü tarafını kaldırmadan önce kullanıcı olarak: r9t-switch-user --rollback"
+    echo "==> Masaüstü tarafını kaldırmadan önce kullanıcı olarak: r9tctl desktop --rollback"
 }

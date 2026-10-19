@@ -2,12 +2,12 @@
 # never writes hardware: no Conflicts=, no ExecStopPost, /sys read-only, no capabilities.
 [Unit]
 Description=R9T Studio daemon (read-only shadow)
-Documentation=file:///usr/local/share/doc/r9t-studio/04_ana_plan.md
+Documentation=file:///usr/share/doc/r9t-studio/04_ana_plan.md
 After=systemd-modules-load.service power-profiles-daemon.service dbus.service
 
 [Service]
 Type=notify
-ExecStart=/usr/local/lib/r9t-studio/r9td --shadow
+ExecStart=/usr/lib/r9t-studio/r9td --shadow
 Restart=on-failure
 RestartSec=2
 SyslogIdentifier=r9td

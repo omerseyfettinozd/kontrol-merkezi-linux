@@ -1,6 +1,6 @@
 # R9T Studio
 
-GameGaraj Slayer R9T için Rust ile sıfırdan yazılan Linux kontrol merkezi: root servis `r9td`, kullanıcı ajanı `r9t-session`, CLI `r9tctl`, Tauri v2 + Svelte 5 arayüzü `ui/` ve `r9t_fan` kernel modülü. Eski Python sistemi (`../outputs/slayer_r9t/`) kalıcı geçişe (Faz 4 sonu) kadar günlük kullanımda ve yedek olarak kalır; ona yeni özellik eklenmez.
+GameGaraj Slayer R9T için Rust ile sıfırdan yazılan Linux kontrol merkezi: root servis `r9td`, kullanıcı ajanı `r9t-session`, CLI `r9tctl`, Tauri v2 + Svelte 5 arayüzü `ui/` ve `r9t_fan` kernel modülü (C). Proje saf Rust'tır: Python yok; C yalnız kernel modülü ve tuxedo yamasıdır, kabuk yalnız PKGBUILD/DKMS'tir. 2026-10-19'dan beri günlük kullanımda (kalıcı geçiş + Arch paketleri). Eski Python sistemi depodan kaldırıldı (etiket `legacy-0.12.0`); kurulu kopyası `/usr/local/lib/slayer-r9t` yalnız `r9t-fallback` için durur.
 
 ## Önce Oku
 
@@ -11,12 +11,12 @@ GameGaraj Slayer R9T için Rust ile sıfırdan yazılan Linux kontrol merkezi: r
 
 ## Çalışma Kuralları
 
-- Root gereken adım `tools/` altında betik olarak yazılır ve sonucu `docs/`'a yazılır. 2026-10-18'de kullanıcı `/goal` ile bu oturum için sudo yetkisi verdi; şifre hiçbir dosyaya, nota ya da hafızaya yazılmaz. Yetki yoksa kullanıcı `! sudo …` ile çalıştırır.
+- Root gereken adım `r9tctl` alt komutu ya da paket kancası olarak yazılır (yeni Python/kabuk aracı yok) ve sonucu `docs/`'a yazılır. 2026-10-18'de kullanıcı `/goal` ile bu oturum için sudo yetkisi verdi; şifre hiçbir dosyaya, nota ya da hafızaya yazılmaz. Yetki yoksa kullanıcı `! sudo …` ile çalıştırır.
 - **Uyku/uyanma testleri yalnız kullanıcı başındayken** (2026-10-18 gözetimsiz `rtcwake` s2idle'dan uyanmadı, `docs/09`).
 - Donanıma yazan her adımdan önce kullanıcı onayı. Donanım kabulü yalnız fiziksel ölçümle; mock/CI kabul sayılmaz.
 - Git komutları depo kökünden (`/home/chaple/Belgeler/kontrol merkezi linux`). **`git add -A` / `git add .` yok**, dosyalar yol yol eklenir. Push yalnız onayla, yalnız `origin`'e; `private-archive`'a asla. Depo: monorepo, `origin` açık (public).
-- Eski kod (`../outputs/`) yalnız Faz 0.2 birleştirmesi için değişir; eski unitlere yalnız systemd drop-in eklenir.
-- Eski testler: `cd ../outputs && PYTHONPATH=. PYTHONDONTWRITEBYTECODE=1 QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -q`. `live_*.py` ve `R9T_LIVE_CHECK=1` çalıştırılmaz.
+- Eski unitlere yalnız systemd drop-in eklenir. Eski kod `git show legacy-0.12.0:outputs/...` ile okunur.
+- Testler: `cargo test` (workspace; r9t_fan C hata testi dahil, `cc` gerekir) ve `cd ui/src-tauri && cargo test`. Kurulum: `packaging/arch/README.md` (makepkg + pacman -U); geçiş `r9tctl switch` / `r9tctl desktop`.
 - Her faz sonunda testler geçer, kanıt `docs/`'a yazılır, `/home/chaple/second-brain/300-Projects/Kontrol-Merkezi-Linux.md` güncellenir.
 
 ## Donanım Gerçekleri (canlı sistem, 2026-10-17)
@@ -53,9 +53,10 @@ r9t-studio/
 │   ├── r9t-hal/        # donanım trait'leri, gerçek + sahte; R9T_SYSFS_ROOT
 │   ├── r9td/           # root servis, Tokio; soket /run/r9td/r9td.sock (0660 root:r9t)
 │   ├── r9t-session/    # systemd --user ajanı: Hyprland/KDE, Hz, PipeWire, idle, süreç sonlandırma
-│   └── r9tctl/         # CLI, probe, migrate, waybar --follow
+│   └── r9tctl/         # CLI: probe, migrate, waybar --follow, switch/desktop (geçiş), keymap-calibrate, load-test
 ├── ui/                 # Tauri v2 + Svelte 5 (soket istemcisi Rust tarafında)
-├── spikes/  tools/  driver/  packaging/
+├── driver/             # r9t_fan (C, DKMS) + test/ (C hata senaryoları); tuxedo-drivers yaması
+├── packaging/          # systemd, polkit, sysusers, arch/ (PKGBUILD'ler)
 ├── data/keymap-tr-q.json
 └── docs/
 ```
