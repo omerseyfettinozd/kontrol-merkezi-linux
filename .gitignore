@@ -28,3 +28,9 @@ r9t-studio/spikes/**/node_modules/
 r9t-studio/spikes/**/target/
 r9t-studio/.claude/worktrees/
 r9t-studio/spikes/**/src-tauri/gen/
+
+# makepkg (packaging/arch)
+r9t-studio/packaging/arch/*/src/
+r9t-studio/packaging/arch/*/pkg/
+r9t-studio/packaging/arch/out/
+*.pkg.tar.zst

@@ -18,6 +18,14 @@ Paket kurulumu hiçbir servisi başlatmaz ya da etkinleştirmez; geçiş yine `r
 
 ## Geliştirme kurulumundan pakete geçiş
 
+Tek komut (paketler `packaging/arch/out/` içinde derlenmiş olmalı; `--dry-run` yalnız gösterir):
+
+```bash
+sudo r9t-studio/tools/migrate-to-packages.sh
+```
+
+Betik aşağıdaki adımları sırayla yapar, her birinden sonra DKMS/servis durumunu doğrular ve r9t-studio adımında hata olursa geliştirme kurulumunu geri yükleyip kalıcı geçişi yeniden uygular. Elle yapmak için:
+
 `tools/install-r9td-dev.sh` her şeyi `/usr/local` ve `/etc/systemd` altına koyar; `/etc` altındaki birimler paketin `/usr/lib/systemd` birimlerini gölgeler. Geçiş sırası (kalıcı geçiş yapılmışsa da güvenli; aradaki birkaç saniyede fanlar EC otomatiktedir):
 
 1. Paketleri derle (yukarıdaki üç komut).
