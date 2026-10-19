@@ -32,10 +32,28 @@ Tarih: 2026-10-19. Ayrıntılı kurulum/geçiş sırası: `packaging/arch/README
 - Paket: `python` bağımlılığı kalktı; birimler doğrudan `/usr/lib/r9t-studio` yolunu kullanır (sed yok); `r9t-fallback` → `r9tctl switch --fallback`.
 - Masaüstü tarafı sandbox'ta (sahte systemctl) commit → commit → rollback: hyprland.conf ve menü girişi bayt bayt geri döndü. Testler: workspace 104 + UI 5, clippy temiz. CI (GitHub Actions) eski Python/Qt işinden Rust workspace + C hata testine geçti.
 
+## İlk açılış (2026-10-19 17:57, paketlerden sonraki ilk yeniden başlatma)
+
+- **Paketten gelenler doğru:** `r9td` `/usr/lib/systemd/system/r9td.service` → `/usr/lib/r9t-studio/r9td`; `r9t-session` `/usr/lib/systemd/user/r9t-session.service`, Hyprland `exec-once` satırıyla başladı. DKMS kaynakları paketlere ait (`/usr/src/tuxedo-drivers-4.24.0` → `tuxedo-drivers-r9t-dkms`, `/usr/src/slayer-r9t-fan-0.2.0` → `slayer-r9t-fan-dkms`); `/lib/modules/*/updates/dkms/*.ko.zst` DKMS çıktısı olduğu için pacman'e ait değil (beklenen). tuxedo modülleri yüklü, kernel 7.2.9.
+- **Hata 1, `r9t_fan` yüklenmedi → r9td salt okunur:** günlükte `r9td: kontrol açılmadı, salt okunur: r9t_fan 0.2.0 gerekli, yüklü: None`; `r9tctl status` → `authority.state = refused`. Fanlar EC otomatikte kaldı (güvenli taraf), ama R9T Studio fanlara dokunamadı. Neden: modülü açılışta eski `slayer-r9t.service` yüklüyordu (`ExecStartPre=-/usr/bin/modprobe r9t_fan`). Kalıcı geçişten (`873b2e1`) sonra o servis kapalı ve modülü yükleyen bir şey kalmadı. Hata ilk yeniden başlatmada ortaya çıktı. r9td `ProtectKernelModules=yes` ile çalıştığı için modülü kendi yükleyemez. **Düzeltme:** `slayer-r9t-fan-dkms` 0.2.0-2, `/usr/lib/modules-load.d/slayer-r9t-fan.conf` dosyasını kurar (`r9t_fan`; softdep `uniwill_wmi tuxedo_keyboard`). r9td zaten `After=systemd-modules-load.service`.
+- **Hata 2, tepsi simgesi yok:** arayüz (`r9t-studio`) girişte hiç başlatılmıyordu; Hyprland'de `exec-once` satırı, autostart girdisi ya da birim yoktu. Önceki oturumdaki simge, arayüzün elle açılmasından kalmıştı. `--hidden` ve SNI bekleme desteği vardı, bağlantısı eksikti. **Düzeltme:** kullanıcı birimi `r9t-studio-tray.service` (`r9t-studio --hidden`, `WantedBy=r9t-session.service`). Hyprland satırı ortamı içe aktarıp r9t-session'ı başlattığında tepsi de başlar; KDE'de graphical-session.target üzerinden başlar. `r9tctl desktop --commit` etkinleştirir, `--rollback` kapatır, `--status` gösterir. Tepsideki "Çık" temiz çıkıştır ve birim kapalı kalır.
+- **Not:** tuxedo modüllerini (`tuxedo_io` dahil) hâlâ eski, sahipsiz `/etc/modules-load.d/slayer-r9t.conf` yüklüyor. Eski sistem kaldırılırken bu dosya silinmeden önce içeriği bir pakete taşınmalı (r9td `/dev/tuxedo_io` kullanır).
+- Kalan eski kayıt: `dkms status` → `slayer-r9t-fan/0.1.0` üç kernelde `built` (kurulu değil). Kaynak `/usr/src/slayer-r9t-fan-0.1.0` sahipsiz; derlenmiş kopyalar yalnız `/var/lib/dkms/slayer-r9t-fan/0.1.0/` altında. Yüklü `r9t_fan` 0.2.0'a ait; `kernel-*` bağlantıları `0.2.0`'ı gösteriyor. Temizleme (yalnız 0.1.0'ın DKMS ağacını ve kaynağını siler):
+
+  ```bash
+  sudo dkms remove slayer-r9t-fan/0.1.0 --all
+  sudo rm -r /usr/src/slayer-r9t-fan-0.1.0
+  dkms status slayer-r9t-fan           # yalnız 0.2.0 … installed
+  modinfo -F version r9t_fan           # 0.2.0
+  ```
+
+  0.1.0 kaynağı git geçmişinde ve `legacy-0.12.0` etiketinde durur.
+
 ## Kalan (Faz 5)
 
 - [x] Paketlerin kurulumu ve doğrulaması (2026-10-19).
-- [ ] Bir sonraki açılışta r9td + r9t-session + modüllerin paketten geldiğinin doğrulanması.
+- [x] Açılışta r9td + r9t-session + modüllerin paketten geldiğinin doğrulanması (2026-10-19; iki eksik bulundu ve düzeltildi, yukarıda).
+- [ ] Düzeltilmiş paketlerin kurulumu ve bir sonraki açılışta `r9t_fan` + r9td denetimi + tepsinin kendiliğinden geldiğinin doğrulanması.
 - [ ] Bir sonraki kernel güncellemesinde DKMS autoinstall.
 - [ ] r9t_fan v2 (status2, hwmon, düşük duty taraması) — ayrı iş, fiziksel ölçüm gerektirir.
 - [ ] Bir hafta günlük kullanım → eski Python sisteminin yedeklenip kaldırılması.

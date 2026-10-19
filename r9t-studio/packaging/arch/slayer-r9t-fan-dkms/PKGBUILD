@@ -4,7 +4,7 @@
 pkgname=slayer-r9t-fan-dkms
 _modname=slayer-r9t-fan
 pkgver=0.2.0
-pkgrel=1
+pkgrel=2
 pkgdesc='GameGaraj Slayer R9T fan bridge kernel module (DKMS; lease, auto fallback)'
 arch=('any')
 url='https://github.com/omerseyfettinozd/kontrol-merkezi-linux'
@@ -25,4 +25,5 @@ package() {
     for f in r9t_fan.c Makefile build.sh dkms.conf README.md; do
         install -Dm0644 "$(_drv)/$f" "$dst/$f"
     done
+    install -Dm0644 "$(_drv)/modules-load.conf" "$pkgdir/usr/lib/modules-load.d/$_modname.conf"
 }

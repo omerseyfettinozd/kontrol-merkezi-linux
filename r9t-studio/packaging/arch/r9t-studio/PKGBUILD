@@ -71,7 +71,9 @@ package() {
     done
     install -Dm0644 packaging/systemd/slayer-r9t.service.d/r9t-conflicts.conf \
         "$pkgdir/usr/lib/systemd/system/slayer-r9t.service.d/r9t-conflicts.conf"
-    install -Dm0644 packaging/systemd-user/r9t-session.service "$pkgdir/usr/lib/systemd/user/r9t-session.service"
+    for u in r9t-session.service r9t-studio-tray.service; do
+        install -Dm0644 "packaging/systemd-user/$u" "$pkgdir/usr/lib/systemd/user/$u"
+    done
     install -Dm0644 packaging/applications/r9t-studio.desktop "$pkgdir/usr/share/applications/r9t-studio.desktop"
 
     install -Dm0644 packaging/sysusers.d/r9t.conf "$pkgdir/usr/lib/sysusers.d/r9t.conf"

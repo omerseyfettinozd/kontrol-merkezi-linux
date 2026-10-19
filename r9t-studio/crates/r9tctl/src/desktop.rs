@@ -1,7 +1,7 @@
 //! `r9tctl desktop` (also installed as `r9t-switch-user`): desktop side of the
 //! permanent switch, run as the desktop user after `r9tctl switch --commit`.
 //! r9t-session replaces the legacy session agent, the Hyprland exec-once line starts
-//! it, the menu shows R9T Studio. Every change is undone by `--rollback`; `--dry-run`
+//! it and pulls in the tray (r9t-studio-tray), the menu shows R9T Studio. Every change is undone by `--rollback`; `--dry-run`
 //! (after the command) prints what would change.
 
 use std::path::{Path, PathBuf};
@@ -92,10 +92,12 @@ fn commit(c: &Ctx) -> Result<(), String> {
     if !enabled.unwrap_or(false) {
         eprintln!("Uyarı: r9td açılışta etkin değil; önce sudo r9tctl switch --commit");
     }
-    println!("1. Eski oturum ajanı kapatılıyor, r9t-session etkinleşiyor (KDE: graphical-session.target)");
+    println!("1. Eski oturum ajanı kapatılıyor, r9t-session ve tepsi etkinleşiyor (KDE: graphical-session.target)");
     c.user_systemctl(&["disable", "--now", "slayer-r9t-session.service"])?;
     c.user_systemctl(&["enable", "r9t-session.service"])?;
     c.user_systemctl(&["start", "r9t-session.service"])?;
+    // Tray at login (WantedBy=r9t-session); a running UI just forwards to itself.
+    c.user_systemctl(&["enable", "--now", "r9t-studio-tray.service"])?;
     println!("2. Hyprland exec-once satırı");
     swap_file(c, OLD_LINE, NEW_LINE)?;
     println!("3. Menü: eski 'Slayer R9T Kontrol Merkezi' gizleniyor, R9T Studio görünüyor");
@@ -132,7 +134,8 @@ fn commit(c: &Ctx) -> Result<(), String> {
 }
 
 fn rollback(c: &Ctx) -> Result<(), String> {
-    println!("1. r9t-session kapatılıyor, eski oturum ajanı geri");
+    println!("1. r9t-session ve tepsi kapatılıyor, eski oturum ajanı geri");
+    c.user_systemctl(&["disable", "--now", "r9t-studio-tray.service"])?;
     c.user_systemctl(&["disable", "--now", "r9t-session.service"])?;
     c.user_systemctl(&["enable", "slayer-r9t-session.service"])?;
     println!("2. Hyprland exec-once satırı");
@@ -159,7 +162,7 @@ fn rollback(c: &Ctx) -> Result<(), String> {
 }
 
 fn status(c: &Ctx) -> Result<(), String> {
-    for u in ["r9t-session.service", "slayer-r9t-session.service"] {
+    for u in ["r9t-session.service", "r9t-studio-tray.service", "slayer-r9t-session.service"] {
         let q = |verb: &str| {
             Command::new("systemctl").args(["--user", verb, u]).output().map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned()).unwrap_or_default()
         };

@@ -1,0 +1,16 @@
+# R9T Studio tray: the UI started hidden. Pulled in by r9t-session (`r9tctl desktop
+# --commit` enables it), so on Hyprland it starts after the exec-once line has imported
+# WAYLAND_DISPLAY; on KDE graphical-session.target starts r9t-session.
+[Unit]
+Description=R9T Studio tray
+PartOf=graphical-session.target
+After=r9t-session.service
+
+[Service]
+ExecStart=/usr/lib/r9t-studio/r9t-studio --hidden
+# "Çık" in the tray menu is a clean exit and stays down; only crashes restart.
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=r9t-session.service
