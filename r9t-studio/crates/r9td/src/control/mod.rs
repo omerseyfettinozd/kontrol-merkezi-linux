@@ -215,6 +215,8 @@ impl Control {
             .unwrap_or_default();
         let paused = state_dir.join("policy.paused").exists();
         let (tx, rx) = mpsc::channel();
+        let duty_floor = fan.duty_floor();
+        eprintln!("r9td: fan tabanı %{duty_floor} (r9t_fan min_duty)");
         let c = Self {
             power: Power::new(fs.clone()),
             shared,
@@ -225,7 +227,7 @@ impl Control {
             gpu,
             rgb_hal,
             rgb,
-            authority: Authority::default(),
+            authority: Authority::with_floor(duty_floor),
             stall: StallDetector::default(),
             stall_boost_until: None,
             last_cmd: None,
@@ -793,8 +795,9 @@ impl Control {
             Call::FanBoost(_) => self.fan_rpc(FanSetting::Boost),
             Call::FanPreset(p) => self.fan_rpc(FanSetting::Preset { preset: p.preset }),
             Call::Manual(p) => {
-                if !(DUTY_FLOOR..=100).contains(&p.cpu) || !(DUTY_FLOOR..=100).contains(&p.gpu) {
-                    return Err(RpcError::new(code::INVALID_PARAMS, "CPU/GPU fanı %50–100 olmalı."));
+                let floor = self.authority.duty_floor.max(DUTY_FLOOR);
+                if !(floor..=100).contains(&p.cpu) || !(floor..=100).contains(&p.gpu) {
+                    return Err(RpcError::new(code::INVALID_PARAMS, format!("CPU/GPU fanı %{floor}–100 olmalı.")));
                 }
                 self.fan_rpc(FanSetting::Manual { cpu: p.cpu, gpu: p.gpu })
             }

@@ -4,6 +4,8 @@ Eski sistemdeki `outputs/fan-driver/r9t_fan.c`'nin sertleştirilmiş sürümü. 
 
 ## 0.3.0 (plan Faz 5 v2)
 
+Paket 0.3.0-3: `/usr/lib/modprobe.d/slayer-r9t-fan.conf` → `min_duty=25` (ölçülmüş taban, `docs/07`). r9td komutları bu tabana yükseltir.
+
 Paket 0.3.0-2: lease işçisi eskimiş `system_wq` yerine `system_dfl_wq` (bağsız) kuyruğunda; 7.2'nin "deprecated workqueue" uyarısı gider. Davranış ve `MODULE_VERSION` aynı.
 
 Varsayılanlarla davranış 0.2.0 ile aynıdır: `status` satırı bayt bayt aynı, `manual` yalnız %50–100.

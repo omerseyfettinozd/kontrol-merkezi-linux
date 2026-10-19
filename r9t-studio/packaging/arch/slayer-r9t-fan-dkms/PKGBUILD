@@ -4,14 +4,14 @@
 pkgname=slayer-r9t-fan-dkms
 _modname=slayer-r9t-fan
 pkgver=0.3.0
-pkgrel=2
+pkgrel=3
 pkgdesc='GameGaraj Slayer R9T fan bridge kernel module (DKMS; lease, auto fallback)'
 arch=('any')
 url='https://github.com/omerseyfettinozd/kontrol-merkezi-linux'
 license=('GPL-2.0-only')
 depends=('dkms' 'tuxedo-drivers-dkms')
-# r9td before this commit accepts only r9t_fan 0.2.0 and would stay read-only on 0.3.0.
-conflicts=('r9t-studio<0.1.0.r72')
+# Older r9td refuses r9t_fan 0.3.0 (before r72) or ignores min_duty (before r78).
+conflicts=('r9t-studio<0.1.0.r78')
 
 _drv() { realpath "$startdir/../../../driver/r9t_fan"; }
 
@@ -28,4 +28,5 @@ package() {
         install -Dm0644 "$(_drv)/$f" "$dst/$f"
     done
     install -Dm0644 "$(_drv)/modules-load.conf" "$pkgdir/usr/lib/modules-load.d/$_modname.conf"
+    install -Dm0644 "$(_drv)/modprobe.conf" "$pkgdir/usr/lib/modprobe.d/$_modname.conf"
 }

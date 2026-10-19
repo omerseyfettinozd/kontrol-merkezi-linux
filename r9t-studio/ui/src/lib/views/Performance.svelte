@@ -17,6 +17,8 @@
   let cpuMhz = $state(null);
   let gpuMhz = $state(null);
   let manual = $state({ cpu: 60, gpu: 60 });
+  // r9t_fan min_duty (probe): 25 after the low-duty sweep, 50 on 0.2.0.
+  const floor = $derived(app.caps?.probe?.fan?.duty_floor ?? 50);
   let target = $state({ cpu: 75, gpu: 75 });
   let curve = $state([[45, 50], [60, 60], [75, 80], [85, 100]]);
   let interpolation = $state('linear');
@@ -142,7 +144,7 @@
     </div>
     <div class="fan-grid">
       <div>
-        <FanCurve bind:points={curve} bind:interpolation cpuTemp={val(s.cpu.ec_temp_c)} gpuTemp={val(s.gpu.ec_temp_c)} disabled={!ctl} />
+        <FanCurve bind:points={curve} bind:interpolation cpuTemp={val(s.cpu.ec_temp_c)} gpuTemp={val(s.gpu.ec_temp_c)} disabled={!ctl} {floor} />
         <div class="row" style="margin-top:8px">
           <label class="row tight">Enterpolasyon
             <select bind:value={interpolation}>
@@ -157,10 +159,10 @@
       <div class="stack">
         <div class="card inner">
           <h3>Manuel</h3>
-          <label class="slider">CPU fanı <input type="range" min="50" max="100" bind:value={manual.cpu} disabled={!ctl} /><b class="num">%{manual.cpu}</b></label>
-          <label class="slider">GPU fanı <input type="range" min="50" max="100" bind:value={manual.gpu} disabled={!ctl} /><b class="num">%{manual.gpu}</b></label>
+          <label class="slider">CPU fanı <input type="range" min={floor} max="100" bind:value={manual.cpu} disabled={!ctl} /><b class="num">%{manual.cpu}</b></label>
+          <label class="slider">GPU fanı <input type="range" min={floor} max="100" bind:value={manual.gpu} disabled={!ctl} /><b class="num">%{manual.gpu}</b></label>
           <button disabled={!ctl} onclick={() => control('manual', { cpu: Number(manual.cpu), gpu: Number(manual.gpu) }, { key: 'manual' })}>Manuel uygula</button>
-          <small>Taban %50 (ölçülmüş: %50 ≈ 3200 RPM).</small>
+          <small>Taban %{floor} (ölçülmüş: %25 ≈ 1600, %50 ≈ 3200 RPM). Sıcaklık yükselince modül tabanı %50'ye çeker.</small>
         </div>
         <div class="card inner">
           <h3>Sıcaklık hedefi (PID) {#if targetActive}<span class="badge warn">etkin</span>{/if}</h3>

@@ -1,6 +1,8 @@
 // r9t-protocol FanCurve::validate / duty_at kopyası (crates/r9t-protocol/src/profile.rs).
 // Sunucu yine doğrular; bu yalnız düzenlerken anında geri bildirim içindir.
-export const DUTY_FLOOR = 50;
+// Protokolün en düşük değeri (ölçülmüş güvenli taban, docs/07). r9td her komutu
+// yüklü modülün tabanına (min_duty; 0.2.0'da 50) yükseltir.
+export const DUTY_FLOOR = 25;
 export const T_MIN = 40;
 export const T_MAX = 95;
 
@@ -8,7 +10,7 @@ export function validate(points) {
   if (points.length < 2 || points.length > 10) return 'Eğri 2–10 nokta içermeli.';
   let prev = null;
   for (const [t, d] of points) {
-    if (t < T_MIN || t > T_MAX || d < DUTY_FLOOR || d > 100) return 'Eğride sıcaklık 40–95 °C, fan %50–100 olmalı.';
+    if (t < T_MIN || t > T_MAX || d < DUTY_FLOOR || d > 100) return 'Eğride sıcaklık 40–95 °C, fan %25–100 olmalı.';
     if (prev && (t <= prev[0] || d < prev[1])) return 'Sıcaklıklar artmalı, fan yüzdesi azalmamalı.';
     prev = [t, d];
   }

@@ -10,4 +10,4 @@ Fazların kapsamı dışında kalan fikirler. Bir faza alınmadan önce plana (`
 
 ## Sonra
 
-- **r9td'nin %50 tabanı:** `min_duty` ölçüldükten sonra r9td profillerinin (`r9t-protocol` `MIN_DUTY` 50) modülün `min_duty`'sine inmesi. Fiziksel tarama sonucuna bağlı.
+- **[yapıldı 2026-10-19]** **r9td'nin %50 tabanı:** protokol %25, r9td modülün `min_duty`'sine kıstırıyor.

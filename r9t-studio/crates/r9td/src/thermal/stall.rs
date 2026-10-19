@@ -7,9 +7,16 @@
 
 use std::time::{Duration, Instant};
 
-/// (duty %, median RPM) for the CPU and GPU fan, measured 2026-10-18 on r9t_fan 0.2.0.
-pub const CPU_CURVE: [(u8, u32); 6] = [(50, 3180), (60, 3717), (70, 4269), (80, 4759), (90, 5246), (100, 5765)];
-pub const GPU_CURVE: [(u8, u32); 6] = [(50, 3232), (60, 3756), (70, 4269), (80, 4718), (90, 5170), (100, 5615)];
+/// (duty %, median RPM) for the CPU and GPU fan: 50–100 % measured 2026-10-18 on
+/// r9t_fan 0.2.0, 20–45 % on 0.3.0 with `r9tctl fan-sweep` 2026-10-19 (docs/07).
+pub const CPU_CURVE: [(u8, u32); 12] = [
+    (20, 1264), (25, 1597), (30, 1933), (35, 2253), (40, 2563), (45, 2855),
+    (50, 3180), (60, 3717), (70, 4269), (80, 4759), (90, 5246), (100, 5765),
+];
+pub const GPU_CURVE: [(u8, u32); 12] = [
+    (20, 1332), (25, 1668), (30, 2003), (35, 2328), (40, 2623), (45, 2917),
+    (50, 3232), (60, 3756), (70, 4269), (80, 4718), (90, 5170), (100, 5615),
+];
 pub const STATUS_ERROR_LIMIT: Duration = Duration::from_secs(10);
 
 /// Minimum acceptable RPM for `duty` (linear between measured points).
@@ -18,7 +25,7 @@ pub fn stall_threshold(curve: &[(u8, u32)], duty: u8) -> u32 {
         return 0;
     }
     let expected = if duty <= curve[0].0 {
-        // Below the measured range (v2 low-duty scan pending): scale the 50 % value.
+        // Below the measured range: scale the lowest point.
         curve[0].1 * u32::from(duty) / u32::from(curve[0].0)
     } else {
         curve
@@ -99,8 +106,10 @@ mod tests {
         assert_eq!(stall_threshold(&CPU_CURVE, 55), (3180 + (3717 - 3180) / 2) / 2);
         assert_eq!(stall_threshold(&CPU_CURVE, 100), 2882);
         assert_eq!(stall_threshold(&CPU_CURVE, 0), 0);
-        assert_eq!(stall_threshold(&CPU_CURVE, 20), 636, "below 50 %: scaled from the 50 % point");
-        assert_eq!(stall_threshold(&CPU_CURVE, 10), 500);
+        assert_eq!(stall_threshold(&CPU_CURVE, 20), 632, "measured low-duty point");
+        assert_eq!(stall_threshold(&CPU_CURVE, 30), 966);
+        assert_eq!(stall_threshold(&GPU_CURVE, 25), 834);
+        assert_eq!(stall_threshold(&CPU_CURVE, 10), 500, "below 20 %: scaled, then the 500 floor");
         assert_eq!(stall_threshold(&CPU_CURVE, 5), 500, "never below 500");
     }
 

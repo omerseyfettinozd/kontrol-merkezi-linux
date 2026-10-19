@@ -70,6 +70,7 @@ fn probe_with(fs: &Sysfs, with_nvml: bool, light: bool) -> ProbeReport {
         fan.status()
     };
     let module = json!({"loaded": fan.loaded(), "version": fan.version(), "srcversion": fan.srcversion()});
+    let duty_floor = fan.duty_floor();
     match &fan_status {
         Ok(s) => {
             caps.push(Capability::yes(CapabilityId::FanRead));
@@ -83,6 +84,7 @@ fn probe_with(fs: &Sysfs, with_nvml: bool, light: bool) -> ProbeReport {
                 "module": module, "mode": s.mode, "auto": s.is_auto(), "cpu_rpm": s.cpu_rpm, "gpu_rpm": s.gpu_rpm,
                 "cpu_duty_pct": s.cpu_pwm / 2, "gpu_duty_pct": s.gpu_pwm / 2,
                 "ec_temps": s.valid_temps(), "lease_ms": s.lease_ms, "error": s.error, "thermal": s.thermal,
+                "duty_floor": duty_floor,
             }));
         }
         Err(HalError::Unsupported(_)) if light => {
@@ -93,7 +95,7 @@ fn probe_with(fs: &Sysfs, with_nvml: bool, light: bool) -> ProbeReport {
             } else {
                 Capability::no(CapabilityId::FanControl, crate::fan::version_refusal(version.as_deref()))
             });
-            r.insert("fan".into(), json!({"module": module}));
+            r.insert("fan".into(), json!({"module": module, "duty_floor": duty_floor}));
         }
         Err(e) => {
             caps.push(Capability::no(CapabilityId::FanRead, e.to_string()));

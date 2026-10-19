@@ -4,8 +4,11 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-/// Lowest duty the v1/0.2.0 kernel bridge accepts (safety invariant 5).
-pub const DUTY_FLOOR: u8 = 50;
+/// Lowest duty a profile, curve or manual command may hold: the measured safe floor
+/// (docs/07, low-duty sweep 2026-10-19: no stall down to 20 %; plan minimum 25 %).
+/// r9td still raises every command to the loaded module's floor (`min_duty`, 50 on
+/// r9t_fan 0.2.0), so this is the ceiling of how low a setting can go, not a promise.
+pub const DUTY_FLOOR: u8 = 25;
 pub const RGB_CHANNELS: usize = 126;
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -89,7 +92,7 @@ impl FanCurve {
         Self { points: points.to_vec(), interpolation: Interpolation::Linear }
     }
 
-    /// 2–10 points; 40–95 °C; duty 50–100 %; strictly rising temperature,
+    /// 2–10 points; 40–95 °C; duty 25–100 %; strictly rising temperature,
     /// non-decreasing duty; must reach 100 % at or below 90 °C.
     pub fn validate(&self) -> Result<(), ValidationError> {
         let p = &self.points;
@@ -99,7 +102,7 @@ impl FanCurve {
         let mut prev: Option<[u8; 2]> = None;
         for &[t, d] in p {
             if !(40..=95).contains(&t) || !(DUTY_FLOOR..=100).contains(&d) {
-                return invalid("Eğride sıcaklık 40–95 °C, fan %50–100 olmalı.");
+                return invalid("Eğride sıcaklık 40–95 °C, fan %25–100 olmalı.");
             }
             if let Some([pt, pd]) = prev {
                 if t <= pt || d < pd {
@@ -197,7 +200,7 @@ impl FanSetting {
         match self {
             Self::Manual { cpu, gpu } => {
                 if ![cpu, gpu].iter().all(|v| (DUTY_FLOOR..=100).contains(*v)) {
-                    return invalid("Fan hedefleri %50–100 olmalı.");
+                    return invalid("Fan hedefleri %25–100 olmalı.");
                 }
                 Ok(())
             }
@@ -283,7 +286,8 @@ mod tests {
     fn legacy_curve_rules() {
         assert!(cool().validate().is_ok());
         assert!(FanCurve::linear(&[[45, 50]]).validate().is_err());
-        assert!(FanCurve::linear(&[[45, 49], [80, 100]]).validate().is_err());
+        assert!(FanCurve::linear(&[[45, 24], [80, 100]]).validate().is_err());
+        assert!(FanCurve::linear(&[[45, 25], [80, 100]]).validate().is_ok(), "measured floor (docs/07)");
         assert!(FanCurve::linear(&[[45, 60], [45, 100]]).validate().is_err());
         assert!(FanCurve::linear(&[[45, 80], [60, 70], [80, 100]]).validate().is_err());
         assert!(FanCurve::linear(&[[45, 60], [92, 100]]).validate().is_err());
@@ -311,7 +315,7 @@ mod tests {
         for tenth in 300..1000 {
             let d = c.duty_at(tenth as f32 / 10.0);
             assert!(d >= prev, "decreased at {tenth}");
-            assert!((50..=100).contains(&d));
+            assert!((DUTY_FLOOR..=100).contains(&d));
             prev = d;
         }
         // Passes through the points.
@@ -325,7 +329,8 @@ mod tests {
         let v: FanSetting = serde_json::from_str(r#"{"mode":"manual","cpu":60,"gpu":70}"#).unwrap();
         assert!(v.validate().is_ok());
         assert!(serde_json::from_str::<FanSetting>(r#"{"mode":"manual","cpu":60,"gpu":70,"x":1}"#).is_err());
-        assert!(FanSetting::Manual { cpu: 40, gpu: 60 }.validate().is_err());
+        assert!(FanSetting::Manual { cpu: 24, gpu: 60 }.validate().is_err());
+        assert!(FanSetting::Manual { cpu: 25, gpu: 60 }.validate().is_ok());
         assert!(FanSetting::Preset { preset: "turbo".into() }.validate().is_err());
     }
 

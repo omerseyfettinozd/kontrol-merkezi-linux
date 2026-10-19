@@ -165,6 +165,15 @@ pub trait FanBridge: Send + Sync {
     /// `MODULE_VERSION` (absent on 0.1.0).
     fn version(&self) -> Option<String>;
     fn srcversion(&self) -> Option<String>;
+    /// Lowest manual duty the loaded module accepts: `min_duty` on 0.3.0, else 50.
+    fn duty_floor(&self) -> u8 {
+        50
+    }
+}
+
+/// `min_duty` parameter text → floor; anything unexpected keeps the 0.2.0 floor.
+pub fn parse_floor(text: Option<&str>) -> u8 {
+    text.and_then(|t| t.trim().parse::<u8>().ok()).filter(|d| (r9t_protocol::profile::DUTY_FLOOR..=50).contains(d)).unwrap_or(50)
 }
 
 pub struct SysfsFan {
@@ -204,11 +213,16 @@ impl FanBridge for SysfsFan {
 
     fn control(&self, cmd: FanCommand) -> Result<()> {
         if let FanCommand::Manual { cpu, gpu } = cmd {
-            if !(50..=100).contains(&cpu) || !(50..=100).contains(&gpu) {
-                return Err(HalError::Invalid(format!("manual {cpu} {gpu}: %50–100 olmalı")));
+            let floor = self.duty_floor();
+            if !(floor..=100).contains(&cpu) || !(floor..=100).contains(&gpu) {
+                return Err(HalError::Invalid(format!("manual {cpu} {gpu}: %{floor}–100 olmalı")));
             }
         }
         self.fs.write(CONTROL, &cmd.wire())
+    }
+
+    fn duty_floor(&self) -> u8 {
+        parse_floor(self.fs.read(format!("{MODULE}/parameters/min_duty")).ok().as_deref())
     }
 
     fn loaded(&self) -> bool {
@@ -235,6 +249,7 @@ pub mod fake {
         pub commands: Vec<FanCommand>,
         pub fail_status: Option<i32>,
         pub suspended: bool,
+        pub min_duty: u8,
     }
 
     pub struct FakeFan(pub Mutex<State>);
@@ -250,6 +265,7 @@ pub mod fake {
                 commands: Vec::new(),
                 fail_status: None,
                 suspended: false,
+                min_duty: 50,
             }))
         }
     }
@@ -293,6 +309,7 @@ pub mod fake {
                 return Err(HalError::Busy("uyku".into()));
             }
             s.commands.push(cmd);
+            let floor = s.min_duty;
             let st = &mut s.status;
             match cmd {
                 FanCommand::Auto => {
@@ -308,7 +325,7 @@ pub mod fake {
                     st.lease_ms = 15000;
                 }
                 FanCommand::Manual { cpu, gpu } => {
-                    if !(50..=100).contains(&cpu) || !(50..=100).contains(&gpu) {
+                    if !(floor..=100).contains(&cpu) || !(floor..=100).contains(&gpu) {
                         return Err(HalError::Invalid("manual".into()));
                     }
                     st.mode = 1;
@@ -336,6 +353,10 @@ pub mod fake {
 
         fn srcversion(&self) -> Option<String> {
             Some("FAKE".into())
+        }
+
+        fn duty_floor(&self) -> u8 {
+            self.0.lock().unwrap().min_duty
         }
     }
 }
@@ -400,6 +421,20 @@ mod tests {
         assert!(supported_version(Some("0.2.0")) && supported_version(Some("0.3.0")));
         assert!(!supported_version(Some("0.1.0")) && !supported_version(Some("0.4.0")) && !supported_version(None));
         assert_eq!(version_refusal(None), "r9t_fan 0.2.0 ya da 0.3.0 gerekli, yüklü: yok");
+    }
+
+    #[test]
+    fn floor_follows_min_duty() {
+        let dir = tempfile::tempdir().unwrap();
+        file(dir.path(), CONTROL, "");
+        let fan = SysfsFan::new(Sysfs::new(dir.path()));
+        assert_eq!(fan.duty_floor(), 50, "0.2.0: no min_duty parameter");
+        assert!(fan.control(FanCommand::Manual { cpu: 30, gpu: 60 }).is_err());
+        file(dir.path(), "/sys/module/r9t_fan/parameters/min_duty", "25\n");
+        assert_eq!(fan.duty_floor(), 25);
+        fan.control(FanCommand::Manual { cpu: 25, gpu: 60 }).unwrap();
+        assert!(fan.control(FanCommand::Manual { cpu: 24, gpu: 60 }).is_err());
+        assert_eq!((parse_floor(Some("20")), parse_floor(Some("51")), parse_floor(Some("x")), parse_floor(None)), (50, 50, 50, 50));
     }
 
     #[test]

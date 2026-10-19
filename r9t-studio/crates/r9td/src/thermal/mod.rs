@@ -46,19 +46,27 @@ pub struct Authority {
     pub guard: Guard,
     invalid_since: Option<Instant>,
     last_duty: Option<(u8, u8)>,
+    /// The loaded module's lowest duty (`FanBridge::duty_floor`); every manual command
+    /// is raised to it. 50 until the control path reads the module.
+    pub duty_floor: u8,
 }
 
 impl Default for Authority {
     fn default() -> Self {
-        Self { mode: Mode::Auto, guard: Guard::default(), invalid_since: None, last_duty: None }
+        Self { mode: Mode::Auto, guard: Guard::default(), invalid_since: None, last_duty: None, duty_floor: 50 }
     }
 }
 
-fn manual(d: (u8, u8)) -> FanCommand {
-    FanCommand::Manual { cpu: d.0.clamp(50, 100), gpu: d.1.clamp(50, 100) }
+/// Manual command raised to the module floor `f`.
+fn manual(f: u8, d: (u8, u8)) -> FanCommand {
+    FanCommand::Manual { cpu: d.0.clamp(f, 100), gpu: d.1.clamp(f, 100) }
 }
 
 impl Authority {
+    pub fn with_floor(duty_floor: u8) -> Self {
+        Self { duty_floor, ..Self::default() }
+    }
+
     pub fn set_mode(&mut self, mode: Mode) {
         self.mode = mode;
         self.invalid_since = None;
@@ -78,10 +86,11 @@ impl Authority {
             }
             _ => None,
         };
+        let floor = self.duty_floor;
         match &mut self.mode {
             Mode::Auto => Decision::Idle,
             Mode::Boost => Decision::Write(FanCommand::Boost),
-            Mode::Manual { cpu, gpu } => Decision::Write(manual((*cpu, *gpu))),
+            Mode::Manual { cpu, gpu } => Decision::Write(manual(floor, (*cpu, *gpu))),
             Mode::Curve { .. } | Mode::Target(_) if temps.is_none() => {
                 // Invariant 8: never lower duty on a null reading; give up after 10 s.
                 let since = *self.invalid_since.get_or_insert(now);
@@ -90,7 +99,7 @@ impl Authority {
                     return Decision::FallbackAuto("EC sıcaklığı 10 sn okunamadı".into());
                 }
                 match self.last_duty {
-                    Some(d) => Decision::Write(manual(d)),
+                    Some(d) => Decision::Write(manual(floor, d)),
                     None => Decision::Write(FanCommand::Boost),
                 }
             }
@@ -103,18 +112,18 @@ impl Authority {
                     *s = [Smoother::new(100, c), Smoother::new(100, g)];
                 }
                 self.last_duty = Some(d);
-                Decision::Write(manual(d))
+                Decision::Write(manual(floor, d))
             }
             Mode::Target(tt) => {
                 let (c, g) = temps.expect("checked above");
                 match tt.step((c, g), kernel_override, now) {
                     None => match self.last_duty {
-                        Some(d) => Decision::Write(manual(d)),
-                        None => Decision::Write(manual(tt.initial_duty())),
+                        Some(d) => Decision::Write(manual(floor, d)),
+                        None => Decision::Write(manual(floor, tt.initial_duty())),
                     },
                     Some(Ok(step)) => {
                         self.last_duty = Some(step.duty);
-                        Decision::WriteWithLimits { cmd: manual(step.duty), cpu_mhz: step.cpu_limit, gpu_mhz: step.gpu_limit }
+                        Decision::WriteWithLimits { cmd: manual(floor, step.duty), cpu_mhz: step.cpu_limit, gpu_mhz: step.gpu_limit }
                     }
                     Some(Err(TargetError::Interrupted)) => {
                         self.mode = Mode::Auto;
@@ -129,6 +138,19 @@ impl Authority {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn commands_are_raised_to_the_module_floor() {
+        let t0 = Instant::now();
+        let mut a = Authority::default();
+        a.set_mode(Mode::Manual { cpu: 30, gpu: 60 });
+        assert_eq!(a.decide(Some(60.0), Some(55.0), false, t0), Decision::Write(FanCommand::Manual { cpu: 50, gpu: 60 }), "0.2.0 floor");
+        let mut a = Authority::with_floor(25);
+        a.set_mode(Mode::Manual { cpu: 30, gpu: 20 });
+        assert_eq!(a.decide(Some(60.0), Some(55.0), false, t0), Decision::Write(FanCommand::Manual { cpu: 30, gpu: 25 }), "min_duty=25");
+        a.set_mode(Mode::Curve { curve: FanCurve::linear(&[[45, 25], [85, 100]]), smoothers: None });
+        assert_eq!(a.decide(Some(40.0), Some(40.0), false, t0), Decision::Write(FanCommand::Manual { cpu: 25, gpu: 25 }));
+    }
 
     fn s(t0: Instant, n: u64) -> Instant {
         t0 + Duration::from_secs(n)

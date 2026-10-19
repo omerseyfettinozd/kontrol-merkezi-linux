@@ -1,9 +1,11 @@
 <script>
   // Sürüklenebilir fan eğrisi. Çift tık: nokta ekle; sağ tık: nokta sil.
-  // %50 altı (PWM tabanı) taralı gösterilir; canlı CPU/GPU EC sıcaklığı dikey imleçtir.
+  // Modül tabanının (`floor`, r9t_fan min_duty) altı taralı gösterilir; canlı CPU/GPU EC
+  // sıcaklığı dikey imleçtir.
   import { DUTY_FLOOR, T_MIN, T_MAX, dutyAt, validate } from './curve.js';
 
-  let { points = $bindable(), interpolation = $bindable('linear'), cpuTemp = null, gpuTemp = null, disabled = false } = $props();
+  let { points = $bindable(), interpolation = $bindable('linear'), cpuTemp = null, gpuTemp = null, disabled = false, floor = 50 } = $props();
+  const shade = $derived(Math.max(DUTY_FLOOR, floor));
 
   const W = 640, H = 300;
   const pad = { l: 44, r: 16, t: 14, b: 34 };
@@ -104,8 +106,8 @@
         <line x1="0" y1="0" x2="0" y2="8" stroke="#2b313d" stroke-width="3" />
       </pattern>
     </defs>
-    <rect x={pad.l} y={sy(DUTY_FLOOR)} width={pw} height={sy(0) - sy(DUTY_FLOOR)} fill="url(#floor)" />
-    <text x={pad.l + 8} y={sy(DUTY_FLOOR) + 18} class="floor">PWM tabanı %50 — bu bölgeye inilmez</text>
+    <rect x={pad.l} y={sy(shade)} width={pw} height={sy(0) - sy(shade)} fill="url(#floor)" />
+    <text x={pad.l + 8} y={sy(shade) + 18} class="floor">{shade > DUTY_FLOOR ? `Modül tabanı %${shade} — altı %${shade}'e çekilir` : `Taban %${shade} — bu bölgeye inilmez`}</text>
     <rect x={sx(T_MIN)} y={pad.t} width={sx(T_MAX) - sx(T_MIN)} height={sy(DUTY_FLOOR) - pad.t} fill="#ffffff05" />
     {#each [0, 25, 50, 75, 100] as d}
       <line x1={pad.l} x2={pad.l + pw} y1={sy(d)} y2={sy(d)} class="grid" />

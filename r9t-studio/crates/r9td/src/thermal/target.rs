@@ -25,7 +25,7 @@ pub fn validate_targets(cpu: u8, gpu: u8) -> Result<(), String> {
 }
 
 pub fn fan_target(temp_c: f32, target_c: f32) -> u8 {
-    (100.0 + (temp_c - target_c) * 5.0).round().clamp(50.0, 100.0) as u8
+    (100.0 + (temp_c - target_c) * 5.0).round().clamp(f32::from(r9t_protocol::profile::DUTY_FLOOR), 100.0) as u8
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -135,7 +135,8 @@ mod tests {
     #[test]
     fn fan_formula_matches_legacy() {
         assert_eq!(fan_target(70.0, 75.0), 75);
-        assert_eq!(fan_target(60.0, 75.0), 50);
+        assert_eq!(fan_target(60.0, 75.0), 25);
+        assert_eq!(fan_target(50.0, 75.0), 25, "never below the protocol floor");
         assert_eq!(fan_target(80.0, 75.0), 100);
         assert_eq!(fan_target(74.0, 75.0), 95);
         assert!(validate_targets(75, 72).is_ok());
