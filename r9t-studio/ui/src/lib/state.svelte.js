@@ -149,12 +149,15 @@ function pointFromSnap(s) {
   };
 }
 
+/** r9td'nin 1 Hz geçmişiyle doldurur: gizliyken ve odak dışındayken (5 sn'de bir
+ *  örnek) oluşan boşluklar kapanır; r9td'den yeni yerel noktalar korunur. */
 async function prefillHistory() {
   try {
     const h = await read('history', { seconds: 300 });
     const pts = (h.points || []).map((p) => ({ ...p, t: p.t_ms }));
-    const newest = history.points.length ? history.points[0].t : Infinity;
-    history.points = [...pts.filter((p) => p.t < newest), ...history.points].slice(-HISTORY_MAX);
+    if (!pts.length) return;
+    const newest = pts[pts.length - 1].t;
+    history.points = [...pts, ...history.points.filter((p) => p.t > newest)].slice(-HISTORY_MAX);
     app.tick++;
   } catch {
     /* geçmiş yoksa canlı akış doldurur */
@@ -179,9 +182,10 @@ export async function start() {
     /* tarayıcıda geliştirme */
   }
   await listen('navigate', (e) => (app.view = e.payload));
-  // Geçmiş her örneği alır; ekran kullanıcı etkileşimdeyken 1 Hz, boştayken (odak
-  // dışı ya da 15 sn girdi yok) 3 sn'de bir tazelenir (boşta CPU < %1 hedefi).
-  // Termal alarm her zaman anında gösterilir.
+  // Odak dışında Rust örnekleri 5 sn'de bir yollar (olayın kendisi de WebKit'e
+  // pahalı, docs/14); odak gelince geçmiş r9td'den doldurulur. Odaktayken ekran
+  // etkileşimde 1 Hz, 15 sn girdi yoksa 3 sn'de bir tazelenir (boşta CPU < %1).
+  // Termal alarm her zaman anında gösterilir (Rust da alarmda her örneği yollar).
   let lastPaint = 0;
   let lastInput = Date.now();
   for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel']) {
@@ -206,6 +210,7 @@ export async function start() {
   });
   window.addEventListener('focus', () => {
     lastInput = Date.now();
+    if (app.connected) prefillHistory();
     app.tick++;
   });
   await listen('daemon', (e) => {

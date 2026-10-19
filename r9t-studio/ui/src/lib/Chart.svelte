@@ -88,8 +88,9 @@
       g.setLineDash(s.dash ? [4, 3] : []);
       g.beginPath();
       // Eksik değer çizgiyi kesmez (yavaş örneklenen alanlar); yalnız `maxGapMs`'den
-      // uzun boşluk keser. Eksik değer asla 0 olarak çizilmez.
-      const maxGap = s.maxGapMs ?? 5000;
+      // uzun boşluk keser (odak dışında örnekler 5 sn arayla gelir). Eksik değer asla
+      // 0 olarak çizilmez.
+      const maxGap = s.maxGapMs ?? 6500;
       let lastT = null;
       for (const p of history.points) {
         if (p.t < t0) continue;

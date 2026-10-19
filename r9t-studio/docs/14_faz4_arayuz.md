@@ -4,7 +4,7 @@ Tarih: 2026-10-18. Kod: `ui/` (Svelte 5 + Vite 8, `ui/src-tauri` ayrı workspace
 
 ## Yapılanlar
 
-- Rust kabuk (`ui/src-tauri`): r9td için iki kalıcı bağlantı (okuma / denetim; polkit önbelleği bağlantı başına), r9t-session için çağrı başına bağlantı, abonelik iş parçacığı (pencere görünürken `snapshot` olayı), tepsi (renk = güç profili, kırmızı = termal koruma; tooltip CPU/GPU °C; menüde senaryolar + fan otomatik), tek örnek, kapatınca tepside kalma, `__NV_DISABLE_EXPLICIT_SYNC=1`, `--software`, `--hidden`, `--view <modül>`.
+- Rust kabuk (`ui/src-tauri`): r9td için iki kalıcı bağlantı (okuma / denetim; polkit önbelleği bağlantı başına), r9t-session için çağrı başına bağlantı, abonelik iş parçacığı (pencere görünürken `snapshot` olayı: odaktayken her örnek, odak dışında 5 sn'de bir, termal alarmda ve alarm değişiminde hemen), tepsi (renk = güç profili, kırmızı = termal koruma; tooltip CPU/GPU °C; menüde senaryolar + fan otomatik), tek örnek, kapatınca tepside kalma, `__NV_DISABLE_EXPLICIT_SYNC=1`, `--software`, `--hidden`, `--view <modül>`.
 - Yerel salt okunur tanılama: süreç örnekleyici (/proc, komut satırı okunmaz), s2idle anlık görüntüsü (suspend_stats + hw_sleep, pil enerjisi `voltage_min_design` ile — r9td ile aynı).
 - 6 modül: Genel Bakış, Performans & Termal (sürüklenebilir eğri, %50 taban, canlı imleç, PID hedefi), Klavye & RGB (6×21 ızgara, çizgi enterpolasyonlu boyama, global parlaklık ayrı), Ekran/GPU/Otomasyon (Hz, parlaklık, kurallar, Steam listesi, GPU Wake Inspector), Donanım/Ses/Tanılama, Profiller & Kıyaslama (tablo, JSON içe/dışa, 60 sn kararlılık + A/B, CSV).
 - Protokol eklemeleri: r9td `policy` (belge + duraklatma + last.json), `rgb_state` (salt okunur LED geri okuma), `rgb_brightness`, `capabilities` içinde preset/senaryo listesi; r9t-session `steam_games`.
@@ -33,9 +33,26 @@ Tarih: 2026-10-18. Kod: `ui/` (Svelte 5 + Vite 8, `ui/src-tauri` ayrı workspace
 - **Boşta CPU, gerçek eDP-1 (2560×1600@300 Hz), pencere 1280×820 yüzen, görünür, odak dışı, Genel Bakış, 60 sn × 3:** %1,02 / %0,82 / %1,52 (ort. ≈ %1,12; yükün çoğu WebKitWebProcess: 0,63–1,07). **< %1 hedefi tutarlı karşılanmıyor.** Aynı yapı headless 60 Hz'de %0,88. Anlık görüntü ~4 KB/sn; odak dışı yeniden çizim 3 sn'de bir. Sonraki adım: WebKit profili (300 Hz'te 3 sn'lik çizimin maliyeti, kullanıcı etkinliğinin etkisi), gerekirse odak dışında grafikleri dondurma.
 - AT-SPI: WebKitGTK penceresi erişilebilirlik ağacı yayınlamıyor (pc-eye `ui` → 0 öğe); otomasyon koordinatla yapıldı, imleç ve odak geri yüklendi.
 
+### Boşta CPU iyileştirmesi (2026-10-19)
+
+Ölçüm: süreç + çocuklarının `/proc/<pid>/stat` utime+stime farkı, 60 sn, Genel Bakış, pencere görünür ve odak dışı. Maliyet ayrıştırması geçici deney anahtarlarıyla (commit'e girmedi), headless `R9TTEST` 1280×820@300 Hz, pencere görünür çalışma alanında, her satır 3×60 sn ortalaması:
+
+| Varyant (odak dışı) | Toplam | WebKitWebProcess |
+|---|---|---|
+| Eski yapı (1 Hz olay, 3 sn'de bir DOM + grafik) | %0,85 | 0,67 |
+| Grafik çizimi kapalı | %0,75 | 0,58 |
+| `app.snap` ataması yok (olay gelir, DOM değişmez) | %0,41 | 0,28 |
+| Rust olay yollamıyor | %0,11 | 0,04 |
+
+Sonuç: Rust'tan gelen 1 Hz `snapshot` olayının kendisi (JSON → webview `eval` → ayrıştırma) ≈ %0,30, her DOM tazelemesi (tüm kartlar + iki tuval) ≈ %0,13/tazeleme; grafiklerin payı küçük (≈ %0,10). 300 Hz ile 60 Hz arasında fark görülmedi. Dikkat: Hyprland'da adlı çalışma alanı (`name:r9ttest`) headless çıktıda etkin değilse pencere görünmez ve ölçüm düşük çıkar (aynı yapı %0,64); ölçümde pencere etkin çalışma alanında olmalı.
+
+Değişiklik: odak dışında (`WindowEvent::Focused`) Rust abonelik iş parçacığı örnekleri 5 sn'de bir yollar; termal alarm (koruma ya da kernel override) etkinken her örnek ve alarm değişimi hemen gider. Odak gelince webview r9td'nin 1 Hz `history`'siyle aradaki boşlukları doldurur (`prefillHistory` artık iç boşlukları da kapatıyor; önceden yalnız eski noktaları başa ekliyordu). Grafik çizgisi 6,5 sn'den uzun boşlukta kesilir (önce 5 sn; seyrek örnekler kesik çizilmesin diye). Odaktayken davranış aynı (etkileşimde 1 Hz, 15 sn girdi yoksa 3 sn).
+
+**eDP-1 (2560×1600@300 Hz), pencere 1280×820 yüzen, görünür, odak dışı, Genel Bakış, 60 sn:** eski yapı %0,82 / %0,82 / %0,82 → yeni **%0,45 / %0,45 / %0,48** (WebKitWebProcess 0,33–0,35, ana süreç 0,12–0,13). Headless 300 Hz yeni yapı %0,57 / %0,45 / %0,50. Doğrulama: odak dışında üst şerit değerleri ~5 sn'de bir, odaktayken her saniye değişti (ekran görüntüsü); odak sonrası grafikler 5 dk boyunca 1 Hz yoğunlukta dolu. Termal alarm yolu canlı tetiklenmedi (kod yolu: alarm etkinken her örnek yollanır). Önceki eDP-1 ölçümündeki %1,12 (deneme modu) bu kez eski yapıyla da tekrarlanmadı (%0,82); fark muhtemelen o sıradaki ekran etkinliği.
+
 ## Kalan (Faz 4 kabulü)
 
 - [x] Klavye "Haritayı uygula" tıklaması son yapıda doğrulandı (2026-10-19, LED geri okuması).
-- [ ] Boşta CPU < %1 gerçek eDP-1'de: ölçüldü (2026-10-19), 300 Hz'te ort. %1,12; hedef tutmuyor, iyileştirme gerekli.
+- [x] Boşta CPU < %1 gerçek eDP-1'de (2026-10-19): 300 Hz, odak dışı, 3×60 sn %0,45 / %0,45 / %0,48 (odak dışında olay seyreltme).
 - [ ] Kullanıcı başındayken: tepsi ikonu/menü, Hz değişimi, gerçek KDE oturumu, ses tepkili efekt.
 - [ ] Kalıcı geçiş (`r9t-switch --commit`, menü başlatıcı, exec-once) — kullanıcı onayıyla.
