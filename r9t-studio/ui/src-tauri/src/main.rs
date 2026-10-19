@@ -5,6 +5,7 @@ mod local;
 mod rpc;
 mod tray;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -21,6 +22,8 @@ struct AppState {
     control: Mutex<Persistent>,
     reads: Mutex<Persistent>,
     procs: Mutex<local::ProcSampler>,
+    /// Window has keyboard focus (WindowEvent::Focused); drives snapshot thinning.
+    focused: AtomicBool,
 }
 
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -116,13 +119,18 @@ fn field_f64(v: &Value, path: &[&str]) -> Option<f64> {
     cur.get("value")?.as_f64()
 }
 
+/// Thermal alarm: user-space guard or kernel override. Always shown at once.
+fn thermal_alarm(s: &Value) -> bool {
+    s.pointer("/authority/guard_active").and_then(Value::as_bool).unwrap_or(false)
+        || s.pointer("/fans/thermal_override/value").and_then(Value::as_bool).unwrap_or(false)
+}
+
 fn tray_state(snap: Option<&Value>) -> ([u8; 3], String) {
     let Some(s) = snap else {
         return (tray::IDLE, "R9T Studio\nr9td bağlantısı yok".into());
     };
     let profile = s.pointer("/power/profile/value").and_then(Value::as_str).unwrap_or("?");
-    let alarm = s.pointer("/authority/guard_active").and_then(Value::as_bool).unwrap_or(false)
-        || s.pointer("/fans/thermal_override/value").and_then(Value::as_bool).unwrap_or(false);
+    let alarm = thermal_alarm(s);
     let color = if alarm {
         [230, 57, 70]
     } else {
@@ -139,8 +147,14 @@ fn tray_state(snap: Option<&Value>) -> ([u8; 3], String) {
     (color, tip)
 }
 
-/// Snapshot subscription: forwards to the webview while it is visible and keeps the
-/// tray up to date. Reconnects every 2 s while r9td is away.
+/// Unfocused windows get a snapshot this often. Each `emit` costs the WebKit process
+/// about as much as a repaint (docs/14: 1 Hz events alone ≈ 0.3 % CPU), and the
+/// webview refills its chart history from r9td when focus returns.
+const UNFOCUSED_EVERY: Duration = Duration::from_millis(4900);
+
+/// Snapshot subscription: forwards to the webview while it is visible (every sample
+/// when focused, every 5 s otherwise, at once on a thermal alarm or its change) and
+/// keeps the tray up to date. Reconnects every 2 s while r9td is away.
 fn subscriber(app: AppHandle, tray: Option<ksni::blocking::Handle<tray::R9tTray>>) {
     let mut last_tray = (None::<[u8; 3]>, String::new(), Instant::now() - Duration::from_secs(10));
     let mut update_tray = |snap: Option<&Value>, force: bool| {
@@ -162,6 +176,7 @@ fn subscriber(app: AppHandle, tray: Option<ksni::blocking::Handle<tray::R9tTray>
             let hello = c.call("hello", &json!({"protocol_version": 1, "client": "r9t-studio-ui"}))?;
             c.call("subscribe", &json!({"topics": ["snapshot"]}))?;
             let _ = app.emit("daemon", json!({"connected": true, "hello": hello}));
+            let (mut last_emit, mut last_alarm) = (None::<Instant>, false);
             loop {
                 let msg = c.read()?;
                 if msg.get("method").and_then(Value::as_str) != Some("snapshot") {
@@ -170,8 +185,15 @@ fn subscriber(app: AppHandle, tray: Option<ksni::blocking::Handle<tray::R9tTray>
                 let snap = msg.get("params").cloned().unwrap_or(Value::Null);
                 update_tray(Some(&snap), false);
                 let visible = app.get_webview_window("main").and_then(|w| w.is_visible().ok()).unwrap_or(false);
-                if visible {
+                let alarm = thermal_alarm(&snap);
+                let due = app.state::<AppState>().focused.load(Ordering::Relaxed)
+                    || alarm
+                    || alarm != last_alarm
+                    || last_emit.is_none_or(|t| t.elapsed() >= UNFOCUSED_EVERY);
+                last_alarm = alarm;
+                if visible && due {
                     let _ = app.emit("snapshot", snap);
+                    last_emit = Some(Instant::now());
                 }
             }
         })();
@@ -222,6 +244,7 @@ fn main() {
             control: Mutex::new(Persistent::new(rpc::daemon_socket(), Duration::from_secs(180))),
             reads: Mutex::new(Persistent::new(rpc::daemon_socket(), Duration::from_secs(10))),
             procs: Mutex::new(local::ProcSampler::default()),
+            focused: AtomicBool::new(false),
         })
         .invoke_handler(tauri::generate_handler![
             daemon_call,
@@ -244,9 +267,13 @@ fn main() {
         })
         .on_window_event(|window, event| {
             // Closing keeps the app in the tray (plan Faz 4); quit from the tray menu.
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+            match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+                WindowEvent::Focused(f) => window.state::<AppState>().focused.store(*f, Ordering::Relaxed),
+                _ => {}
             }
         })
         .run(tauri::generate_context!())
