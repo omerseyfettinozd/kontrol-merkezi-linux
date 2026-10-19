@@ -1,5 +1,6 @@
 //! `r9tctl` — command-line client for R9T Studio.
 
+mod check;
 mod client;
 mod desktop;
 mod keymap;
@@ -21,6 +22,7 @@ Kullanım: r9tctl <komut> [seçenekler]
 
 Komutlar:
   probe [--json] [--no-nvml]   Donanım yeteneklerini salt okunur yoklar (r9td gerekmez)
+  check [--json]               Kurulum sağlık denetimi: paketler, her kernelde DKMS, modüller, birimler
   status                       r9td anlık görüntüsü (JSON)
   history [saniye]             Son en çok 300 sn geçmiş
   capabilities                 Yetenekler ve sayaçlar
@@ -82,6 +84,7 @@ fn main() -> ExitCode {
         "load-test" => load::run(rest),
         "fan-sweep" => sweep::run(rest),
         "legacy-remove" => legacy::run(rest),
+        "check" => check::run(rest),
         "help" | "-h" | "--help" => {
             print!("{USAGE}");
             ExitCode::SUCCESS
