@@ -12,6 +12,8 @@ set -euo pipefail
 [[ $EUID -eq 0 ]] || { echo "root gerekli" >&2; exit 1; }
 LEGACY_SOCK=/run/slayer-r9t/control.sock
 COMMITTED=/var/lib/r9t/committed
+# Installed next to r9td: /usr/local/lib/r9t-studio (dev install) or /usr/lib/r9t-studio (package).
+LIB="$(dirname "$(readlink -f "$0")")"
 
 legacy_rpc() {  # op, as root (the socket belongs to the desktop user)
     /usr/bin/python3 -I - "$1" <<'PY' || true
@@ -44,9 +46,10 @@ uncommit() {
 }
 
 commit() {
-    for f in /etc/systemd/system/r9td.service /etc/systemd/system/r9t-fallback.service /usr/local/lib/r9t-studio/r9td; do
-        [[ -e "$f" ]] || { echo "$f yok: önce install-r9td-dev.sh" >&2; exit 1; }
+    for u in r9td.service r9t-fallback.service; do
+        systemctl cat "$u" >/dev/null 2>&1 || { echo "$u yok: önce kurulum (install-r9td-dev.sh ya da paket)" >&2; exit 1; }
     done
+    [[ -x "$LIB/r9td" ]] || { echo "$LIB/r9td yok" >&2; exit 1; }
     systemctl stop r9t-switch-return.timer 2>/dev/null || true
     if [[ "$(systemctl is-active r9td.service)" != active ]]; then
         echo "1. Eski serviste sıcaklık hedefi durduruluyor"; legacy_rpc temperature_target_stop
@@ -69,7 +72,7 @@ commit() {
     install -d -m 0750 /var/lib/r9t
     date -Is > "$COMMITTED"
     echo "Kalıcı geçiş tamam. Geri dönüş: r9t-switch --rollback (ve r9t-switch-user --rollback)."
-    /usr/local/lib/r9t-studio/r9tctl status 2>/dev/null | /usr/bin/python3 -I -c 'import json,sys; print("authority:", json.load(sys.stdin)["authority"])' || true
+    "$LIB/r9tctl" status 2>/dev/null | /usr/bin/python3 -I -c 'import json,sys; print("authority:", json.load(sys.stdin)["authority"])' || true
 }
 
 case "${1:-}" in
@@ -90,9 +93,9 @@ case "${1:-}" in
             exit 1
         fi
         systemd-run --unit=r9t-switch-return --on-active="${minutes}m" --timer-property=AccuracySec=1s \
-            /usr/local/lib/r9t-studio/r9t-switch --rollback >/dev/null
+            "$LIB/r9t-switch" --rollback >/dev/null
         echo "Deneme: r9td ${minutes} dk kontrolde; süre dolunca eski servis geri gelir."
-        /usr/local/lib/r9t-studio/r9tctl status 2>/dev/null | /usr/bin/python3 -I -c 'import json,sys; print("authority:", json.load(sys.stdin)["authority"])' || true
+        "$LIB/r9tctl" status 2>/dev/null | /usr/bin/python3 -I -c 'import json,sys; print("authority:", json.load(sys.stdin)["authority"])' || true
         ;;
     --commit) commit ;;
     --rollback) rollback; uncommit ;;

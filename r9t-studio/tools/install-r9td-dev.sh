@@ -32,6 +32,7 @@ ln -sf /usr/local/lib/r9t-studio/r9t-switch-user /usr/local/bin/r9t-switch-user
 ui="$here/ui/src-tauri/target/release/r9t-studio"
 if [[ -x "$ui" ]]; then
     install -m 0755 "$ui" /usr/local/lib/r9t-studio/r9t-studio
+    ln -sf /usr/local/lib/r9t-studio/r9t-studio /usr/local/bin/r9t-studio
     install -D -m 0644 "$here/ui/src-tauri/icons/icon.png" /usr/local/share/icons/hicolor/64x64/apps/r9t-studio.png
     install -D -m 0644 "$here/packaging/applications/r9t-studio.desktop" /usr/local/share/applications/r9t-studio.desktop
     gtk-update-icon-cache -q /usr/local/share/icons/hicolor 2>/dev/null || true

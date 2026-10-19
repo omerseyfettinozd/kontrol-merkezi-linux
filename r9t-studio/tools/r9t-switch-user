@@ -14,6 +14,7 @@ HYPR="$(readlink -f "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.conf")"
 OLD_LINE='exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE 2>/dev/null'
 NEW_LINE='exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE && systemctl --user start r9t-session.service'
 LEGACY_DESKTOP="${XDG_DATA_HOME:-$HOME/.local/share}/applications/slayer-r9t-control-center.desktop"
+LIB="$(dirname "$(readlink -f "$0")")"
 DRY=0
 [[ "${2:-}" == "--dry-run" ]] && DRY=1
 
@@ -40,8 +41,8 @@ open(p, "w", encoding="utf-8").write("\n".join(lines))' "$HYPR"
 }
 
 commit() {
-    [[ -x /usr/local/lib/r9t-studio/r9t-session && -f /etc/systemd/user/r9t-session.service ]] \
-        || { echo "r9t-session kurulu değil: önce sudo install-r9td-dev.sh" >&2; exit 1; }
+    [[ -x "$LIB/r9t-session" ]] && systemctl --user cat r9t-session.service >/dev/null 2>&1 \
+        || { echo "r9t-session kurulu değil: önce kurulum (install-r9td-dev.sh ya da paket)" >&2; exit 1; }
     [[ "$(systemctl is-enabled r9td.service 2>/dev/null)" == enabled ]] \
         || echo "Uyarı: r9td açılışta etkin değil; önce sudo r9t-switch --commit" >&2
     echo "1. Eski oturum ajanı kapatılıyor, r9t-session etkinleşiyor (KDE: graphical-session.target)"
@@ -61,7 +62,7 @@ commit() {
             printf '[Desktop Entry]\nType=Application\nName=Slayer R9T Kontrol Merkezi\nNoDisplay=true\n# r9t-switch-user\n' > "$LEGACY_DESKTOP"
         fi
     fi
-    [[ -f /usr/local/share/applications/r9t-studio.desktop ]] || echo "  Uyarı: R9T Studio menü girişi kurulu değil (arayüz derlenip install-r9td-dev.sh ile kurulmalı)" >&2
+    [[ -f /usr/local/share/applications/r9t-studio.desktop || -f /usr/share/applications/r9t-studio.desktop ]] || echo "  Uyarı: R9T Studio menü girişi kurulu değil (arayüz derlenip install-r9td-dev.sh ile kurulmalı)" >&2
     run update-desktop-database -q "$(dirname "$LEGACY_DESKTOP")" 2>/dev/null || true
     echo "Masaüstü geçişi tamam. Geri dönüş: r9t-switch-user --rollback"
 }

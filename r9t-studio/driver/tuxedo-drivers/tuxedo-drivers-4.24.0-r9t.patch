@@ -1,0 +1,101 @@
+--- a/src/uniwill_keyboard.h
++++ b/src/uniwill_keyboard.h
+@@ -23,6 +23,7 @@
+ 
+ #include "tuxedo_keyboard_common.h"
+ #include <linux/acpi.h>
++#include <linux/dmi.h>
+ #include <linux/wmi.h>
+ #include <linux/workqueue.h>
+ #include <linux/keyboard.h>
+@@ -74,6 +75,18 @@
+ struct tuxedo_keyboard_driver uniwill_keyboard_driver;
+ 
+ struct uniwill_device_features_t uniwill_device_features;
++
++/* The Slayer R9T EC exposes the Uniwill WMI interface, but the generic
++ * keyboard-driver probe writes model-independent defaults to EC registers.
++ * Keep this interface read-only at probe/remove/suspend time on this model;
++ * explicit fan/profile changes go through tuxedo_io after its EC feature
++ * detection has completed.
++ */
++static bool uniwill_is_gamegaraj_slayer_r9t(void)
++{
++	return dmi_match(DMI_SYS_VENDOR, "GAME GARAJ") &&
++	       dmi_match(DMI_PRODUCT_NAME, "SLAYER R9T");
++}
+ 
+ static bool uw_feats_loaded = false;
+ 
+@@ -2170,6 +2183,9 @@
+ 	int status;
+ 	struct uniwill_device_features_t *uw_feats;
+ 
++	if (uniwill_is_gamegaraj_slayer_r9t())
++		return 0;
++
+ 	set_rom_id();
+ 
+ 	uw_feats = uniwill_get_device_features();
+@@ -2236,6 +2252,13 @@
+ static void uniwill_keyboard_remove(struct platform_device *dev)
+ #endif
+ {
++	if (uniwill_is_gamegaraj_slayer_r9t()) {
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 11, 0)
++		return 0;
++#else
++		return;
++#endif
++	}
+ 	if (uw_charging_prio_loaded)
+ 		sysfs_remove_group(&dev->dev.kobj, &uw_charging_prio_attr_group);
+ 
+@@ -2272,6 +2295,8 @@
+ {
+ 	struct uniwill_device_features_t *uw_feats = &uniwill_device_features;
+ 	u8 data;
++	if (uniwill_is_gamegaraj_slayer_r9t())
++		return 0;
+ 	if (uw_feats->uniwill_custom_profile_mode_needed) {
+ 		// Unset "customer mode light" before suspend. Otherwise at
+ 		// least one device is known to immediately wake up.
+@@ -2293,6 +2318,8 @@
+ {
+ 	struct uniwill_device_features_t *uw_feats = &uniwill_device_features;
+ 	u8 data;
++	if (uniwill_is_gamegaraj_slayer_r9t())
++		return 0;
+ 
+ 	if (direct_fan_control_suspend) {
+ 		direct_fan_control_suspend = false;
+--- a/src/tuxedo_compatibility_check/tuxedo_compatibility_check.c
++++ b/src/tuxedo_compatibility_check/tuxedo_compatibility_check.c
+@@ -203,6 +203,12 @@
+ static const struct dmi_system_id tuxedo_dmi_string_match[] = {
+ 	{
+ 		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "GAME GARAJ"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "SLAYER R9T"),
++		},
++	},
++	{
++		.matches = {
+ 			DMI_MATCH(DMI_SYS_VENDOR, "TUXEDO"),
+ 		},
+ 	},
+--- a/src/ite_8291/ite_8291.c
++++ b/src/ite_8291/ite_8291.c
+@@ -504,6 +504,12 @@
+ 			device_data->mcled_cdevs[i][j].led_cdev.brightness_set = &leds_set_brightness_mc;
+ 			device_data->mcled_cdevs[i][j].led_cdev.brightness = ITE8291_KBD_BRIGHTNESS_DEFAULT;
+ 			device_data->mcled_cdevs[i][j].num_colors = 3;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
++			/* R9T_RGB_INTENSITY_FIX: RGB channels have 8-bit hardware
++			 * intensity independent of the global 0..50 brightness. */
++			for (k = 0; k < 3; ++k)
++				device_data->mcled_cdevs_subleds[i][j][k].max_intensity = 255;
++#endif
+ 			device_data->mcled_cdevs[i][j].subled_info = device_data->mcled_cdevs_subleds[i][j];
+ 			device_data->mcled_cdevs[i][j].subled_info[0].color_index = LED_COLOR_ID_RED;
+ 			device_data->mcled_cdevs[i][j].subled_info[0].intensity = ITE8291_KB_COLOR_DEFAULT_RED;

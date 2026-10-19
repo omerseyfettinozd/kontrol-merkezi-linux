@@ -1,0 +1,38 @@
+# TUXEDO drivers 4.24.0 with the Slayer R9T patch (plan Faz 5): DMI match for
+# GAME GARAJ / SLAYER R9T and 8-bit RGB intensity on kernel ≥ 7.2 (R9T_RGB_INTENSITY_FIX).
+# Replaces a hand-patched tuxedo-drivers-dkms, whose next update would silently drop
+# both; r9t_fan links against these modules' symbols.
+#   cd r9t-studio/packaging/arch/tuxedo-drivers-r9t-dkms && makepkg
+pkgname=tuxedo-drivers-r9t-dkms
+_pkgname=tuxedo-drivers
+pkgver=4.24.0
+pkgrel=1
+pkgdesc='TUXEDO kernel drivers (DKMS) with GameGaraj Slayer R9T support'
+arch=('any')
+url='https://github.com/tuxedocomputers/tuxedo-drivers'
+license=('GPL-2.0-or-later')
+depends=('dkms')
+provides=("tuxedo-drivers-dkms=$pkgver")
+conflicts=('tuxedo-drivers-dkms')
+source=("$_pkgname-$pkgver.tar.gz::https://github.com/tuxedocomputers/tuxedo-drivers/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('890d419bf91b4ace7d1d59800f7e45bd1dabc8f49ca1a0e1ef5545647d33120a')
+
+_drv() { realpath "$startdir/../../../driver/tuxedo-drivers"; }
+
+prepare() {
+    cd "$_pkgname-$pkgver"
+    patch -p1 --no-backup-if-mismatch < "$(_drv)/$_pkgname-$pkgver-r9t.patch"
+    grep -q R9T_RGB_INTENSITY_FIX src/ite_8291/ite_8291.c
+}
+
+package() {
+    cd "$_pkgname-$pkgver"
+    local dst="$pkgdir/usr/src/$_pkgname-$pkgver"
+    install -d "$dst"
+    cp -r --no-preserve=ownership src/. "$dst/"
+    install -m0644 "$(_drv)/dkms.conf" "$dst/dkms.conf"
+    # udev hwdb/rules and the modprobe blacklist, as in the upstream package.
+    cp -r --no-preserve=ownership files/usr "$pkgdir/"
+    install -Dm0644 "$(_drv)/TUXEDO-LICENSE" "$pkgdir/usr/share/licenses/$pkgname/TUXEDO-LICENSE"
+    install -Dm0644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

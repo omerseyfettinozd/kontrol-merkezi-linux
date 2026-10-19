@@ -1,0 +1,31 @@
+# sysusers.d (r9t group) and daemon-reload run through systemd's own pacman hooks.
+
+post_install() {
+    cat <<'MSG'
+==> R9T Studio kuruldu; hiçbir servis kendiliğinden başlatılmadı.
+    Eski sistemle yan yana gölge:  systemctl enable --now r9td-shadow.service
+    Deneme:                        r9t-switch --trial 20
+    Kalıcı geçiş:                  r9t-switch --commit  &&  r9t-switch-user --commit (kullanıcı olarak)
+    Kullanıcı r9t grubunda olmalı:  usermod -aG r9t <kullanıcı>  (yeniden giriş gerekir)
+MSG
+}
+
+post_upgrade() {
+    if systemctl is-active --quiet r9td.service; then
+        echo "==> r9td yeni sürüme geçmek için yeniden başlatılmalı: systemctl restart r9td.service (fanlar arada EC otomatikte)"
+    fi
+    if systemctl is-active --quiet r9td-shadow.service; then
+        systemctl try-restart r9td-shadow.service
+    fi
+}
+
+pre_remove() {
+    # Never leave the machine without a controller: r9td's ExecStopPost puts the fans on
+    # EC auto, then the legacy service takes over if it is still installed.
+    systemctl disable --now r9td.service r9td-shadow.service 2>/dev/null || true
+    if systemctl cat slayer-r9t.service >/dev/null 2>&1; then
+        systemctl enable --now slayer-r9t.service 2>/dev/null || true
+    fi
+    rm -f /var/lib/r9t/committed
+    echo "==> Masaüstü tarafını kaldırmadan önce kullanıcı olarak: r9t-switch-user --rollback"
+}

@@ -6,5 +6,5 @@
     "restart-interval": 5,
     "format": " {}",
     "tooltip": true,
-    "on-click": "r9t-ui"
+    "on-click": "r9t-studio"
 }

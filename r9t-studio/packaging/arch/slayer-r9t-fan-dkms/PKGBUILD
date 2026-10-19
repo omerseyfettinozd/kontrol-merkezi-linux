@@ -1,0 +1,28 @@
+# r9t_fan kernel module (DKMS) for the Slayer R9T fan bridge (plan Faz 0.8 / Faz 5).
+#   cd r9t-studio/packaging/arch/slayer-r9t-fan-dkms && makepkg
+# The dkms package's pacman hooks build it for every installed kernel.
+pkgname=slayer-r9t-fan-dkms
+_modname=slayer-r9t-fan
+pkgver=0.2.0
+pkgrel=1
+pkgdesc='GameGaraj Slayer R9T fan bridge kernel module (DKMS; lease, auto fallback)'
+arch=('any')
+url='https://github.com/omerseyfettinozd/kontrol-merkezi-linux'
+license=('GPL-2.0-only')
+depends=('dkms' 'tuxedo-drivers-dkms')
+
+_drv() { realpath "$startdir/../../../driver/r9t_fan"; }
+
+prepare() {
+    local v
+    v="$(sed -n 's/^PACKAGE_VERSION="\(.*\)"/\1/p' "$(_drv)/dkms.conf")"
+    [[ "$v" == "$pkgver" ]] || { echo "dkms.conf PACKAGE_VERSION=$v, pkgver=$pkgver" >&2; return 1; }
+    grep -q "MODULE_VERSION(\"$pkgver\")" "$(_drv)/r9t_fan.c" || { echo "r9t_fan.c MODULE_VERSION ≠ $pkgver" >&2; return 1; }
+}
+
+package() {
+    local dst="$pkgdir/usr/src/$_modname-$pkgver" f
+    for f in r9t_fan.c Makefile build.sh dkms.conf README.md; do
+        install -Dm0644 "$(_drv)/$f" "$dst/$f"
+    done
+}
