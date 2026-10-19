@@ -18,7 +18,7 @@
   let gpuMhz = $state(null);
   let manual = $state({ cpu: 60, gpu: 60 });
   // r9t_fan min_duty (probe): 25 after the low-duty sweep, 50 on 0.2.0.
-  const floor = $derived(app.caps?.probe?.fan?.duty_floor ?? 50);
+  const floor = $derived(app.caps?.probe?.readings?.fan?.duty_floor ?? 50);
   let target = $state({ cpu: 75, gpu: 75 });
   let curve = $state([[45, 50], [60, 60], [75, 80], [85, 100]]);
   let interpolation = $state('linear');

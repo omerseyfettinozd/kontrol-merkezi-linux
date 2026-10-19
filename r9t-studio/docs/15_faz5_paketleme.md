@@ -99,7 +99,7 @@ Kurulan: `tuxedo-drivers-r9t-dkms 4.24.0-2`, `r9t-studio 0.1.0.r70.g3f67f52` (sn
 - [x] r9t_fan v2 kodu (0.3.0) ve tarama aracı (2026-10-19, `e49a8ef`, `beb0ca9`).
 - [x] r9t_fan 0.3.0 kuruldu, açılışta doğrulandı (21:18): `r9tctl check` hepsi ✓, hwmon `sensors`'ta `r9t_fan` (fan/temp/pwm), r9td `control`.
 - [x] Düşük duty taraması fiziksel olarak (2026-10-19, kullanıcı başında): %20'ye kadar durma yok, öneri `min_duty=25` (`07_fan_rpm_egrisi.md`).
-- [x] `min_duty=25` (kullanıcı kararı 2026-10-19): fan paketi 0.3.0-3 `modprobe.d` ile uygular. Protokol tabanı %25, r9td her komutu modülün `min_duty`'sine yükseltir (0.2.0'da 50). Durma tablosuna %20–45 ölçümleri eklendi; arayüz tabanı yetenek bilgisinden (`probe.fan.duty_floor`) alıyor. Hazır fan presetleri değişmedi.
+- [x] `min_duty=25` (kullanıcı kararı 2026-10-19): fan paketi 0.3.0-3 `modprobe.d` ile uygular. Protokol tabanı %25, r9td her komutu modülün `min_duty`'sine yükseltir (0.2.0'da 50). Durma tablosuna %20–45 ölçümleri eklendi; arayüz tabanı yetenek bilgisinden (`probe.readings.fan.duty_floor`) alıyor. Hazır fan presetleri değişmedi.
 - [ ] Yeni paketlerin kurulumu ve açılışta `min_duty=25` + r9td tabanının doğrulanması.
 - [ ] Bir hafta günlük kullanım → `sudo r9tctl legacy-remove --yes` (en erken 2026-10-26; araç `8e233de`).
 - [x] Kurulum ön kontrolü (`r9tctl check`), güvenli kaldırma (`legacy-remove`); DKMS arşivli geri alma pacman + snapper ile gereksiz (2026-10-19).
