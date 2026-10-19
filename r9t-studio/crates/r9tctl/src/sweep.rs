@@ -300,7 +300,10 @@ pub fn run(args: &[String]) -> ExitCode {
             ExitCode::FAILURE
         }
         (None, Some(d)) => {
-            println!("önerilen min_duty: {d} (%{} ile durma)", stalled_at.map_or("20'ye kadar durma yok".into(), |s| s.to_string()));
+            match stalled_at {
+                Some(s) => println!("önerilen min_duty: {d} (%{s} ile durma)"),
+                None => println!("önerilen min_duty: {d} (%{} dahil hiçbir adımda durma yok)", steps.last().copied().unwrap_or(20)),
+            }
             println!("uygulamak için: echo 'options r9t_fan min_duty={d}' | sudo tee /etc/modprobe.d/r9t-fan.conf  (sonra yeniden başlat)");
             println!("r9td'yi geri başlat: sudo systemctl start r9td");
             ExitCode::SUCCESS

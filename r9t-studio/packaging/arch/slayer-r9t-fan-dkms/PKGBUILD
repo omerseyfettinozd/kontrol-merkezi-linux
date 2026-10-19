@@ -4,7 +4,7 @@
 pkgname=slayer-r9t-fan-dkms
 _modname=slayer-r9t-fan
 pkgver=0.3.0
-pkgrel=1
+pkgrel=2
 pkgdesc='GameGaraj Slayer R9T fan bridge kernel module (DKMS; lease, auto fallback)'
 arch=('any')
 url='https://github.com/omerseyfettinozd/kontrol-merkezi-linux'

@@ -22,7 +22,7 @@ static u8 ec[0x2000];
 #define DECLARE_DELAYED_WORK(x,f) struct delayed_work x
 #define mutex_lock(x) ((void)(x))
 #define mutex_unlock(x) ((void)(x))
-#define system_wq NULL
+#define system_dfl_wq NULL
 #define msecs_to_jiffies(x) (x)
 #define jiffies_to_msecs(x) ((unsigned int)(x))
 #define time_after_eq(a,b) ((long)((a)-(b))>=0)

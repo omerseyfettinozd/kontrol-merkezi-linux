@@ -61,7 +61,7 @@ static int automatic(void){
 }
 static void queue_retry(void){
  if(!stopping&&!suspended&&(mode||auto_pending))
-  mod_delayed_work(system_wq,&work,msecs_to_jiffies(1000));
+  mod_delayed_work(system_dfl_wq,&work,msecs_to_jiffies(1000)); /* unbound; system_wq is deprecated on 7.2 */
 }
 static int temperatures(u8 *cpu,u8 *gpu){
  int ret=read_reg(0x043e,cpu);

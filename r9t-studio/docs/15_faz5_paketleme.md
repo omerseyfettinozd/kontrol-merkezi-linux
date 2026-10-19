@@ -97,8 +97,9 @@ Kurulan: `tuxedo-drivers-r9t-dkms 4.24.0-2`, `r9t-studio 0.1.0.r70.g3f67f52` (sn
 - [x] Düzeltilmiş paketlerin kurulumu ve bir sonraki açılışta `r9t_fan` + r9td denetimi + tepsinin kendiliğinden geldiğinin doğrulanması (2026-10-19 18:44, aşağıda).
 - [ ] Bir sonraki kernel güncellemesinde DKMS autoinstall (`r9tctl check` ile görülür).
 - [x] r9t_fan v2 kodu (0.3.0) ve tarama aracı (2026-10-19, `e49a8ef`, `beb0ca9`).
-- [ ] r9t_fan 0.3.0'ın kurulumu ve açılış doğrulaması (hwmon, `status2`, r9td `control`).
-- [ ] Düşük duty taraması fiziksel olarak (`sudo r9tctl fan-sweep`, kullanıcı başında) → `min_duty` kararı.
+- [x] r9t_fan 0.3.0 kuruldu, açılışta doğrulandı (21:18): `r9tctl check` hepsi ✓, hwmon `sensors`'ta `r9t_fan` (fan/temp/pwm), r9td `control`.
+- [x] Düşük duty taraması fiziksel olarak (2026-10-19, kullanıcı başında): %20'ye kadar durma yok, öneri `min_duty=25` (`07_fan_rpm_egrisi.md`).
+- [ ] `min_duty=25`'in uygulanması ve r9td'nin %50 tabanını indirmesi (kullanıcı kararı; `ileride.md`).
 - [ ] Bir hafta günlük kullanım → `sudo r9tctl legacy-remove --yes` (en erken 2026-10-26; araç `8e233de`).
 - [x] Kurulum ön kontrolü (`r9tctl check`), güvenli kaldırma (`legacy-remove`); DKMS arşivli geri alma pacman + snapper ile gereksiz (2026-10-19).
 - [x] tuxedo modüllerinin paketten yüklenmesi; eski `/etc/modules-load.d/slayer-r9t.conf` emekli (2026-10-19).
