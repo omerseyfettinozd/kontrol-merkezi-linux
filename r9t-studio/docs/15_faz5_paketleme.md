@@ -49,11 +49,19 @@ Tarih: 2026-10-19. Ayrıntılı kurulum/geçiş sırası: `packaging/arch/README
 
   0.1.0 kaynağı git geçmişinde ve `legacy-0.12.0` etiketinde durur.
 
+## Düzeltme sonrası açılış (2026-10-19 18:44)
+
+Kurulan: `r9t-studio 0.1.0.r68.gb44b715`, `slayer-r9t-fan-dkms 0.2.0-2` (snapper 463/464, DKMS üç kernelde yeniden kuruldu), `systemctl --user enable r9t-studio-tray`. Öncesinde `dkms remove slayer-r9t-fan/0.1.0 --all` ve `/usr/src/slayer-r9t-fan-0.1.0` silindi; `dkms status` yalnız 0.2.0.
+
+- `systemd-modules-load`: `Inserted module 'r9t_fan'` (18:44:18), r9td 18:44:20'de başladı → `authority.state = control`, oturum `hyprland:`, fan 3489/3517 rpm (EC otomatik).
+- `r9t-studio-tray.service` active (18:44:32, `/usr/lib/r9t-studio/r9t-studio --hidden`), SNI kaydı `org.kde.StatusNotifierItem-1723-1`. Simgenin Waybar'da görünmesi kullanıcının gözüne kalıyor.
+- Gözlem: gizli arayüz WebKit süreçleriyle ~330 MB kullanıyor (pencere hiç açılmadan). Tepsi için WebView'i ilk gösterime kadar ertelemek `ileride.md` adayı.
+
 ## Kalan (Faz 5)
 
 - [x] Paketlerin kurulumu ve doğrulaması (2026-10-19).
 - [x] Açılışta r9td + r9t-session + modüllerin paketten geldiğinin doğrulanması (2026-10-19; iki eksik bulundu ve düzeltildi, yukarıda).
-- [ ] Düzeltilmiş paketlerin kurulumu ve bir sonraki açılışta `r9t_fan` + r9td denetimi + tepsinin kendiliğinden geldiğinin doğrulanması.
+- [x] Düzeltilmiş paketlerin kurulumu ve bir sonraki açılışta `r9t_fan` + r9td denetimi + tepsinin kendiliğinden geldiğinin doğrulanması (2026-10-19 18:44, aşağıda).
 - [ ] Bir sonraki kernel güncellemesinde DKMS autoinstall.
 - [ ] r9t_fan v2 (status2, hwmon, düşük duty taraması) — ayrı iş, fiziksel ölçüm gerektirir.
 - [ ] Bir hafta günlük kullanım → eski Python sisteminin yedeklenip kaldırılması.
