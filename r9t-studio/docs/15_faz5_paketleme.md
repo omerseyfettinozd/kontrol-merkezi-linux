@@ -1,6 +1,6 @@
 # Faz 5 — Paketleme: ara durum
 
-Tarih: 2026-10-19. Ayrıntılı kurulum/geçiş sırası: `packaging/arch/README.md`. Bu adımda yalnız paketler derlendi ve içerikleri denetlendi; **hiçbiri kurulmadı**, sistem `install-r9td-dev.sh` kurulumuyla ve kalıcı geçişle (docs/14) çalışmaya devam ediyor.
+Tarih: 2026-10-19. Ayrıntılı kurulum/geçiş sırası: `packaging/arch/README.md`. Paketler derlendi, denetlendi ve 04:17'de `tools/migrate-to-packages.sh` ile **kuruldu** (aşağıda).
 
 ## Paketler
 
@@ -17,9 +17,18 @@ Tarih: 2026-10-19. Ayrıntılı kurulum/geçiş sırası: `packaging/arch/README
 - **Waybar modülü** `on-click: r9t-ui` diye var olmayan bir komut çağırıyordu → `r9t-studio` (paket ve dev kurulumu `/usr/bin|/usr/local/bin/r9t-studio` bağlantısı kurar).
 - `r9t-switch` / `r9t-switch-user` yolları kendi konumlarından türetir; birimleri `systemctl cat` ile arar (dev `/etc` ve paket `/usr/lib` ikisinde de çalışır).
 
+## Kurulum (2026-10-19 04:17, kullanıcı `sudo tools/migrate-to-packages.sh`)
+
+- Yedek: `/var/lib/r9t/migrate-backup-20261019-041731.tar` (iki `/usr/src` ağacı). Her pacman işleminde snapper ön/son anlık görüntüsü alındı (453–460).
+- `tuxedo-drivers-dkms` → `tuxedo-drivers-r9t-dkms`: DKMS üç kernelde kuruldu (7.2.9, lts 6.18.55, sahipsiz 7.2.5). Yeni modüllerde DMI eşleşmesi var (`tuxedo_keyboard`, `tuxedo_compatibility_check` içinde "GAME GARAJ"), `multi_max_intensity` 255.
+- Manuel `slayer-r9t-fan` 0.2.0 DKMS kaydı → `slayer-r9t-fan-dkms`: üç kernelde kuruldu, `r9t_fan` sürüm 0.2.0 (yüklü modül de 0.2.0). Uyarı: dkms 3.4 `CLEAN` alanını eskimiş sayıyor (işlevsel değil).
+- Geliştirme kurulumu kaldırıldı → `r9t-studio` paketi; `r9t-switch --commit` yeniden uygulandı. Sonuç: `r9td` active/enabled `/usr/lib/systemd/system/r9td.service`, denetim, oturum `hyprland:`; `r9td-shadow` ve `slayer-r9t` disabled; `r9t-session` `/usr/lib/r9t-studio/r9t-session`'dan çalışıyor (kullanıcı birimi yeniden etkinleştirildi). Arayüz `/usr/bin/r9t-studio` → `/usr/lib/r9t-studio`, tepsi ipucu dolu, menü girişi `/usr/share/applications`.
+- `pacman -Qkk`: üç pakette 0 değiştirilmiş dosya. `/usr/local/lib/r9t-studio`, `/usr/local/bin/r9t*`, `/etc/systemd/{system/r9td,user/r9t-session}.service` yok. Kalan (zararsız): `/etc/systemd/system/r9t-shadow-compare.service` (devre dışı, Faz 2 aracı).
+
 ## Kalan (Faz 5)
 
-- [ ] Paketlerin kurulumu (README'deki sıra, kullanıcı sudo ile) ve kurulum sonrası doğrulama: dkms iki kernelde derler, r9td/r9t-session/arayüz yeni yoldan çalışır.
+- [x] Paketlerin kurulumu ve doğrulaması (2026-10-19).
+- [ ] Bir sonraki açılışta r9td + r9t-session + modüllerin paketten geldiğinin doğrulanması.
 - [ ] Bir sonraki kernel güncellemesinde DKMS autoinstall.
 - [ ] r9t_fan v2 (status2, hwmon, düşük duty taraması) — ayrı iş, fiziksel ölçüm gerektirir.
 - [ ] Bir hafta günlük kullanım → eski Python sisteminin yedeklenip kaldırılması.
