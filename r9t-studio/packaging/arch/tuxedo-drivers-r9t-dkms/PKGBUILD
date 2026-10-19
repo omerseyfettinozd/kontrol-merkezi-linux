@@ -6,7 +6,7 @@
 pkgname=tuxedo-drivers-r9t-dkms
 _pkgname=tuxedo-drivers
 pkgver=4.24.0
-pkgrel=1
+pkgrel=2
 pkgdesc='TUXEDO kernel drivers (DKMS) with GameGaraj Slayer R9T support'
 arch=('any')
 url='https://github.com/tuxedocomputers/tuxedo-drivers'
@@ -33,6 +33,7 @@ package() {
     install -m0644 "$(_drv)/dkms.conf" "$dst/dkms.conf"
     # udev hwdb/rules and the modprobe blacklist, as in the upstream package.
     cp -r --no-preserve=ownership files/usr "$pkgdir/"
+    install -Dm0644 "$(_drv)/modules-load.conf" "$pkgdir/usr/lib/modules-load.d/$pkgname.conf"
     install -Dm0644 "$(_drv)/TUXEDO-LICENSE" "$pkgdir/usr/share/licenses/$pkgname/TUXEDO-LICENSE"
     install -Dm0644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

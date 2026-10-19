@@ -57,6 +57,18 @@ Kurulan: `r9t-studio 0.1.0.r68.gb44b715`, `slayer-r9t-fan-dkms 0.2.0-2` (snapper
 - `r9t-studio-tray.service` active (18:44:32, `/usr/lib/r9t-studio/r9t-studio --hidden`), SNI kaydı `org.kde.StatusNotifierItem-1723-1`. Simgenin Waybar'da görünmesi kullanıcının gözüne kalıyor.
 - Gözlem: gizli arayüz WebKit süreçleriyle ~330 MB kullanıyor (pencere hiç açılmadan). Tepsi için WebView'i ilk gösterime kadar ertelemek `ileride.md` adayı.
 
+## tuxedo modülleri pakete, tepsi belleği (2026-10-19 akşam)
+
+- **tuxedo modülleri:** `tuxedo-drivers-r9t-dkms` 4.24.0-2, `/usr/lib/modules-load.d/tuxedo-drivers-r9t-dkms.conf` dosyasını kurar (`tuxedo_io`, `uniwill_wmi`). Bağımlılık olarak `tuxedo_keyboard` ve `tuxedo_compatibility_check` gelir. WMI aygıtları (ABBC0F6B/6D/6F/72) bu modülleri udev'den de yükletir, ama udev eşzamansızdır. r9td ise `systemd-modules-load`'dan sonra başlar ve `/dev/tuxedo_io`'yu hemen arar. Paket kurulunca sahipsiz `/etc/modules-load.d/slayer-r9t.conf` gereksiz kalır; eski sistem kaldırılırken silinir. Eski servis yedekte kalırsa modülleri yine kendisi yükler (`ExecStartPre=modprobe`).
+- **Tepsi belleği:** pencere `tauri.conf.json` içinde `visible: false` olarak tanımlıydı. Bu yüzden girişte hiç açılmasa da WebKit süreçleri başlıyordu: birimin cgroup'u ~330 MB, WebKitNetworkProcess + WebKitWebProcess. Pencere artık ilk gösterimde oluşturuluyor (`show_main` → `WebviewWindowBuilder`); tepside dururken WebKit süreci yok. Ölçüm (`npx tauri build --no-bundle` ikilisi, RSS toplamı):
+
+  | Durum | WebKitWebProcess | RSS (MB) |
+  |---|---|---|
+  | Gizli (`--hidden`), pencere hiç açılmadı | 0 | 93 |
+  | Pencere açık / kapatıldıktan sonra (3 döngü) | 1 | ~600, sabit |
+
+  İlk açılış ~340 ms. **Kapatınca yok etme denendi, bırakıldı:** her aç-kapa bir WebKitWebProcess'i geride bırakıyordu (3 döngüde 1 → 5 süreç, ~250 MB/döngü). Kapatma yine gizler. `--view`, pencere henüz yokken ikinci örnekten gelirse saklanır ve `app_info` ile bir kez okunur. Üç durum ekranda denendi: ilk örnek `--hidden --view performance`, pencere yokken ikinci örnek `--view keyboard`, gizli pencereye `--view profiles`. Üçü de doğru görünümü açtı.
+
 ## Kalan (Faz 5)
 
 - [x] Paketlerin kurulumu ve doğrulaması (2026-10-19).

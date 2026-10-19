@@ -10,7 +10,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
-use tauri::{AppHandle, Emitter, Manager, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 use rpc::{CallError, Conn, Persistent};
 
@@ -24,6 +24,9 @@ struct AppState {
     procs: Mutex<local::ProcSampler>,
     /// Window has keyboard focus (WindowEvent::Focused); drives snapshot thinning.
     focused: AtomicBool,
+    /// `--view` for the next window: the first instance's argument, or a second
+    /// instance's while no window exists yet (read once through `app_info`).
+    view: Mutex<Option<String>>,
 }
 
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -99,10 +102,9 @@ fn view_arg(args: &[String]) -> Option<String> {
 }
 
 #[tauri::command]
-fn app_info() -> Value {
-    let args: Vec<String> = std::env::args().collect();
+fn app_info(state: tauri::State<'_, AppState>) -> Value {
     json!({
-        "view": view_arg(&args),
+        "view": lock(&state.view).take(),
         "version": env!("CARGO_PKG_VERSION"),
         "daemon_socket": rpc::daemon_socket(),
         "session_socket": rpc::session_socket(),
@@ -204,12 +206,24 @@ fn subscriber(app: AppHandle, tray: Option<ksni::blocking::Handle<tray::R9tTray>
     }
 }
 
+/// The window is built on first show, so the tray alone keeps no WebKit processes
+/// (≈ 330 MB when it was created hidden at login). Closing only hides it: destroying
+/// it leaks its WebKitWebProcess (~250 MB per open/close, measured 2026-10-19).
 fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.show();
         let _ = w.unminimize();
         let _ = w.set_focus();
         let _ = app.emit("shown", ());
+        return;
+    }
+    let built = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+        .title("R9T Studio")
+        .inner_size(1280.0, 820.0)
+        .min_inner_size(1000.0, 640.0)
+        .build();
+    if let Err(e) = built {
+        eprintln!("pencere açılamadı: {e}");
     }
 }
 
@@ -236,7 +250,11 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             if let Some(v) = view_arg(&argv) {
-                let _ = app.emit("navigate", v);
+                if app.get_webview_window("main").is_some() {
+                    let _ = app.emit("navigate", v);
+                } else {
+                    *lock(&app.state::<AppState>().view) = Some(v);
+                }
             }
             show_main(app)
         }))
@@ -245,6 +263,7 @@ fn main() {
             reads: Mutex::new(Persistent::new(rpc::daemon_socket(), Duration::from_secs(10))),
             procs: Mutex::new(local::ProcSampler::default()),
             focused: AtomicBool::new(false),
+            view: Mutex::new(view_arg(&args)),
         })
         .invoke_handler(tauri::generate_handler![
             daemon_call,
@@ -276,6 +295,12 @@ fn main() {
                 _ => {}
             }
         })
-        .run(tauri::generate_context!())
-        .expect("R9T Studio başlatılamadı");
+        .build(tauri::generate_context!())
+        .expect("R9T Studio başlatılamadı")
+        .run(|_app, event| {
+            // Only the tray's "Çık" (exit code) quits, even if the window goes away.
+            if let RunEvent::ExitRequested { code: None, api, .. } = event {
+                api.prevent_exit();
+            }
+        });
 }
