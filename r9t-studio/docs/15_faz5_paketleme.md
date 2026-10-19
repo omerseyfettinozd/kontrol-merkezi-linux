@@ -77,13 +77,28 @@ Kurulan: `tuxedo-drivers-r9t-dkms 4.24.0-2`, `r9t-studio 0.1.0.r70.g3f67f52` (sn
 - Tepsi: `r9t-studio-tray` active, SNI kayıtlı, **WebKit süreci yok**. Birimin cgroup belleği 77 MB (önce ~330 MB), RSS 56 MB.
 - Kurulum sırasında pacman'in "Loading new kernel modules" kancası yeni dosyayı DKMS yeniden kurulumundan önce işledi (`tuxedo_keyboard.ko.zst: No such file`). Modüller bellekteydi, etkisi olmadı; bu yalnız aynı işlemdeki sıralama.
 
+## r9t_fan 0.3.0 ve araçlar (2026-10-19 gece; kod, donanımda denenmedi)
+
+- **`e49a8ef` r9t_fan 0.3.0** (`driver/r9t_fan/README.md`): EC önbelleği (`cache_ms`, kontrol mutex'i dışında tazeleme, nesil sayacıyla geçersiz kılma), `status2`, hwmon (`fan/temp/pwm`, yalnız okunur), override histerezisi (95/87 devreye, 90/82 + 10 sn bırakma), `min_duty` (25–50, varsayılan 50) ve sıcaklık rampası, test için `allow_low_duty` (%20) ve kernel içi durma algılaması (`error=-32`). Varsayılanlarla 0.2.0 davranışı: v1 `status` bayt bayt aynı, `manual` %50–100.
+  - C düzeneği: önbellek, histerezis, taban, durma ve hwmon senaryoları. Üç kasıtlı bozma (bırakma eşiği, önbellek, durma) testte yakalandı. İlk denemede yakalanmayan bırakma eşiği bozması, senaryoya "10 sn geçti ama hâlâ sıcak" adımı eklenince yakalandı.
+  - Kernel derlemesi `W=1` ile uyarısız: 7.2.9 (clang) ve lts 6.18.55.
+  - r9td ve probe artık bilinen sürümler listesini kabul ediyor (`0.2.0`, `0.3.0`); bilinmeyen sürümde yine salt okunur kalıyor. r9td açılışta `allow_low_duty=0` yazıyor.
+  - Paket: `slayer-r9t-fan-dkms` 0.3.0-1, `conflicts=('r9t-studio<0.1.0.r72')`.
+- **Tasarım kararı (test modu rampası):** makine boşta 66–68 °C'de duruyor. `min_duty` rampası (CPU 60→75 °C) test modunda %20'ye inmeyi engellerdi. Bu yüzden `allow_low_duty` rampası tarama durdurma eşiklerine kaydırıldı: CPU 70→80 °C, GPU 65→75 °C; 80/75 °C'de taban %50.
+- **`beb0ca9` `r9tctl fan-sweep`:** Faz 0.7 protokolü %45→20 için; r9td'nin `control.lock`'ını alır. Taban önerisi max(25, durma + 10). Plan "spin-up + 5" diyor; burada fan yalnız tarama sırasında durur ve kernel onu hemen auto'ya döndürür, bu yüzden yerine geçen daha temkinli ölçü bu.
+- **`8e233de` `r9tctl legacy-remove`** ve `desktop --remove-legacy`: yedekli kaldırma. 7 gün kapısı var, sembolik bağı ve pakete ait yolu reddeder. Kaldırmadan sonra fallback fanları EC otomatikte bırakır; rollback/trial geri yükleme komutunu söyleyip reddeder.
+- **`95e1796` `r9tctl check`:** salt okunur sağlık denetimi. Canlıda hepsi ✓; tek uyarı sahipsiz 7.2.5 kernel kalıntısı.
+- **DKMS arşivli geri alma** (`ileride.md`): paketlerle gereksizleşti. Bir önceki paket `pacman -U` ile geri kurulur (DKMS kancaları yeniden derler) ve her pacman işleminde snapper anlık görüntüsü alınır.
+
 ## Kalan (Faz 5)
 
 - [x] Paketlerin kurulumu ve doğrulaması (2026-10-19).
 - [x] Açılışta r9td + r9t-session + modüllerin paketten geldiğinin doğrulanması (2026-10-19; iki eksik bulundu ve düzeltildi, yukarıda).
 - [x] Düzeltilmiş paketlerin kurulumu ve bir sonraki açılışta `r9t_fan` + r9td denetimi + tepsinin kendiliğinden geldiğinin doğrulanması (2026-10-19 18:44, aşağıda).
-- [ ] Bir sonraki kernel güncellemesinde DKMS autoinstall.
-- [ ] r9t_fan v2 (status2, hwmon, düşük duty taraması) — ayrı iş, fiziksel ölçüm gerektirir.
-- [ ] Bir hafta günlük kullanım → eski Python sisteminin yedeklenip kaldırılması.
-- [ ] Kurulum ön kontrolü, DKMS arşivli geri alma, güvenli kaldırma (`ileride.md` girdileri).
+- [ ] Bir sonraki kernel güncellemesinde DKMS autoinstall (`r9tctl check` ile görülür).
+- [x] r9t_fan v2 kodu (0.3.0) ve tarama aracı (2026-10-19, `e49a8ef`, `beb0ca9`).
+- [ ] r9t_fan 0.3.0'ın kurulumu ve açılış doğrulaması (hwmon, `status2`, r9td `control`).
+- [ ] Düşük duty taraması fiziksel olarak (`sudo r9tctl fan-sweep`, kullanıcı başında) → `min_duty` kararı.
+- [ ] Bir hafta günlük kullanım → `sudo r9tctl legacy-remove --yes` (en erken 2026-10-26; araç `8e233de`).
+- [x] Kurulum ön kontrolü (`r9tctl check`), güvenli kaldırma (`legacy-remove`); DKMS arşivli geri alma pacman + snapper ile gereksiz (2026-10-19).
 - [x] tuxedo modüllerinin paketten yüklenmesi; eski `/etc/modules-load.d/slayer-r9t.conf` emekli (2026-10-19).

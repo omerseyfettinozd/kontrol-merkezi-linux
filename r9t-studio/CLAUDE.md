@@ -53,7 +53,7 @@ r9t-studio/
 │   ├── r9t-hal/        # donanım trait'leri, gerçek + sahte; R9T_SYSFS_ROOT
 │   ├── r9td/           # root servis, Tokio; soket /run/r9td/r9td.sock (0660 root:r9t)
 │   ├── r9t-session/    # systemd --user ajanı: Hyprland/KDE, Hz, PipeWire, idle, süreç sonlandırma
-│   └── r9tctl/         # CLI: probe, migrate, waybar --follow, switch/desktop (geçiş), keymap-calibrate, load-test
+│   └── r9tctl/         # CLI: probe, check, migrate, waybar --follow, switch/desktop (geçiş), keymap-calibrate, load-test, fan-sweep, legacy-remove
 ├── ui/                 # Tauri v2 + Svelte 5 (soket istemcisi Rust tarafında)
 ├── driver/             # r9t_fan (C, DKMS) + test/ (C hata senaryoları); tuxedo-drivers yaması
 ├── packaging/          # systemd, polkit, sysusers, arch/ (PKGBUILD'ler)
