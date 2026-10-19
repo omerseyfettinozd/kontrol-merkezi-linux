@@ -178,7 +178,7 @@ Depo: `r9t-studio/` mevcut `kontrol-merkezi-linux` deposunda (monorepo) durur. K
 
 - **Soket:** `$XDG_RUNTIME_DIR/r9t/session.sock` (0600; SO_PEERCRED uid kendi uid'i olmalı).
 - **Kayıt:** r9t-session r9td'ye bağlanır ve `session_register{logind_session_id, desktop, pid}` gönderir. r9td, pid'in o logind oturumuna ait olduğunu doğrular. Bağlantı koparsa r9td oturumu yok sayar.
-- **Hyprland'da başlatma:** tek satır `exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE && systemctl --user start r9t-session.service`. Bu satır eski 50. satırın yerine geçer ve kullanıcı onayıyla eklenir.
+- **Hyprland'da başlatma:** tek satır `exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE && systemctl --user start r9t-session.service`. Bu satır eski 50. satırın yerine geçer ve kullanıcı onayıyla eklenir. Lua yapılandırmasında (Hyprland 0.55+) karşılığı `hl.on("hyprland.start", …)` içindeki `hl.exec_cmd("…")` satırıdır (`packaging/hyprland/r9t-session.lua`).
 - **KDE'de başlatma:** `WantedBy=graphical-session.target`, `PartOf=graphical-session.target`.
 - **Kapanma:** `.socket2.sock` EOF olursa ya da logind oturumu kapanırsa temiz çıkar. `Restart=on-failure` kullanılır; EOF ile çıkış başarı sayılır.
 - **İki oturum aynı anda açıksa** yalnız logind'de `Active=yes` olan oturumun backend'i sürülür. VT değişiminde backend de değişir.
