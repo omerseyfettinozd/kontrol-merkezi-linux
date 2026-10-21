@@ -91,7 +91,7 @@ impl Ec {
 
 pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send + 'static) {
     let fan = SysfsFan::new(fs.clone());
-    let gpu = Nvml::new(fs.clone());
+    let gpu = Nvml::new(fs.clone()).with_preflight(Box::new(crate::nvml_preflight));
     let hwmon = Hwmon::new(fs.clone());
     let cpu = Cpufreq::new(fs.clone());
     let power = Power::new(fs.clone());

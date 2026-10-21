@@ -9,10 +9,16 @@
 //! display is connected to the dGPU (it cannot runtime-suspend then anyway, reads
 //! cost ~0.01 ms); otherwise every access is init → read → shutdown (~13 ms) so an
 //! open NVML session never keeps an idle dGPU awake.
+//!
+//! Preflight: an `nvmlInit` that fails early in boot (error 999) keeps failing for the
+//! life of the process; only a new process recovers (measured 2026-10-21 on two boots).
+//! With a preflight set, the first in-process init waits until a child process manages
+//! one.
 
 use std::ffi::{c_char, c_int, c_uint, c_ulonglong, c_void, CString};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use crate::{HalError, Result, Sysfs};
 
@@ -148,7 +154,14 @@ impl Api {
 struct State {
     api: Option<Api>,
     device: Device,
+    preflight_ok: bool,
+    last_preflight: Option<Instant>,
 }
+
+/// Out-of-process NVML check; `true` once a child process initialized NVML.
+pub type Preflight = Box<dyn Fn() -> bool + Send + Sync>;
+
+const PREFLIGHT_EVERY: Duration = Duration::from_secs(10);
 
 // SAFETY: the NVML device handle is an opaque token valid process-wide; it is only
 // dereferenced by NVML itself and only used while holding the `Nvml::state` mutex.
@@ -158,6 +171,7 @@ pub struct Nvml {
     fs: Sysfs,
     state: Mutex<State>,
     calls: AtomicU64,
+    preflight: Option<Preflight>,
 }
 
 /// True when a connected DRM connector belongs to the dGPU (e.g. `card1-eDP-1`).
@@ -173,7 +187,17 @@ pub fn display_on_dgpu(fs: &Sysfs) -> bool {
 
 impl Nvml {
     pub fn new(fs: Sysfs) -> Self {
-        Self { fs, state: Mutex::new(State { api: None, device: std::ptr::null_mut() }), calls: AtomicU64::new(0) }
+        Self {
+            fs,
+            state: Mutex::new(State { api: None, device: std::ptr::null_mut(), preflight_ok: false, last_preflight: None }),
+            calls: AtomicU64::new(0),
+            preflight: None,
+        }
+    }
+
+    pub fn with_preflight(mut self, preflight: Preflight) -> Self {
+        self.preflight = Some(preflight);
+        self
     }
 
     /// Whether the NVML session stays open between samples (see module docs).
@@ -194,6 +218,16 @@ impl Nvml {
         }
         let mut st = self.state.lock().unwrap_or_else(|p| p.into_inner());
         if st.api.is_none() {
+            if let (false, Some(preflight)) = (st.preflight_ok, &self.preflight) {
+                if st.last_preflight.is_some_and(|t| t.elapsed() < PREFLIGHT_EVERY) {
+                    return Err(HalError::Verify("NVML henüz hazır değil".into()));
+                }
+                st.last_preflight = Some(Instant::now());
+                if !preflight() {
+                    return Err(HalError::Verify("NVML henüz hazır değil (alt süreç denemesi başarısız)".into()));
+                }
+                st.preflight_ok = true;
+            }
             let api = Api::load()?;
             // SAFETY: plain C call with a flags integer.
             self.check(unsafe { (api.init)(0) }, "init")?;
@@ -416,6 +450,22 @@ mod tests {
         assert!(matches!(n.set_locked_clocks(2000), Err(HalError::GpuNotActive(_)) | Err(HalError::Invalid(_))));
         assert_eq!(n.nvml_calls(), 0);
         assert!(n.state.lock().unwrap().api.is_none(), "library not even loaded");
+    }
+
+    #[test]
+    fn failed_preflight_keeps_nvml_out_of_process_and_is_rate_limited() {
+        let dir = tempfile::tempdir().unwrap();
+        file(dir.path(), &format!("/sys/bus/pci/devices/{PCI_BUS_ID}/power/runtime_status"), "active");
+        let runs = std::sync::Arc::new(AtomicU64::new(0));
+        let r = runs.clone();
+        let n = Nvml::new(Sysfs::new(dir.path())).with_preflight(Box::new(move || {
+            r.fetch_add(1, Ordering::Relaxed);
+            false
+        }));
+        assert!(n.sample_fast().is_err());
+        assert!(n.sample_fast().is_err());
+        assert_eq!(runs.load(Ordering::Relaxed), 1, "second call inside PREFLIGHT_EVERY");
+        assert!(n.state.lock().unwrap().api.is_none(), "library not loaded in-process");
     }
 
     #[test]

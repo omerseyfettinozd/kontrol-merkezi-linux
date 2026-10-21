@@ -15,30 +15,38 @@ pub const THERMAL_PRESETS: [ThermalPreset; 5] = [
         key: "sweet_spot",
         name: "Sweet Spot · Ölçülmüş dengeli performans",
         description: "5 kısa yük döngüsü: GPU tepe 84→79 °C, CPU tepe 80,5 °C; CPU+GPU gücü ~%9,7 düşük. \
-                      CS2 uzun oyunda CPU 90–91 °C çıktı; uzun oyun için 'Oyun - CPU Serin 3500' önerilir.",
+                      CS2 uzun oyunda CPU 90–91 °C çıktı; uzun oyun için 'Serin Oyun' önerilir.",
     },
-    ThermalPreset { key: "gaming_cool", name: "Serin Oyun", description: "CPU boost açık, üst frekans sınırlı; FPS etkisi oyuna göre değişir." },
+    ThermalPreset {
+        key: "gaming_cool",
+        name: "Serin Oyun",
+        description: "CPU 4000, GPU 2250 MHz. Sentetik yükte CPU (6 iş parçacığı) −%7, GPU −%15 hız; GPU gücü −%34, −8 °C. \
+                      FPS etkisi oyuna göre değişir.",
+    },
     ThermalPreset { key: "stock", name: "Sınırları kaldır", description: "Frekans sınırları otomatik, CPU boost açık, güç profili dengeli." },
 ];
 
 /// Settings applied by a thermal preset.
 pub fn thermal_preset(key: &str) -> Option<ProfileSettings> {
+    // EPP is always set: power-profiles-daemon rewrites it only when the profile
+    // changes, so a preset without it kept the previous preset's EPP.
     let base = |power, boost, cpu, gpu| ProfileSettings {
         power_profile: Some(power),
         boost_enabled: Some(boost),
         cpu_max_mhz: Some(cpu),
         gpu_max_mhz: Some(gpu),
+        cpu_epp: Some(if power == PowerProfile::PowerSaver { Epp::Power } else { Epp::BalancePerformance }),
         ..Default::default()
     };
     Some(match key {
         "quiet" => base(PowerProfile::PowerSaver, false, 1800, 1200),
         "balanced_cool" => base(PowerProfile::Balanced, false, 2400, 1800),
         "sweet_spot" => ProfileSettings {
-            cpu_epp: Some(Epp::BalancePerformance),
             fan: Some(FanSetting::Preset { preset: "cool".into() }),
             ..base(PowerProfile::Balanced, true, 4900, 2475)
         },
-        "gaming_cool" => base(PowerProfile::Balanced, true, 3500, 2100),
+        // 2026-10-21 sweep (docs/16): 3500/2100 cost −19 % CPU and −19 % GPU speed.
+        "gaming_cool" => base(PowerProfile::Balanced, true, 4000, 2250),
         "stock" => base(PowerProfile::Balanced, true, 0, 0),
         _ => return None,
     })
@@ -82,5 +90,13 @@ mod tests {
         let s = thermal_preset("sweet_spot").unwrap();
         assert_eq!((s.cpu_max_mhz, s.gpu_max_mhz), (Some(4900), Some(2475)));
         assert_eq!(s.cpu_epp, Some(Epp::BalancePerformance));
+    }
+
+    #[test]
+    fn every_preset_sets_epp() {
+        for p in &THERMAL_PRESETS {
+            assert!(thermal_preset(p.key).unwrap().cpu_epp.is_some(), "{}", p.key);
+        }
+        assert_eq!(thermal_preset("quiet").unwrap().cpu_epp, Some(Epp::Power));
     }
 }
