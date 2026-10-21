@@ -82,3 +82,16 @@ Sessiz frekansları (power-saver, boost kapalı, 1800/1200, EPP power). Arka pla
 
 - `library` (Kütüphane): Sessiz frekansları + `quiet` fan eğrisi `[[60,25],[70,30],[78,50],[85,100]]`.
 - `quiet` artık fanı açıkça EC otomatiğine alıyor (önceden önceki modun eğrisinde kalıyordu).
+
+## Oyun: Mount & Blade II Bannerlord, savaş benchmark'ı (384 asker), 2026-10-21
+
+Serin Oyun GPU tavanı (2250), fanlar EC otomatik (koruma CPU 90 / GPU 84 °C'de %100'e aldı). Asker dağılımı her koşuda biraz farklı (±%3–4).
+
+| Koşu | Ort. FPS | En düşük %1 (GPU) | CPU en yüksek | GPU en yüksek |
+|---|---|---|---|---|
+| boost açık, CPU 4000, ppd performance | 66,2 | 44,9 | 91 °C | 87 °C |
+| boost açık, CPU 4000, ppd balanced | 70,9 | 47,1 | 90 °C | 87 °C |
+| boost kapalı (2400), ppd balanced | 75,0 | 60,6 | 81 °C | 84 °C |
+
+- ppd performance (EPP performance) daha sıcak ve daha yavaş.
+- Bu sahnede darboğaz GPU (%99): CPU'yu serinletmek paylaşılan güç ve soğutmayı GPU'ya bırakıyor. `gaming_cool` boost kapalı + `cool` eğri oldu; CPU ağırlıklı oyunlar için `sweet_spot` boost açık kalıyor.

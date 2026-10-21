@@ -26,8 +26,9 @@ pub const THERMAL_PRESETS: [ThermalPreset; 6] = [
     ThermalPreset {
         key: "gaming_cool",
         name: "Serin Oyun",
-        description: "CPU 4000, GPU 2250 MHz. CPU+GPU birlikte yükte (oyun benzeri) GPU −%10, CPU +%32 hız, GPU 83→73 °C: \
-                      GPU'nun bıraktığı güç CPU'ya kalıyor. FPS etkisi oyuna göre değişir.",
+        description: "CPU boost kapalı (2400 MHz), GPU 2250 MHz, serin fan eğrisi. GPU ağırlıklı oyunlar için: \
+                      Bannerlord 384 asker benchmark'ında boost açığa göre ort. 70,9→75,0 FPS, CPU 90→81 °C. \
+                      CPU ağırlıklı oyunlarda (CS2) 'Sweet Spot' seçin.",
     },
     ThermalPreset { key: "stock", name: "Sınırları kaldır", description: "Frekans sınırları otomatik, CPU boost açık, güç profili dengeli." },
 ];
@@ -55,8 +56,11 @@ pub fn thermal_preset(key: &str) -> Option<ProfileSettings> {
             fan: Some(FanSetting::Preset { preset: "cool".into() }),
             ..base(PowerProfile::Balanced, true, 4900, 2475)
         },
-        // 2026-10-21 sweep (docs/16): 3500/2100 cost −19 % CPU and −19 % GPU speed.
-        "gaming_cool" => base(PowerProfile::Balanced, true, 4000, 2250),
+        // docs/16: with the GPU the bottleneck, a cooler CPU leaves the shared budget to it.
+        "gaming_cool" => ProfileSettings {
+            fan: Some(FanSetting::Preset { preset: "cool".into() }),
+            ..base(PowerProfile::Balanced, false, 0, 2250)
+        },
         "stock" => base(PowerProfile::Balanced, true, 0, 0),
         _ => return None,
     })
