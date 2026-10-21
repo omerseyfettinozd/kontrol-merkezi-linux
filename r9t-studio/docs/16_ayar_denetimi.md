@@ -50,3 +50,35 @@ Paket gücü örnekleri arka plan yüküyle gürültülü; güç farkı bu testt
 - `sweet_spot` (4900/2475) değişmedi: GPU −%8 hız, −%22 güç, −4 °C.
 - `gaming_cool` 3500/2100 → **4000/2250**: eski değerler CPU ve GPU'da −%19 hız kaybettiriyordu.
 - Kabul için bekleyen: aynı oyunda FPS + sıcaklık (CS2 uzun oturum).
+
+## Hafif yük: Sessiz / Kütüphane (kullanıcının gerçek masaüstü yükü, 3–5 dk)
+
+Sessiz frekansları (power-saver, boost kapalı, 1800/1200, EPP power). Arka planda ~1,5 çekirdek süren uygulamalar vardı.
+
+| Durum | CPU °C | GPU °C | Fan | CPU W | GPU W |
+|---|---|---|---|---|---|
+| 300 Hz + duvar kağıdı, EC auto | 69 | 63 | %55 · ~3500 RPM | 24,0 | 20,7 (P0) |
+| 60 Hz + duvar kağıdı, EC auto | 67 | 59 | %46 · ~3000 | 19,9 | 13,9 |
+| 60 Hz, duvar kağıdı donmuş (süreç duruk) | 65 | 58 | %42 · ~2770 | 16,4 | 12,1 (P0) |
+| 60 Hz + duvar kağıdı, sessiz eğri | 70 | 63 | %40 · ~2500 | 21,8 | 14,2 |
+| 60 Hz, duvar kağıdı kapalı, sessiz eğri | 67 | 59 | %36 · ~2300 | 17,6 | 6,9 (P8) |
+
+- mpvpaper `hwdec=nvdec` CUDA bağlamı açık tuttuğu sürece dGPU P0'da ve bellek 12001 MHz'de kalıyor; süreç donsa bile. Kapanınca 10 sn içinde P8, 405 MHz bellek, 8,5 W. `hwdec=vulkan` P4 / ~15 W, kazanç yok.
+- Sessiz eğrinin altında fan payını r9t_fan tabanı belirliyor (CPU 60→75 °C arasında %25→50). Fanı kısmak için ısı kaynağını azaltmak gerekiyor.
+
+## Oyun benzeri karma yük (6 iş parçacığı CPU + Blender GPU, 150 sn, 60 Hz)
+
+| Mod | GPU s/kare | GPU hızı | CPU iş | CPU hızı | CPU °C | GPU °C | GPU W | Fan |
+|---|---|---|---|---|---|---|---|---|
+| Sınırları kaldır (`balanced` senaryosu) | 2,952 | %100 | 4128 | %100 | 81 | 83 | 89,0 | 5793 |
+| Turbo | 2,948 | %100 | 4051 | %98 | 80 | 82 | 88,6 | 5803 |
+| Sweet Spot | 3,103 | %95 | 4996 | %121 | 81 | 77 | 70,7 | 5561 |
+| Serin Oyun (4000/2250, serin eğri) | 3,278 | %90 | 5441 | %132 | 81 | 73 | 60,4 | 5557 |
+
+- Turbo, Sınırları kaldır'dan hızlı değil; ikisinde fanlar GPU 84 °C korumasıyla %100'de.
+- CPU ve GPU aynı güç/ısı bütçesini paylaşıyor: GPU tavanı CPU'ya pay bırakıyor. CPU ağırlıklı oyunlarda (CS2) Serin Oyun daha yüksek FPS verebilir; doğrulama oyunda yapılmalı.
+
+## Eklenenler
+
+- `library` (Kütüphane): Sessiz frekansları + `quiet` fan eğrisi `[[60,25],[70,30],[78,50],[85,100]]`.
+- `quiet` artık fanı açıkça EC otomatiğine alıyor (önceden önceki modun eğrisinde kalıyordu).

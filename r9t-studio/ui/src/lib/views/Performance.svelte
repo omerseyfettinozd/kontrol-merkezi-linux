@@ -138,7 +138,7 @@
         <button class:active={fanMode === 'auto' && !targetActive} disabled={!ctl} onclick={() => control('auto')}>Otomatik (EC)</button>
         <button class:active={fanMode === 'boost'} disabled={!ctl} onclick={() => control('fan_boost')}>Maksimum</button>
         {#each app.caps?.fan_presets?.filter((k) => k !== 'maximum') ?? [] as k (k)}
-          <button disabled={!ctl} onclick={() => control('fan_preset', { preset: k }, { key: 'fan_preset' })}>Eğri: {k === 'balanced' ? 'dengeli' : k === 'cool' ? 'serin' : k}</button>
+          <button disabled={!ctl} onclick={() => control('fan_preset', { preset: k }, { key: 'fan_preset' })}>Eğri: {k === 'quiet' ? 'sessiz' : k === 'balanced' ? 'dengeli' : k === 'cool' ? 'serin' : k}</button>
         {/each}
       </div>
     </div>

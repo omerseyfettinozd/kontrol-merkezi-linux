@@ -8,8 +8,14 @@ pub struct ThermalPreset {
     pub description: &'static str,
 }
 
-pub const THERMAL_PRESETS: [ThermalPreset; 5] = [
-    ThermalPreset { key: "quiet", name: "Sessiz / Ofis", description: "Daha düşük frekanslar; ofis ve hafif işler için." },
+pub const THERMAL_PRESETS: [ThermalPreset; 6] = [
+    ThermalPreset { key: "quiet", name: "Sessiz / Ofis", description: "Daha düşük frekanslar, fanlar EC otomatiğinde; ofis ve hafif işler için." },
+    ThermalPreset {
+        key: "library",
+        name: "Kütüphane",
+        description: "Sessiz / Ofis frekansları + en düşük fan eğrisi. 60 Hz ve duvar kağıdı kapalıyken fan %36 (~2300 RPM), \
+                      300 Hz + duvar kağıdıyla EC otomatiği %55 (~3500 RPM). Fan tabanını r9t_fan sıcaklıkla yükseltir.",
+    },
     ThermalPreset { key: "balanced_cool", name: "Serin Dengeli", description: "CPU boost kapalı; GPU üst frekansı sınırlı." },
     ThermalPreset {
         key: "sweet_spot",
@@ -20,8 +26,8 @@ pub const THERMAL_PRESETS: [ThermalPreset; 5] = [
     ThermalPreset {
         key: "gaming_cool",
         name: "Serin Oyun",
-        description: "CPU 4000, GPU 2250 MHz. Sentetik yükte CPU (6 iş parçacığı) −%7, GPU −%15 hız; GPU gücü −%34, −8 °C. \
-                      FPS etkisi oyuna göre değişir.",
+        description: "CPU 4000, GPU 2250 MHz. CPU+GPU birlikte yükte (oyun benzeri) GPU −%10, CPU +%32 hız, GPU 83→73 °C: \
+                      GPU'nun bıraktığı güç CPU'ya kalıyor. FPS etkisi oyuna göre değişir.",
     },
     ThermalPreset { key: "stock", name: "Sınırları kaldır", description: "Frekans sınırları otomatik, CPU boost açık, güç profili dengeli." },
 ];
@@ -39,7 +45,11 @@ pub fn thermal_preset(key: &str) -> Option<ProfileSettings> {
         ..Default::default()
     };
     Some(match key {
-        "quiet" => base(PowerProfile::PowerSaver, false, 1800, 1200),
+        "quiet" => ProfileSettings { fan: Some(FanSetting::Auto), ..base(PowerProfile::PowerSaver, false, 1800, 1200) },
+        "library" => ProfileSettings {
+            fan: Some(FanSetting::Preset { preset: "quiet".into() }),
+            ..base(PowerProfile::PowerSaver, false, 1800, 1200)
+        },
         "balanced_cool" => base(PowerProfile::Balanced, false, 2400, 1800),
         "sweet_spot" => ProfileSettings {
             fan: Some(FanSetting::Preset { preset: "cool".into() }),
@@ -57,10 +67,12 @@ pub enum FanPreset {
     Boost,
 }
 
-pub const FAN_PRESET_KEYS: [&str; 3] = ["balanced", "cool", "maximum"];
+pub const FAN_PRESET_KEYS: [&str; 4] = ["quiet", "balanced", "cool", "maximum"];
 
 pub fn fan_preset(key: &str) -> Option<FanPreset> {
     Some(match key {
+        // Below ~75 °C the r9t_fan floor (25 → 50 % over CPU 60–75 °C) sets the duty.
+        "quiet" => FanPreset::Curve(FanCurve::linear(&[[60, 25], [70, 30], [78, 50], [85, 100]])),
         "balanced" => FanPreset::Curve(FanCurve::linear(&[[45, 50], [60, 60], [75, 80], [85, 100]])),
         "cool" => FanPreset::Curve(FanCurve::linear(&[[45, 60], [60, 75], [75, 90], [85, 100]])),
         "maximum" => FanPreset::Boost,
