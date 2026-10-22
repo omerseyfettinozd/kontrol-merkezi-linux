@@ -12,6 +12,8 @@ Kurulu r9td (0.1.0, `b37fbe3` paketi) üzerinde, prizde, fan eğrisi sabitken. �
 | 4 | Sıcaklık hedefi durunca CPU 10 sn içinde hedefin son düşük tavanına geri kilitleniyordu | Kod incelemesi (`expected_cpu_max` güncellenmiyordu) | Hedef öncesi değer saklanıp geri konuyor |
 | 5 | Presetler EPP yazmıyordu; ppd profili değişmezse önceki EPP kalıyordu | Yeniden başlatma sonrası `quiet`: ppd power-saver, EPP balance_performance | Her preset EPP'yi açıkça yazıyor (power-saver → power, diğerleri → balance_performance) |
 
+**Düzeltme, 2026-10-22:** 1 numaranın gerçek nedeni süreç değil cgroup'tu. `r9td.service` `DeviceAllow=/dev/nvidia0` yolunu birim başlarken bir kez çözüyor; açılışta r9td 22:33:38.0607'de başladı, `/dev/nvidia0` 38.0679'da oluştu (7 ms sonra). Kural düştü, `DevicePolicy=closed` NVIDIA aygıtlarını servis ömrü boyunca kapattı; `--nvml-probe` aynı cgroup'ta olduğu için preflight hiç geçmedi ve GPU tavanlı her mod `NVML henüz hazır değil; önceki ayarlar geri yüklendi` verdi (kullanıcı olarak probe exit 0). `restart` düğüm artık var olduğu için düzeltiyordu. Birimler artık sınıfla izin veriyor: `DeviceAllow=char-nvidia rw`, `char-tuxedo_io_cdev` (majörler `systemd-modules-load` ile kayıtlı, r9td ondan sonra başlıyor). Doğrulama: `systemd-run -p DevicePolicy=closed -p "DeviceAllow=char-nvidia rw" r9td --nvml-probe` → success; r88 kurulup r9td yeniden başlatılınca geri yükleme ve GPU tavanı (1200 MHz) ilk denemede uygulandı. Soğuk açılış kabulü bekliyor.
+
 Ayrıca: 19:56'da r9td 10 sn yanıt vermedi ve watchdog SIGABRT ile kapattı (yığın sembolsüz, neden belirsiz). Kapanışta r9td ↔ power-profiles-daemon systemd sıralama döngüsü (`ileride.md`).
 
 ## Preset geri okuması (düzeltmeden önce, r9td yeniden başlatıldıktan sonra)

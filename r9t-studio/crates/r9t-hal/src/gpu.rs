@@ -10,10 +10,11 @@
 //! cost ~0.01 ms); otherwise every access is init → read → shutdown (~13 ms) so an
 //! open NVML session never keeps an idle dGPU awake.
 //!
-//! Preflight: an `nvmlInit` that fails early in boot (error 999) keeps failing for the
-//! life of the process; only a new process recovers (measured 2026-10-21 on two boots).
-//! With a preflight set, the first in-process init waits until a child process manages
-//! one.
+//! Preflight: the first in-process init waits until a child process manages one.
+//! It was added for an early-boot init error 999 that lasted until r9td restarted; the
+//! cause turned out to be the unit's path-based `DeviceAllow=/dev/nvidia0`, resolved
+//! before the node existed (fixed with `char-nvidia`, docs/16). The preflight stays as
+//! a guard against an init that hangs or fails inside the daemon.
 
 use std::ffi::{c_char, c_int, c_uint, c_ulonglong, c_void, CString};
 use std::sync::atomic::{AtomicU64, Ordering};
