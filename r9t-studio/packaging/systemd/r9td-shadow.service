@@ -30,9 +30,13 @@ PrivateNetwork=yes
 IPAddressDeny=any
 RestrictAddressFamilies=AF_UNIX AF_NETLINK
 DevicePolicy=closed
-DeviceAllow=/dev/tuxedo_io r
-DeviceAllow=/dev/nvidiactl rw
-DeviceAllow=/dev/nvidia0 rw
+# By device class, not path: a path is resolved once when the unit starts, and at
+# boot /dev/nvidia0 appears a few ms after r9td (2026-10-22: 38.0607 vs 38.0679),
+# which left NVML locked out (error 999) until a restart. The majors are registered
+# by then (After=systemd-modules-load.service). char-nvidia is major 195
+# (nvidia0..N, nvidiactl, nvidia-modeset).
+DeviceAllow=char-tuxedo_io_cdev r
+DeviceAllow=char-nvidia rw
 ProtectKernelModules=yes
 ProtectKernelLogs=yes
 ProtectControlGroups=yes
