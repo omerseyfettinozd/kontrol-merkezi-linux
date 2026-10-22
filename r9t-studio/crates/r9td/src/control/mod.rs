@@ -43,6 +43,9 @@ use rgb::{Inhibit, Msg as RgbMsg, RgbEngine};
 pub const RENEW: Duration = Duration::from_secs(3);
 /// A sample older than this never renews the lease.
 pub const FRESH_MS: u64 = 5000;
+/// Start-up restore of the GPU ceiling: NVML may need minutes after boot (preflight).
+const GPU_RESTORE_RETRY: Duration = Duration::from_secs(10);
+const GPU_RESTORE_ATTEMPTS: u8 = 30;
 
 pub enum Msg {
     Call { call: Call, peer: Peer, conn_id: u64, reply: mpsc::Sender<Result<Value, RpcError>> },
@@ -93,6 +96,7 @@ struct SessionInfo {
 
 struct TargetSaved {
     cpu: Vec<(String, String)>,
+    expected_cpu_max: Option<Vec<(String, String)>>,
     gpu_mhz: Option<u32>,
     mode: Mode,
 }
@@ -113,8 +117,11 @@ pub struct Control {
     last_cmd: Option<FanCommand>,
     last_write: Option<Instant>,
     baseline: PowerState,
+    /// CPU ceiling r9td enforces against foreign writes; `None` when there is no ceiling.
     expected_cpu_max: Option<Vec<(String, String)>>,
     last_foreign_check: Instant,
+    /// Next attempt to restore the GPU ceiling after start-up, and its number.
+    gpu_restore: Option<(Instant, u8)>,
     target_saved: Option<TargetSaved>,
     automation: Automation,
     state_dir: PathBuf,
@@ -181,7 +188,7 @@ impl Control {
         }
         let cpu = Cpufreq::new(fs.clone());
         let ppd = Ppd::new();
-        let mut gpu = GpuClocks::new(Nvml::new(fs.clone()), state_dir);
+        let mut gpu = GpuClocks::new(Nvml::new(fs.clone()).with_preflight(Box::new(crate::nvml_preflight)), state_dir);
         if let Ok(true) = gpu.recover() {
             eprintln!("r9td: önceki çalıştırmadan kalan GPU saat kilidi sıfırlandı");
         }
@@ -235,6 +242,7 @@ impl Control {
             baseline,
             expected_cpu_max: None,
             last_foreign_check: Instant::now(),
+            gpu_restore: None,
             target_saved: None,
             automation: Automation::new(doc, paused),
             state_dir: state_dir.to_path_buf(),
@@ -257,12 +265,7 @@ impl Control {
 
     pub fn run(mut self, rx: mpsc::Receiver<Msg>, notify: impl Fn(&str)) {
         if !self.desired.is_empty() {
-            let d = self.desired.clone();
-            let r = self.apply_profile(&d);
-            self.note("restore", r.is_ok(), match r {
-                Ok(_) => "yeniden başlatma: son istenen ayarlar uygulandı".into(),
-                Err(e) => format!("yeniden başlatma: son ayarlar uygulanamadı: {}", e.message),
-            });
+            self.restore_desired();
         }
         self.publish();
         let mut next_tick = Instant::now();
@@ -454,11 +457,51 @@ impl Control {
         }
     }
 
+    /// Reapplies the last requested settings. The GPU ceiling goes separately and is
+    /// retried, so an NVML that is not ready yet does not roll back the rest.
+    fn restore_desired(&mut self) {
+        let mut d = self.desired.clone();
+        let gpu = d.gpu_max_mhz.take();
+        let r = self.apply_profile_inner(&d);
+        self.note("restore", r.is_ok(), match r {
+            Ok(_) => "yeniden başlatma: son istenen ayarlar uygulandı".into(),
+            Err(e) => format!("yeniden başlatma: son ayarlar uygulanamadı: {}", e.message),
+        });
+        if gpu.is_some_and(|m| m != 0) {
+            self.gpu_restore = Some((Instant::now(), 1));
+        }
+    }
+
+    fn retry_gpu_restore(&mut self, now: Instant) {
+        let Some((at, attempt)) = self.gpu_restore else { return };
+        if now < at {
+            return;
+        }
+        let mhz = self.desired.gpu_max_mhz.unwrap_or(0);
+        // A temperature target or a newer request owns the ceiling now.
+        if self.target_saved.is_some() || self.gpu.requested.unwrap_or(0) == mhz {
+            self.gpu_restore = None;
+            return;
+        }
+        match self.gpu.set(mhz) {
+            Ok(()) => {
+                self.gpu_restore = None;
+                self.note("restore", true, format!("yeniden başlatma: GPU tavanı {mhz} MHz uygulandı ({attempt}. deneme)"));
+            }
+            Err(e) if attempt >= GPU_RESTORE_ATTEMPTS => {
+                self.gpu_restore = None;
+                self.note("restore", false, format!("yeniden başlatma: GPU tavanı uygulanamadı: {e}"));
+            }
+            Err(_) => self.gpu_restore = Some((now + GPU_RESTORE_RETRY, attempt + 1)),
+        }
+    }
+
     fn tick(&mut self) {
         let now = Instant::now();
         if self.sleeping {
             return;
         }
+        self.retry_gpu_restore(now);
         if let Some(t) = self.resume_at {
             // Invariant 7: 3 s after resume and two valid EC samples before writing.
             let (c, g, _) = self.temps(now);
@@ -693,8 +736,10 @@ impl Control {
             self.stop_target(false, "profil uygulanıyor");
         }
         power::apply(&self.cpu, &self.ppd, &mut self.gpu, s).map_err(hal)?;
-        if s.cpu_max_mhz.is_some() {
-            self.expected_cpu_max = self.cpu.snapshot_max().ok();
+        if let Some(mhz) = s.cpu_max_mhz {
+            // 0 = no ceiling: scaling_max_freq is left to the platform (nvidia-powerd
+            // Dynamic Boost may lower it to move power to the GPU).
+            self.expected_cpu_max = if mhz == 0 { None } else { self.cpu.snapshot_max().ok() };
         }
         if let (Some(c), Some(b)) = (s.rgb, s.brightness) {
             self.apply_rgb(rgb::solid(c), b)?;
@@ -728,7 +773,12 @@ impl Control {
         write_atomic(&self.state_dir.join("temp-target-recovery.json"), &serde_json::to_vec(&journal).unwrap_or_default())
             .map_err(|e| RpcError::new(code::HARDWARE, format!("kurtarma kaydı yazılamadı: {e}")))?;
         let prev_mode = std::mem::replace(&mut self.authority.mode, Mode::Auto);
-        self.target_saved = Some(TargetSaved { cpu: snapshot, gpu_mhz: self.gpu.requested, mode: prev_mode });
+        self.target_saved = Some(TargetSaved {
+            cpu: snapshot,
+            expected_cpu_max: self.expected_cpu_max.clone(),
+            gpu_mhz: self.gpu.requested,
+            mode: prev_mode,
+        });
         let tt = TemperatureTarget::new((cpu_t, gpu_t), (c, g), (cpu_ceiling, gpu_ceiling), limits.allowed_min_mhz);
         self.authority.set_mode(Mode::Target(Box::new(tt)));
         self.control_step(now);
@@ -741,6 +791,8 @@ impl Control {
         if let Err(e) = self.cpu.restore_max(&saved.cpu) {
             errors.push(e.to_string());
         }
+        // Otherwise the foreign-write check would put the target's last ceiling back.
+        self.expected_cpu_max = saved.expected_cpu_max;
         if let Err(e) = self.gpu.set(saved.gpu_mhz.unwrap_or(0)) {
             errors.push(e.to_string());
         }

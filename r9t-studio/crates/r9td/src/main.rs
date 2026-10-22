@@ -5,6 +5,7 @@
 //! service does not answer, `/run/r9td/control.lock` is free and r9t_fan is a supported version;
 //! otherwise the daemon stays read-only and reports why.
 //! `--emergency-auto`: ExecStopPost helper that returns the fans to EC control.
+//! `--nvml-probe`: one NVML init + read in a child process (preflight, exit 0 = ready).
 
 use std::os::fd::AsRawFd;
 use std::path::{Path, PathBuf};
@@ -51,6 +52,11 @@ fn parse() -> Result<Args, String> {
             "--legacy-socket" => a.legacy_socket = it.next().ok_or("--legacy-socket yol ister")?.into(),
             "--allow-uid" => a.allow_uid = Some(it.next().and_then(|v| v.parse().ok()).ok_or("--allow-uid sayı ister")?),
             "--emergency-auto" => std::process::exit(emergency_auto()),
+            "--nvml-probe" => {
+                use r9t_hal::gpu::Gpu;
+                let ok = r9t_hal::gpu::Nvml::new(Sysfs::from_env()).sample_fast().is_ok();
+                std::process::exit(if ok { 0 } else { 1 });
+            }
             "--version" => {
                 println!("r9td {}", env!("CARGO_PKG_VERSION"));
                 std::process::exit(0);
