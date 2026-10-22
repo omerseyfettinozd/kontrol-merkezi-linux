@@ -3,17 +3,59 @@
 //! r9t-session replaces the legacy session agent, the Hyprland exec-once line starts
 //! it and pulls in the tray (r9t-studio-tray), the menu shows R9T Studio. Every change is undone by `--rollback`; `--dry-run`
 //! (after the command) prints what would change.
+//!
+//! Hyprland loads `hyprland.lua` when it exists (0.55+) and `hyprland.conf` otherwise.
+//! The start command is the same in both, one line each: `exec-once = …` and
+//! `hl.exec_cmd("…")` inside `hl.on("hyprland.start", …)`. Both files are kept in step
+//! so removing the Lua file falls back to a `.conf` that matches.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-/// Legacy line 50 and its replacement (packaging/hyprland/r9t-session.conf).
-pub const OLD_LINE: &str = "exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE 2>/dev/null";
-pub const NEW_LINE: &str = "exec-once = systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE && systemctl --user start r9t-session.service";
+/// Legacy command of line 50 and its replacement (packaging/hyprland/r9t-session.{conf,lua}).
+pub const OLD_CMD: &str = "systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE 2>/dev/null";
+pub const NEW_CMD: &str = "systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE && systemctl --user start r9t-session.service";
 const MARK: &str = "# r9tctl desktop";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Format {
+    Conf,
+    Lua,
+}
+
+impl Format {
+    /// The config line that runs `cmd` once at startup.
+    pub fn line(self, cmd: &str) -> String {
+        match self {
+            Format::Conf => format!("exec-once = {cmd}"),
+            Format::Lua => format!("hl.exec_cmd(\"{cmd}\")"),
+        }
+    }
+}
+
+/// One Hyprland config file; `active` is the one Hyprland loads.
+struct HyprFile {
+    path: PathBuf,
+    name: &'static str,
+    fmt: Format,
+    active: bool,
+}
+
+/// Existing config files in `dir`, the loaded one first (Lua wins when both exist).
+fn hypr_files(dir: &Path) -> Vec<HyprFile> {
+    let mut out = Vec::new();
+    for (name, fmt) in [("hyprland.lua", Format::Lua), ("hyprland.conf", Format::Conf)] {
+        let p = dir.join(name);
+        if p.exists() {
+            let path = std::fs::canonicalize(&p).unwrap_or(p);
+            out.push(HyprFile { path, name, fmt, active: out.is_empty() });
+        }
+    }
+    out
+}
+
 struct Ctx {
-    hypr: PathBuf,
+    hypr: Vec<HyprFile>,
     legacy_desktop: PathBuf,
     dry: bool,
 }
@@ -24,8 +66,7 @@ fn xdg(var: &str, fallback: &str) -> PathBuf {
 
 impl Ctx {
     fn new(dry: bool) -> Self {
-        let hypr = xdg("XDG_CONFIG_HOME", ".config").join("hypr/hyprland.conf");
-        let hypr = std::fs::canonicalize(&hypr).unwrap_or(hypr);
+        let hypr = hypr_files(&xdg("XDG_CONFIG_HOME", ".config").join("hypr"));
         Self { hypr, legacy_desktop: xdg("XDG_DATA_HOME", ".local/share").join("applications/slayer-r9t-control-center.desktop"), dry }
     }
 
@@ -51,36 +92,54 @@ impl Ctx {
     }
 }
 
-/// Replace one exact line; refuse if it is missing or not unique (hand-edited file).
+/// Replace one exact line (leading indentation is kept, so the Lua line may sit inside
+/// `hl.on(...)`); refuse if it is missing or not unique (hand-edited file).
 /// Returns the new text, or `None` when the file already has `to`.
 pub fn swap_line(text: &str, from: &str, to: &str) -> Result<Option<String>, String> {
-    let n = text.split('\n').filter(|l| *l == from).count();
-    if n == 0 && text.split('\n').any(|l| l == to) {
+    let n = text.split('\n').filter(|l| l.trim_start() == from).count();
+    if n == 0 && text.split('\n').any(|l| l.trim_start() == to) {
         return Ok(None);
     }
     if n != 1 {
-        return Err(format!("hyprland.conf: beklenen satır {n} kez bulundu, dosyaya dokunulmadı:\n  {from}"));
+        return Err(format!("beklenen satır {n} kez bulundu, dosyaya dokunulmadı:\n  {from}"));
     }
-    Ok(Some(text.split('\n').map(|l| if l == from { to } else { l }).collect::<Vec<_>>().join("\n")))
+    let swap = |l: &str| if l.trim_start() == from { format!("{}{to}", &l[..l.len() - l.trim_start().len()]) } else { l.to_owned() };
+    Ok(Some(text.split('\n').map(swap).collect::<Vec<_>>().join("\n")))
 }
 
-fn swap_file(c: &Ctx, from: &str, to: &str) -> Result<(), String> {
-    let text = std::fs::read_to_string(&c.hypr).map_err(|e| format!("{}: {e}", c.hypr.display()))?;
-    match swap_line(&text, from, to)? {
-        None => println!("  hyprland.conf zaten güncel"),
-        Some(_) if c.dry => println!("  [dry-run] {}: satır değişir → {to}", c.hypr.display()),
+fn swap_one(c: &Ctx, f: &HyprFile, from: &str, to: &str) -> Result<(), String> {
+    let (from, to) = (f.fmt.line(from), f.fmt.line(to));
+    let text = std::fs::read_to_string(&f.path).map_err(|e| format!("{}: {e}", f.path.display()))?;
+    match swap_line(&text, &from, &to).map_err(|e| format!("{}: {e}", f.name))? {
+        None => println!("  {} zaten güncel", f.name),
+        Some(_) if c.dry => println!("  [dry-run] {}: satır değişir → {to}", f.path.display()),
         Some(new) => {
-            let bak = PathBuf::from(format!("{}.r9t-bak", c.hypr.display()));
-            std::fs::copy(&c.hypr, &bak).map_err(|e| e.to_string())?;
-            std::fs::write(&c.hypr, new).map_err(|e| e.to_string())?;
-            println!("  hyprland.conf güncellendi (yedek: {})", bak.display());
+            let bak = PathBuf::from(format!("{}.r9t-bak", f.path.display()));
+            std::fs::copy(&f.path, &bak).map_err(|e| e.to_string())?;
+            std::fs::write(&f.path, new).map_err(|e| e.to_string())?;
+            println!("  {} güncellendi (yedek: {})", f.name, bak.display());
+        }
+    }
+    Ok(())
+}
+
+/// The loaded file must change; the other one (fallback after removing hyprland.lua)
+/// follows when it can, a hand-edited one only warns.
+fn swap_files(c: &Ctx, from: &str, to: &str) -> Result<(), String> {
+    if c.hypr.is_empty() {
+        return Err("hyprland.lua / hyprland.conf bulunamadı".into());
+    }
+    for f in &c.hypr {
+        match swap_one(c, f, from, to) {
+            Err(e) if !f.active => eprintln!("  Uyarı (yedek dosya, etkin değil): {e}"),
+            r => r?,
         }
     }
     Ok(())
 }
 
 fn has_line(path: &Path, line: &str) -> bool {
-    std::fs::read_to_string(path).is_ok_and(|t| t.lines().any(|l| l == line))
+    std::fs::read_to_string(path).is_ok_and(|t| t.lines().any(|l| l.trim_start() == line))
 }
 
 fn commit(c: &Ctx) -> Result<(), String> {
@@ -99,7 +158,7 @@ fn commit(c: &Ctx) -> Result<(), String> {
     // Tray at login (WantedBy=r9t-session); a running UI just forwards to itself.
     c.user_systemctl(&["enable", "--now", "r9t-studio-tray.service"])?;
     println!("2. Hyprland exec-once satırı");
-    swap_file(c, OLD_LINE, NEW_LINE)?;
+    swap_files(c, OLD_CMD, NEW_CMD)?;
     println!("3. Menü: eski 'Slayer R9T Kontrol Merkezi' gizleniyor, R9T Studio görünüyor");
     let d = &c.legacy_desktop;
     if d.exists() && !has_line(d, "NoDisplay=true") {
@@ -142,7 +201,7 @@ fn rollback(c: &Ctx) -> Result<(), String> {
     c.user_systemctl(&["disable", "--now", "r9t-session.service"])?;
     c.user_systemctl(&["enable", "slayer-r9t-session.service"])?;
     println!("2. Hyprland exec-once satırı");
-    swap_file(c, NEW_LINE, OLD_LINE)?;
+    swap_files(c, NEW_CMD, OLD_CMD)?;
     println!("3. Menü");
     let d = &c.legacy_desktop;
     let bak = PathBuf::from(format!("{}.r9t-bak", d.display()));
@@ -171,8 +230,19 @@ fn status(c: &Ctx) -> Result<(), String> {
         };
         println!("{u:<28} {:<9} {}", q("is-active"), q("is-enabled"));
     }
-    let h = if has_line(&c.hypr, NEW_LINE) { "r9t-session" } else if has_line(&c.hypr, OLD_LINE) { "eski" } else { "tanınmadı" };
-    println!("hyprland.conf: {h}");
+    if c.hypr.is_empty() {
+        println!("hyprland: yapılandırma bulunamadı");
+    }
+    for f in &c.hypr {
+        let h = if has_line(&f.path, &f.fmt.line(NEW_CMD)) {
+            "r9t-session"
+        } else if has_line(&f.path, &f.fmt.line(OLD_CMD)) {
+            "eski"
+        } else {
+            "tanınmadı"
+        };
+        println!("{}: {h}{}", f.name, if f.active { " (etkin)" } else { " (yedek, Hyprland okumuyor)" });
+    }
     let hidden = has_line(&c.legacy_desktop, "NoDisplay=true");
     println!("menü: eski giriş {}", if hidden { "gizli" } else { "görünür" });
     Ok(())
@@ -209,18 +279,58 @@ pub fn run(args: &[String]) -> ExitCode {
 mod tests {
     use super::*;
 
+    fn lines(fmt: Format) -> (String, String) {
+        (fmt.line(OLD_CMD), fmt.line(NEW_CMD))
+    }
+
     #[test]
     fn swap_round_trips_byte_for_byte() {
-        let original = format!("a\n{OLD_LINE}\nb\n");
-        let new = swap_line(&original, OLD_LINE, NEW_LINE).unwrap().unwrap();
-        assert!(new.contains(NEW_LINE) && !new.contains(OLD_LINE));
-        assert_eq!(swap_line(&new, OLD_LINE, NEW_LINE).unwrap(), None, "idempotent");
-        assert_eq!(swap_line(&new, NEW_LINE, OLD_LINE).unwrap().unwrap(), original);
+        let (old, new_line) = lines(Format::Conf);
+        let original = format!("a\n{old}\nb\n");
+        let new = swap_line(&original, &old, &new_line).unwrap().unwrap();
+        assert!(new.contains(&new_line) && !new.contains(&old));
+        assert_eq!(swap_line(&new, &old, &new_line).unwrap(), None, "idempotent");
+        assert_eq!(swap_line(&new, &new_line, &old).unwrap().unwrap(), original);
+    }
+
+    #[test]
+    fn lua_swap_round_trips_byte_for_byte_inside_start_hook() {
+        let (old, new_line) = lines(Format::Lua);
+        let original = format!("hl.on(\"hyprland.start\", function()\n    hl.exec_cmd(\"waybar\")\n    {old}\nend)\n");
+        let new = swap_line(&original, &old, &new_line).unwrap().unwrap();
+        assert!(new.contains(&format!("\n    {new_line}\n")) && !new.contains(&old), "indentation kept");
+        assert_eq!(swap_line(&new, &old, &new_line).unwrap(), None, "idempotent");
+        assert_eq!(swap_line(&new, &new_line, &old).unwrap().unwrap(), original);
     }
 
     #[test]
     fn swap_refuses_missing_or_duplicate_lines() {
-        assert!(swap_line("a\nb\n", OLD_LINE, NEW_LINE).is_err());
-        assert!(swap_line(&format!("{OLD_LINE}\n{OLD_LINE}\n"), OLD_LINE, NEW_LINE).is_err());
+        for fmt in [Format::Conf, Format::Lua] {
+            let (old, new_line) = lines(fmt);
+            assert!(swap_line("a\nb\n", &old, &new_line).is_err());
+            assert!(swap_line(&format!("{old}\n  {old}\n"), &old, &new_line).is_err());
+        }
+        // A commented-out line is not the line.
+        let (old, new_line) = lines(Format::Lua);
+        assert!(swap_line(&format!("-- {old}\n"), &old, &new_line).is_err());
+    }
+
+    #[test]
+    fn packaged_snippets_carry_the_new_line() {
+        assert!(include_str!("../../../packaging/hyprland/r9t-session.conf").lines().any(|l| l == Format::Conf.line(NEW_CMD)));
+        assert!(include_str!("../../../packaging/hyprland/r9t-session.lua").lines().any(|l| l.trim_start() == Format::Lua.line(NEW_CMD)));
+    }
+
+    #[test]
+    fn lua_is_loaded_before_conf() {
+        let dir = std::env::temp_dir().join(format!("r9tctl-desktop-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("hyprland.conf"), "").unwrap();
+        let only_conf = hypr_files(&dir);
+        assert_eq!(only_conf.iter().map(|f| (f.fmt, f.active)).collect::<Vec<_>>(), [(Format::Conf, true)]);
+        std::fs::write(dir.join("hyprland.lua"), "").unwrap();
+        let both = hypr_files(&dir);
+        assert_eq!(both.iter().map(|f| (f.fmt, f.active)).collect::<Vec<_>>(), [(Format::Lua, true), (Format::Conf, false)]);
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

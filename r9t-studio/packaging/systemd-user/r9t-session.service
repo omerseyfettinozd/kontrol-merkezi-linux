@@ -1,5 +1,5 @@
 # R9T Studio user agent. KDE: started by graphical-session.target.
-# Hyprland (no graphical-session.target): see packaging/hyprland/r9t-session.conf.
+# Hyprland (no graphical-session.target): see packaging/hyprland/r9t-session.{conf,lua}.
 [Unit]
 Description=R9T Studio session agent
 PartOf=graphical-session.target

@@ -36,7 +36,7 @@ GameGaraj Slayer R9T için Rust ile sıfırdan yazılan Linux kontrol merkezi: r
 | Pil | BAT0 `charge_*` (µAh), `current_now`, `voltage_now`, `voltage_min_design` | W = akım×gerilim. `cycle_count` güvenilmez. **Şarj eşiği yok** |
 | Diğer sensörler | k10temp, 2× nvme, 2× spd5118, mt7921_phy0, acpitz, 2× ucsi, AC0 | Etiket ve aygıt bağıyla eşle, hwmon indeksiyle değil |
 | Ryzen PPT | ryzenadj okuması eksik | **Desteklenmiyor**, watt preseti yok |
-| Masaüstü | Hyprland 0.56, KDE Plasma 6 | Hyprland'da `graphical-session.target` yok. `~/dotfiles/bin/power-watch.sh` Hz otomasyonu yapıyor |
+| Masaüstü | Hyprland 0.56 (`hyprland.lua`, 2026-10-19'dan beri; `.conf` 0.57'de kalkıyor), KDE Plasma 6 | Hyprland'da `graphical-session.target` yok. Lua modunda `keyword` yok (`eval hl.monitor(...)`), `dispatch` Lua ifadesi alır. `~/dotfiles/bin/power-watch.sh` Hz otomasyonu yapıyor |
 | Servisler | nvidia-powerd aktif; eski `slayer-r9t.service`, `slayer-r9t-session.service` | nvidia-powerd `scaling_max_freq`'e yazabilir, geri okunur |
 | Kernel | linux-cachyos 7.2.9, lts 6.18.55, Secure Boot kapalı | DKMS iki kernelde test edilir |
 | Araçlar | rust 1.99, node 26, webkit2gtk-4.1, pipewire 1.6, polkit 127 | tauri-cli yok → proje içine `npm i -D @tauri-apps/cli@2` |

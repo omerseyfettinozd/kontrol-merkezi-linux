@@ -90,6 +90,17 @@ Kurulan: `tuxedo-drivers-r9t-dkms 4.24.0-2`, `r9t-studio 0.1.0.r70.g3f67f52` (sn
 - **`95e1796` `r9tctl check`:** salt okunur sağlık denetimi. Canlıda hepsi ✓; tek uyarı sahipsiz 7.2.5 kernel kalıntısı.
 - **DKMS arşivli geri alma** (`ileride.md`): paketlerle gereksizleşti. Bir önceki paket `pacman -U` ile geri kurulur (DKMS kancaları yeniden derler) ve her pacman işleminde snapper anlık görüntüsü alınır.
 
+## Hyprland Lua yapılandırması (2026-10-19 gece)
+
+Hyprland 0.56.2 her açılışta `.conf` biçiminin 0.57'de kalkacağını söylüyordu. `~/dotfiles/config/hypr/hyprland.lua` elle çevrildi (`/usr/share/hypr/hyprland.lua` + `stubs/hl.meta.lua`), `~/.config/hypr/hyprland.lua` bağı kuruldu, `.conf` duruyor. Lua dosyası varken `.conf` okunmuyor. Geçiş için `hyprctl reload full-reset` gerekiyor, düz `reload` yetmiyor.
+
+- Doğrulama: `Hyprland --verify-config -c hyprland.lua` "config ok" (bilinmeyen anahtarı, yanlış dispatcher argümanını ve tanımsız bezier'i yakaladığı ayrı bir dosyayla görüldü). `configerrors` boş, `configProvider: lua`. 44 seçenek ve animasyonlar öncesiyle aynı değerde (yalnız tip adları farklı), 59 bind var, autostart çift başlamadı, r9t-session ve tepsi aktif.
+- **Kırılan IPC:** Lua modunda `keyword` reddediliyor ("keyword can't work with non-legacy parsers. Use eval."), `hyprctl dispatch` ise artık `hl.dispatch(...)` kısaltması. Bu yüzden `dispatch dpms on` hata veriyor (rc 7).
+  - r9t-session Hz değişimi (`hypr::set_refresh`) `keyword monitor` reddedilince `eval hl.monitor({...})` gönderiyor; konum, ölçek ve dönüş `j/monitors`'tan geliyor. Hyprland, reddettiği bir alanla gelen kuralı yine varsayılanlarla uyguluyor: yanlış tipte `mode` paneli 60 Hz'e düşürdü. Bu yüzden hiçbir alan tahmin edilmiyor.
+  - dotfiles: power-watch.sh aynı yedeği kullanıyor (pil/fiş geçişi canlıda 60↔300 Hz denendi). hypridle `dpms` ve wlogout `exit` komutları önce eski, sonra Lua sözdizimini deniyor; iki modda da çalışıyorlar.
+- `r9tctl desktop`, `hyprland.lua` varsa onu etkin dosya sayıyor. `hl.exec_cmd("…")` satırını `hl.on("hyprland.start", …)` içinde girintisiyle tanıyıp değiştiriyor ve `.conf`'u da yedek olarak aynı tutuyor. `--status` iki dosyayı da gösteriyor. Paket `r9t-session.lua` parçasını kuruyor.
+- Geri dönüş: `rm ~/.config/hypr/hyprland.lua && hyprctl reload full-reset`.
+
 ## Kalan (Faz 5)
 
 - [x] Paketlerin kurulumu ve doğrulaması (2026-10-19).
@@ -101,6 +112,8 @@ Kurulan: `tuxedo-drivers-r9t-dkms 4.24.0-2`, `r9t-studio 0.1.0.r70.g3f67f52` (sn
 - [x] Düşük duty taraması fiziksel olarak (2026-10-19, kullanıcı başında): %20'ye kadar durma yok, öneri `min_duty=25` (`07_fan_rpm_egrisi.md`).
 - [x] `min_duty=25` (kullanıcı kararı 2026-10-19): fan paketi 0.3.0-3 `modprobe.d` ile uygular. Protokol tabanı %25, r9td her komutu modülün `min_duty`'sine yükseltir (0.2.0'da 50). Durma tablosuna %20–45 ölçümleri eklendi; arayüz tabanı yetenek bilgisinden (`probe.readings.fan.duty_floor`) alıyor. Hazır fan presetleri değişmedi.
 - [ ] Yeni paketlerin kurulumu ve açılışta `min_duty=25` + r9td tabanının doğrulanması.
+- [x] Hyprland Lua yapılandırması (2026-10-19).
+- [ ] Paket kurulunca Lua altında r9t-session Hz değişimi; bir sonraki açılışta uyarının çıkmaması, autostart ve SUPER+fare sürükle/boyutlandır.
 - [ ] Bir hafta günlük kullanım → `sudo r9tctl legacy-remove --yes` (en erken 2026-10-26; araç `8e233de`).
 - [x] Kurulum ön kontrolü (`r9tctl check`), güvenli kaldırma (`legacy-remove`); DKMS arşivli geri alma pacman + snapper ile gereksiz (2026-10-19).
 - [x] tuxedo modüllerinin paketten yüklenmesi; eski `/etc/modules-load.d/slayer-r9t.conf` emekli (2026-10-19).

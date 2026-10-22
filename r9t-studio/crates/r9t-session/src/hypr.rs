@@ -1,5 +1,6 @@
-//! Hyprland IPC: `.socket.sock` requests (`j/monitors`, `j/clients`, `keyword monitor`)
-//! and the `.socket2.sock` event stream. No extra crate: plain Unix sockets.
+//! Hyprland IPC: `.socket.sock` requests (`j/monitors`, `j/clients`, `keyword monitor`,
+//! or `eval hl.monitor(...)` under a Lua config) and the `.socket2.sock` event stream.
+//! No extra crate: plain Unix sockets.
 
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
@@ -76,6 +77,23 @@ pub fn monitor_rule(m: &Value, hz: f32) -> Option<String> {
     Some(rule)
 }
 
+/// The same rule for a Lua config (Hyprland 0.55+), where `keyword` is refused:
+/// `eval hl.monitor({...})`. A field Hyprland rejects still applies the rule with its
+/// defaults, so every value comes from `j/monitors`.
+pub fn monitor_lua(m: &Value, hz: f32) -> Option<String> {
+    let name = m["name"].as_str()?;
+    let (w, h) = (m["width"].as_u64()?, m["height"].as_u64()?);
+    let (x, y) = (m["x"].as_i64()?, m["y"].as_i64()?);
+    let scale = m["scale"].as_f64()?;
+    let transform = m["transform"].as_i64().unwrap_or(0);
+    let mut lua = format!("hl.monitor({{ output = \"{name}\", mode = \"{w}x{h}@{hz:.2}\", position = \"{x}x{y}\", scale = {scale}");
+    if transform != 0 {
+        lua.push_str(&format!(", transform = {transform}"));
+    }
+    lua.push_str(" })");
+    Some(lua)
+}
+
 /// Changes only the refresh rate; refuses modes the compositor does not list and
 /// verifies the result with a fresh `j/monitors`.
 pub fn set_refresh(output: &str, hz: u32) -> Result<f32, String> {
@@ -84,7 +102,12 @@ pub fn set_refresh(output: &str, hz: u32) -> Result<f32, String> {
     let state = outputs_from(&Value::Array(vec![m.clone()])).pop().ok_or("ekran okunamadı")?;
     let target = state.available_hz.iter().copied().find(|a| (a - hz as f32).abs() < 1.0).ok_or_else(|| format!("{hz} Hz bu çözünürlükte yok: {:?}", state.available_hz))?;
     let rule = monitor_rule(m, target).ok_or("monitör satırı oluşturulamadı")?;
-    let reply = request(&format!("keyword monitor {rule}")).map_err(|e| e.to_string())?;
+    let mut reply = request(&format!("keyword monitor {rule}")).map_err(|e| e.to_string())?;
+    if reply.trim() != "ok" {
+        // Lua config: "keyword can't work with non-legacy parsers. Use eval."
+        let lua = monitor_lua(m, target).ok_or("monitör satırı oluşturulamadı")?;
+        reply = request(&format!("eval {lua}")).map_err(|e| e.to_string())?;
+    }
     if reply.trim() != "ok" {
         return Err(format!("Hyprland: {}", reply.trim()));
     }
@@ -144,6 +167,16 @@ mod tests {
         m["scale"] = json!(1.25);
         m["transform"] = json!(1);
         assert_eq!(monitor_rule(&m, 60.0).unwrap(), "eDP-1,2560x1600@60.00,1920x0,1.25,transform,1");
+    }
+
+    #[test]
+    fn lua_rule_keeps_position_scale_transform() {
+        assert_eq!(monitor_lua(&mon(), 240.0).unwrap(), r#"hl.monitor({ output = "eDP-1", mode = "2560x1600@240.00", position = "0x0", scale = 1 })"#);
+        let mut m = mon();
+        m["x"] = json!(1920);
+        m["scale"] = json!(1.25);
+        m["transform"] = json!(1);
+        assert_eq!(monitor_lua(&m, 60.0).unwrap(), r#"hl.monitor({ output = "eDP-1", mode = "2560x1600@60.00", position = "1920x0", scale = 1.25, transform = 1 })"#);
     }
 
     #[test]
