@@ -24,3 +24,12 @@ r9t-studio/packaging/arch/*/src/
 r9t-studio/packaging/arch/*/pkg/
 r9t-studio/packaging/arch/out/
 *.pkg.tar.zst
+
+# Python önbellekleri ve Tauri deneme (spike) çıktıları
+__pycache__/
+*.pyc
+r9t-studio/spikes/*/node_modules/
+r9t-studio/spikes/*/src-tauri/gen/
+r9t-studio/spikes/*/src-tauri/target/
+# Sürüm paketleri git'e değil GitHub Releases'e gider
+outputs/releases/
