@@ -9,6 +9,9 @@ cd ../r9t-studio && makepkg -s
 sudo pacman -U */*.pkg.tar.zst      # ya da PKGDEST ile topladığın paketler
 ```
 
+- Rust rustup ile kuruluysa pacman `cargo` paketini görmez: `makepkg -s` yerine `makepkg --nodeps` (cargo PATH'te olmalı).
+- `r9t-studio` güncellemesi çalışan `r9td`'yi (fanlar birkaç saniye EC otomatikte) ve oturumu açık kullanıcıların `r9t-session` ile tepsi servisini yeni sürümle yeniden başlatır; yalnız zaten çalışan birimler.
+
 | Paket | İçerik |
 |---|---|
 | `r9t-studio` | Rust ikilileri `/usr/lib/r9t-studio/{r9td,r9tctl,r9t-session,r9t-studio}`; `/usr/bin` bağlantıları `r9tctl`, `r9t-studio`, `r9t-switch` (= `r9tctl switch`), `r9t-switch-user` (= `r9tctl desktop`); systemd birimleri (`r9td`, `r9td-shadow`, `r9t-fallback`, eski servis için `Conflicts=` drop-in, kullanıcı `r9t-session` ve tepsi `r9t-studio-tray`), sysusers (`r9t` grubu), polkit, menü girişi ve simge, örnek Waybar/Hyprland parçaları `/usr/share/r9t-studio/`. `check()` bütün Rust testlerini ve r9t_fan C hata testini koşar |

@@ -11,12 +11,23 @@ MSG
 }
 
 post_upgrade() {
+    # Otherwise the old binaries keep running after an upgrade (2026-11-21: three
+    # installs in a row ran the previous r9td/session/UI until restarted by hand).
+    # r9td's stop puts the fans on EC auto and verifies it; start restores the last
+    # requested settings within ~2 s.
     if systemctl is-active --quiet r9td.service; then
-        echo "==> r9td yeni sürüme geçmek için yeniden başlatılmalı: systemctl restart r9td.service (fanlar arada EC otomatikte)"
+        echo "==> r9td yeni sürümle yeniden başlatılıyor (fanlar birkaç saniye EC otomatikte)"
+        systemctl try-restart r9td.service || echo "==> r9td yeniden başlatılamadı: systemctl restart r9td.service"
     fi
     if systemctl is-active --quiet r9td-shadow.service; then
         systemctl try-restart r9td-shadow.service
     fi
+    # Session agent and tray UI of every logged-in user (only units already running).
+    for u in $(loginctl list-users --no-legend 2>/dev/null | awk '{print $2}'); do
+        systemctl --user -M "$u@" try-restart r9t-session.service r9t-studio-tray.service 2>/dev/null \
+            && echo "==> $u: r9t-session ve arayüz yeni sürümle yeniden başlatıldı"
+    done
+    return 0
 }
 
 pre_remove() {
