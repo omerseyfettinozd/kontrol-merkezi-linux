@@ -99,7 +99,9 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
     let rgb = Rgb::discover(fs.clone()).ok();
     let ppd = zbus::blocking::Connection::system().ok();
     let mut ec = Ec { dev: None, last_attempt: None };
-    let discover = |h: &Hwmon| -> Vec<HwmonTemp> { h.discover().into_iter().filter(|t| t.chip != "acpitz").collect() };
+    // r9t_fan's own hwmon reads the EC on every access (~1.5 s, 2026-11-21): polled here
+    // it stalled every 5th tick and skewed RAPL. Its temperatures come from the EC path.
+    let discover = |h: &Hwmon| -> Vec<HwmonTemp> { h.discover().into_iter().filter(|t| t.chip != "acpitz" && t.chip != "r9t_fan").collect() };
     let mut temps: Vec<HwmonTemp> = discover(&hwmon);
     let mut sensor_values: Vec<Timed<f32>> = vec![Timed::default(); temps.len()];
     let apu_path = hwmon.apu_ppt_path();
@@ -172,7 +174,9 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
                 slot.set(hwmon.read_c(t), now);
             }
         }
-        let pkg = rapl.sample(now, 5.0);
+        // Time of the counter read, not of the tick start: slow reads earlier in the tick
+        // would otherwise shift dt and swing the watts (4 ↔ 56 W at 900 MHz, 2026-11-21).
+        let pkg = rapl.sample(Instant::now(), 5.0);
         let apu = apu_path.as_deref().and_then(|p| hwmon.read_w(p));
         let tctl = temps.iter().zip(&sensor_values).find(|(t, _)| t.chip == "k10temp" && t.label == "Tctl").and_then(|(_, v)| v.value);
         let freq = if tick % 2 == 0 { Some(cpu.current_mhz()) } else { None };
