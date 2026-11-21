@@ -17,7 +17,7 @@
 //! a guard against an init that hangs or fails inside the daemon.
 
 use std::ffi::{c_char, c_int, c_uint, c_ulonglong, c_void, CString};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -26,6 +26,9 @@ use crate::{HalError, Result, Sysfs};
 pub const PCI_BUS_ID: &str = "0000:01:00.0";
 const NVML_SUCCESS: c_int = 0;
 const NVML_ERROR_INSUFFICIENT_SIZE: c_int = 7;
+/// Codes after which the open handle is dead (driver reload, GPU reset/fall-off):
+/// UNINITIALIZED, DRIVER_NOT_LOADED, GPU_IS_LOST, RESET_REQUIRED.
+const SESSION_LOST: [c_int; 4] = [1, 9, 15, 16];
 const CLOCK_GRAPHICS: c_int = 0;
 const CLOCK_MEM: c_int = 2;
 
@@ -173,6 +176,9 @@ pub struct Nvml {
     state: Mutex<State>,
     calls: AtomicU64,
     preflight: Option<Preflight>,
+    /// Set by `check` on a SESSION_LOST code; the session is then closed even while
+    /// held for a dGPU display, so the next call re-initializes instead of reusing it.
+    lost: AtomicBool,
 }
 
 /// True when a connected DRM connector belongs to the dGPU (e.g. `card1-eDP-1`).
@@ -193,6 +199,7 @@ impl Nvml {
             state: Mutex::new(State { api: None, device: std::ptr::null_mut(), preflight_ok: false, last_preflight: None }),
             calls: AtomicU64::new(0),
             preflight: None,
+            lost: AtomicBool::new(false),
         }
     }
 
@@ -208,6 +215,9 @@ impl Nvml {
 
     fn check(&self, code: c_int, what: &str) -> Result<()> {
         self.calls.fetch_add(1, Ordering::Relaxed);
+        if SESSION_LOST.contains(&code) {
+            self.lost.store(true, Ordering::Relaxed);
+        }
         if code == NVML_SUCCESS { Ok(()) } else { Err(HalError::Verify(format!("NVML {what}: hata {code}"))) }
     }
 
@@ -245,7 +255,7 @@ impl Nvml {
         }
         let api = st.api.as_ref().expect("initialized above");
         let result = f(api, st.device);
-        if !self.holds_session() {
+        if self.lost.swap(false, Ordering::Relaxed) || !self.holds_session() {
             // SAFETY: balanced with init; the handle is discarded with the session.
             unsafe { (api.shutdown)() };
             self.calls.fetch_add(1, Ordering::Relaxed);
@@ -509,6 +519,17 @@ mod tests {
         assert!(!display_on_dgpu(&fs), "iGPU display only: sample-and-close");
         file(r, "/sys/class/drm/card1-eDP-1/status", "connected");
         assert!(display_on_dgpu(&fs));
+    }
+
+    #[test]
+    fn lost_session_codes_mark_the_handle_dead() {
+        let n = Nvml::new(Sysfs::new("/nonexistent"));
+        assert!(n.check(3, "not supported").is_err());
+        assert!(!n.lost.load(Ordering::Relaxed), "an unsupported query keeps the session");
+        for code in SESSION_LOST {
+            assert!(n.check(code, "x").is_err());
+            assert!(n.lost.swap(false, Ordering::Relaxed), "code {code} closes the session");
+        }
     }
 
     #[test]
