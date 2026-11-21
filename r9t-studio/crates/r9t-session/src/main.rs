@@ -100,8 +100,11 @@ fn power_watch_running() -> bool {
 fn on_ac() -> Option<bool> {
     for e in std::fs::read_dir("/sys/class/power_supply").ok()?.flatten() {
         let p = e.path();
-        if std::fs::read_to_string(p.join("type")).ok()?.trim() == "Mains" {
-            return Some(std::fs::read_to_string(p.join("online")).ok()?.trim() == "1");
+        // Okunamayan tek girdi tüm taramayı None yapmamalı; o girdiyi atla.
+        let Ok(t) = std::fs::read_to_string(p.join("type")) else { continue };
+        if t.trim() == "Mains" {
+            let Ok(online) = std::fs::read_to_string(p.join("online")) else { continue };
+            return Some(online.trim() == "1");
         }
     }
     None
@@ -214,8 +217,21 @@ async fn serve_client(agent: Arc<Agent>, stream: UnixStream) {
         let _ = wr.write_all(format!("{}\n", serde_json::to_string(&r).unwrap_or_default()).as_bytes()).await;
         return;
     }
-    let mut lines = BufReader::new(rd.take_limit()).lines();
-    while let Ok(Some(line)) = lines.next_line().await {
+    let mut reader = BufReader::new(rd);
+    let mut buf: Vec<u8> = Vec::new();
+    loop {
+        buf.clear();
+        // Sınır satır başına; bağlantı ömrü toplamında 16 MiB uzun ömürlü istemciyi sessizce keser.
+        // `take` satır sonu gelmeyen girdinin belleği sınırsız büyütmesini de engeller.
+        match tokio::io::AsyncReadExt::take(&mut reader, 16 * 1024 * 1024 + 1).read_until(b'\n', &mut buf).await {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
+        }
+        if buf.len() > 16 * 1024 * 1024 {
+            break;
+        }
+        let line = String::from_utf8_lossy(&buf);
+        let line = line.trim_end();
         let resp = match decode_request(line.as_bytes()) {
             Err((id, e)) => Response::err(id, e),
             Ok((id, call)) => {
@@ -233,25 +249,26 @@ async fn serve_client(agent: Arc<Agent>, stream: UnixStream) {
     }
 }
 
-trait TakeLimit {
-    fn take_limit(self) -> tokio::io::Take<tokio::net::unix::OwnedReadHalf>;
-}
-
-impl TakeLimit for tokio::net::unix::OwnedReadHalf {
-    fn take_limit(self) -> tokio::io::Take<tokio::net::unix::OwnedReadHalf> {
-        use tokio::io::AsyncReadExt;
-        self.take(16 * 1024 * 1024)
-    }
-}
-
 /// Hyprland `.socket2.sock`: game windows open/close. EOF = Hyprland exited → clean exit.
 async fn hypr_events(agent: Arc<Agent>) {
     let Some(dir) = hypr::dir() else { return };
     let Ok(stream) = UnixStream::connect(dir.join(".socket2.sock")).await else { return };
-    let mut lines = BufReader::new(stream).lines();
+    let mut reader = BufReader::new(stream);
     let mut games: HashMap<String, String> = HashMap::new();
-    while let Ok(Some(line)) = lines.next_line().await {
-        let Some(ev) = hypr::parse_event(&line) else { continue };
+    let mut buf: Vec<u8> = Vec::new();
+    loop {
+        buf.clear();
+        // Geçersiz UTF-8 tek satır döngüyü bitirmemeli; yalnız EOF/IO hatasında çık.
+        match reader.read_until(b'\n', &mut buf).await {
+            Ok(0) => break,
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("r9t-session: Hyprland olay okuması: {e}");
+                break;
+            }
+        }
+        let line = String::from_utf8_lossy(&buf);
+        let Some(ev) = hypr::parse_event(line.trim_end()) else { continue };
         match ev.name.as_str() {
             "openwindow" => {
                 let mut parts = ev.data.splitn(4, ',');
@@ -262,12 +279,25 @@ async fn hypr_events(agent: Arc<Agent>) {
                 if game::is_game(&class, exe.as_deref()) {
                     games.insert(addr, class.clone());
                     *agent.game.lock().unwrap_or_else(|p| p.into_inner()) = Some(class.clone());
-                    let _ = agent.tx.send(daemon::Outgoing::Event(SessionEvent::GameStarted { executable: exe.unwrap_or_default(), class })).await;
+                    // try_send: r9td bağlı değilken `.send().await` bloke olup Hyprland döngüsünü kilitler.
+                    if agent.tx.try_send(daemon::Outgoing::Event(SessionEvent::GameStarted { executable: exe.unwrap_or_default(), class })).is_err() {
+                        eprintln!("r9t-session: r9td kuyruğu dolu; GameStarted düşürüldü");
+                    }
                 }
             }
-            "closewindow" if games.remove(&ev.data).is_some() && games.is_empty() => {
-                *agent.game.lock().unwrap_or_else(|p| p.into_inner()) = None;
-                let _ = agent.tx.send(daemon::Outgoing::Event(SessionEvent::GameStopped)).await;
+            "closewindow" => {
+                if games.remove(&ev.data).is_some() {
+                    if games.is_empty() {
+                        *agent.game.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                        // try_send: r9td bağlı değilken await bloke olup Hyprland döngüsünü kilitler.
+                        if agent.tx.try_send(daemon::Outgoing::Event(SessionEvent::GameStopped)).is_err() {
+                            eprintln!("r9t-session: r9td kuyruğu dolu; GameStopped düşürüldü");
+                        }
+                    } else if let Some(class) = games.values().next().cloned() {
+                        // Başka oyun hâlâ açık; agent.game kapanan oyunda bayat kalmasın.
+                        *agent.game.lock().unwrap_or_else(|p| p.into_inner()) = Some(class);
+                    }
+                }
             }
             _ => {}
         }
@@ -300,25 +330,45 @@ async fn hz_policy(agent: Arc<Agent>) {
         last_ac = Some(ac);
         let d = agent.desktop;
         let saved_now = saved.clone();
-        let result = tokio::task::spawn_blocking(move || -> Result<HashMap<String, u32>, String> {
+        let result = tokio::task::spawn_blocking(move || -> (HashMap<String, u32>, Option<String>) {
             let mut s = saved_now;
-            for o in outputs(d)?.into_iter().filter(|o| o.name.starts_with("eDP")) {
-                if !ac {
-                    let low = o.available_hz.iter().copied().fold(f32::MAX, f32::min);
-                    if low < o.refresh_hz - 1.0 {
-                        s.insert(o.name.clone(), o.refresh_hz.round() as u32);
-                        set_refresh(d, &o.name, low.round() as u32)?;
+            let mut err: Option<String> = None;
+            match outputs(d) {
+                Ok(list) => {
+                    for o in list.into_iter().filter(|o| o.name.starts_with("eDP")) {
+                        let r = if !ac {
+                            let low = o.available_hz.iter().copied().fold(f32::MAX, f32::min);
+                            if low < o.refresh_hz - 1.0 {
+                                s.insert(o.name.clone(), o.refresh_hz.round() as u32);
+                                set_refresh(d, &o.name, low.round() as u32).map(|_| ())
+                            } else {
+                                Ok(())
+                            }
+                        } else if let Some(hz) = s.remove(&o.name) {
+                            set_refresh(d, &o.name, hz).map(|_| ())
+                        } else {
+                            Ok(())
+                        };
+                        if let Err(e) = r {
+                            err = Some(e);
+                            break;
+                        }
                     }
-                } else if let Some(hz) = s.remove(&o.name) {
-                    set_refresh(d, &o.name, hz)?;
                 }
+                Err(e) => err = Some(e),
             }
-            Ok(s)
+            (s, err)
         })
         .await;
         match result {
-            Ok(Ok(s)) => saved = s,
-            Ok(Err(e)) => eprintln!("r9t-session: Hz politikası: {e}"),
+            // Hata olsa da üretilen `s` korunur; last_ac sıfırlanıp sonraki turda yeniden denenir.
+            Ok((s, e)) => {
+                saved = s;
+                if let Some(e) = e {
+                    eprintln!("r9t-session: Hz politikası: {e}");
+                    last_ac = None;
+                }
+            }
             Err(e) => eprintln!("r9t-session: {e}"),
         }
     }
@@ -379,7 +429,10 @@ fn main() {
                 a2.idle.store(idle, Ordering::Relaxed);
                 if idle != last {
                     last = idle;
-                    let _ = a2.tx.blocking_send(daemon::Outgoing::Event(SessionEvent::Idle { idle }));
+                    // try_send: blocking_send r9td yokken kuyruk dolunca sonsuza dek bekler.
+                    if a2.tx.try_send(daemon::Outgoing::Event(SessionEvent::Idle { idle })).is_err() {
+                        eprintln!("r9t-session: r9td kuyruğu dolu; Idle düşürüldü");
+                    }
                 }
             }
         });

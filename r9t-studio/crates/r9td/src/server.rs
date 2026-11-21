@@ -105,7 +105,11 @@ impl Server {
     pub async fn serve(self: Arc<Self>, listener: UnixListener) {
         let slots = Arc::new(Semaphore::new(MAX_CONNECTIONS));
         loop {
-            let Ok((stream, _)) = listener.accept().await else { continue };
+            // EMFILE/ENFILE gibi kalıcı accept hatasında bekle; aksi halde döngü %100 CPU yakar.
+            let Ok((stream, _)) = listener.accept().await else {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                continue;
+            };
             let Ok(permit) = slots.clone().try_acquire_owned() else {
                 drop(stream);
                 continue;
@@ -207,8 +211,10 @@ impl Server {
                     encode_line(&Response::err(response.id.clone(), RpcError::new(code::INTERNAL, e.to_string())), RESPONSE_MAX)
                         .unwrap_or_default()
                 });
-                if tx.send(Arc::new(line)).await.is_err() {
-                    break 'conn;
+                // Gönderim bloke olurken kill'i de poll et; yoksa yavaş abone döngüyü kilitler.
+                tokio::select! {
+                    r = tx.send(Arc::new(line)) => if r.is_err() { break 'conn },
+                    _ = kill_rx.changed() => break 'conn,
                 }
             }
         }
@@ -219,6 +225,10 @@ impl Server {
             c.conn_closed(conn_id);
         }
         drop(tx);
+        // Kuyruk taştıysa (kill) yazar sokete bloke kalmıştır; beklemeden iptal et ki slot boşalsın.
+        if *kill_rx.borrow() {
+            writer.abort();
+        }
         let _ = writer.await;
     }
 

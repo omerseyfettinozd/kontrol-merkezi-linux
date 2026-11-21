@@ -77,6 +77,11 @@ impl Authority {
     /// and the kernel thermal-override flag.
     pub fn decide(&mut self, cpu_c: Option<f32>, gpu_c: Option<f32>, kernel_override: bool, now: Instant) -> Decision {
         if self.guard.update(cpu_c, gpu_c, now) {
+            // Guard holds Boost; keep the target's 10 s clock alive so releasing it
+            // does not look like a sleep and abort the user's temperature target.
+            if let Mode::Target(tt) = &mut self.mode {
+                tt.keep_alive(now);
+            }
             return Decision::Write(FanCommand::Boost);
         }
         let temps = match (cpu_c, gpu_c) {
@@ -203,5 +208,23 @@ mod tests {
         // Within 2 s: repeat last duty (lease renewal) without new limits.
         assert_eq!(a.decide(Some(86.0), Some(70.0), false, s(t0, 1)), Decision::Write(FanCommand::Manual { cpu: 100, gpu: 90 }));
         assert!(matches!(a.decide(Some(80.0), Some(70.0), false, s(t0, 15)), Decision::FallbackAuto(_)));
+    }
+
+    #[test]
+    fn guard_keeps_target_alive_then_resumes() {
+        let t0 = Instant::now();
+        let mut a = Authority::default();
+        a.set_mode(Mode::Target(Box::new(TemperatureTarget::new((75, 72), (86.0, 70.0), (3500, 2475), 1000))));
+        assert!(matches!(a.decide(Some(86.0), Some(70.0), false, t0), Decision::WriteWithLimits { .. }));
+        // Guard active for 15 s (CPU ≥ 90 °C): Boost, but the target's clock stays alive.
+        for n in 1..=15 {
+            assert_eq!(a.decide(Some(95.0), Some(70.0), false, s(t0, n)), Decision::Write(FanCommand::Boost));
+        }
+        // Cool for 10 s → guard releases; the target resumes instead of aborting on a gap.
+        for n in 16..=25 {
+            assert_eq!(a.decide(Some(80.0), Some(70.0), false, s(t0, n)), Decision::Write(FanCommand::Boost));
+        }
+        assert!(matches!(a.decide(Some(80.0), Some(70.0), false, s(t0, 26)), Decision::Write(_)));
+        assert!(matches!(a.mode, Mode::Target(_)), "hedef korunmuş");
     }
 }

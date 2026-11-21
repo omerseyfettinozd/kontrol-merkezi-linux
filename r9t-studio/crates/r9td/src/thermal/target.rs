@@ -81,6 +81,16 @@ impl TemperatureTarget {
         (self.ceilings[0], self.ceilings[1])
     }
 
+    /// Keeps the 10 s update clock alive while the guard holds the fans at Boost;
+    /// a real gap (> MAX_GAP) is left alone so a genuine sleep still interrupts.
+    pub fn keep_alive(&mut self, now: Instant) {
+        if let Some(last) = self.last {
+            if now.saturating_duration_since(last) <= MAX_GAP {
+                self.last = Some(now);
+            }
+        }
+    }
+
     /// `None` while the 2 s interval has not elapsed. `kernel_override` is the
     /// r9t_fan `thermal` flag (both fans already forced to 100 %).
     pub fn step(&mut self, temps: (f32, f32), kernel_override: bool, now: Instant) -> Option<Result<TargetStep, TargetError>> {

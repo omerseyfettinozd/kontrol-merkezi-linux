@@ -7,8 +7,9 @@
   const s = $derived(app.snap);
   const ctl = $derived(canControl());
   const readings = $derived(app.caps?.probe?.readings);
-  const limits = $derived(readings?.cpu?.limits);
-  const eppChoices = $derived(readings?.cpu?.epp_choices ?? []);
+  // probe okuma hatasında düz "unavailable: ..." metni gelir; dizi değilse yok say.
+  const limits = $derived(Array.isArray(readings?.cpu?.limits?.allowed) ? readings.cpu.limits : null);
+  const eppChoices = $derived(Array.isArray(readings?.cpu?.epp_choices) ? readings.cpu.epp_choices : []);
   const presets = $derived(app.caps?.thermal_presets ?? []);
   const last = $derived(app.policy?.last);
   const onBattery = $derived(val(s?.power?.ac_online) === false);
@@ -69,11 +70,11 @@
       </div>
       <div class="row" style="margin-top:10px">
         <label class="row tight">
-          <input type="checkbox" checked={val(s.cpu.boost) === true} disabled={!ctl || !cap('cpu_boost').ok} onchange={(e) => control('boost', { enabled: e.currentTarget.checked })} />
+          <input type="checkbox" checked={val(s.cpu.boost) === true} disabled={!ctl || !cap('cpu_boost').ok} onchange={async (e) => { const el = e.currentTarget; const r = await control('boost', { enabled: el.checked }); if (!r) el.checked = val(s?.cpu?.boost) === true; }} />
           CPU boost
         </label>
         <label class="row tight">EPP
-          <select value={val(s.cpu.epp) ?? ''} disabled={!ctl || !cap('cpu_epp').ok} onchange={(e) => control('profile', { settings: { cpu_epp: e.currentTarget.value } }, { key: 'epp' })}>
+          <select value={val(s.cpu.epp) ?? ''} disabled={!ctl || !cap('cpu_epp').ok} onchange={async (e) => { const el = e.currentTarget; const r = await control('profile', { settings: { cpu_epp: el.value } }, { key: 'epp' }); if (!r) el.value = val(s?.cpu?.epp) ?? ''; }}>
             {#each eppChoices as e (e)}<option value={e}>{EPP_NAMES[e] ?? e}</option>{/each}
           </select>
         </label>

@@ -46,7 +46,15 @@ impl Audit {
     }
 
     pub fn record(&mut self, mut event: Event) {
-        event.message.truncate(600);
+        // truncate panics when 600 is not a char boundary (Turkish multi-byte text):
+        // back up to the nearest UTF-8 boundary.
+        if event.message.len() > 600 {
+            let mut end = 600;
+            while !event.message.is_char_boundary(end) {
+                end -= 1;
+            }
+            event.message.truncate(end);
+        }
         if let Some(p) = &self.path {
             if std::fs::metadata(p).is_ok_and(|m| m.len() >= MAX_BYTES) {
                 for i in (1..KEEP).rev() {
@@ -95,5 +103,14 @@ mod tests {
         assert_eq!(a.latest(1)[0].message.len(), 600);
         let b = Audit::new(Some(p));
         assert_eq!(b.latest(1)[0].time_ms, 799);
+    }
+
+    #[test]
+    fn truncation_respects_utf8_boundaries() {
+        let mut a = Audit::new(None);
+        let mut e = ev(0);
+        e.message = format!("{}{}", "a".repeat(599), "ş".repeat(10));
+        a.record(e);
+        assert_eq!(a.latest(1)[0].message, "a".repeat(599));
     }
 }

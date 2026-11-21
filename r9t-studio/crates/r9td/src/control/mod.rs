@@ -421,7 +421,13 @@ impl Control {
             Decision::Write(cmd) | Decision::WriteWithLimits { cmd, .. } if !fresh => {
                 // Invariant 1: a stale sample never renews the lease; the kernel falls
                 // back to auto after 15 s, the authority after 10 s (invariant 8).
-                let _ = cmd;
+                // Guard Boost is the safe direction; write it once from a stale sample,
+                // but never renew the same Boost (a stale sample renews no lease).
+                if cmd == FanCommand::Boost && self.last_cmd != Some(FanCommand::Boost) {
+                    if let Err(e) = self.write_fan(cmd) {
+                        self.note("fan", false, format!("fan yazılamadı: {e}"));
+                    }
+                }
             }
             Decision::Write(cmd) => {
                 if self.last_cmd != Some(cmd) || self.last_write.is_none_or(|t| now.duration_since(t) >= RENEW) {
@@ -541,6 +547,9 @@ impl Control {
             ((Some(cd), Some(gd)), (Some(cr), Some(gr)), Some(age)) if age < Duration::from_secs(4) => {
                 self.stall.sample((cd, gd), (cr as i32, gr as i32), now)
             }
+            // -ERANGE clears both RPMs and refreshes `at` every sample, so a fresh
+            // None means `status` is still failing: escalate after 10 s of this.
+            (_, (None, _) | (_, None), Some(age)) if age < Duration::from_secs(4) => self.stall.status_error(now),
             (_, _, Some(age)) if age >= Duration::from_secs(10) => self.stall.status_error(now),
             _ => StallAction::None,
         };
@@ -552,6 +561,10 @@ impl Control {
                 self.note("stall", false, "fan durması şüphesi: iki fan %100");
             }
             StallAction::Auto => {
+                // The target owns CPU/GPU ceilings; hand them back before auto.
+                if self.target_saved.is_some() {
+                    self.stop_target(true, "fan durması");
+                }
                 self.authority.set_mode(Mode::Auto);
                 self.stall_boost_until = None;
                 let ok = self.fan_auto().unwrap_or(false);
@@ -763,6 +776,11 @@ impl Control {
         let (Some(c), Some(g)) = (c, g) else {
             return Err(RpcError::new(code::HARDWARE, "Güncel CPU/GPU EC sıcaklığı yok."));
         };
+        // A running target's lowered ceilings/limits would otherwise be saved as the
+        // new baseline; release it so this target reads the real ceilings.
+        if self.target_saved.is_some() {
+            self.stop_target(false, "yeni hedef");
+        }
         let limits = self.cpu.limits().map_err(hal)?;
         let snapshot = self.cpu.snapshot_max().map_err(hal)?;
         let cpu_ceiling = limits.max_mhz.unwrap_or(limits.allowed_max_mhz);

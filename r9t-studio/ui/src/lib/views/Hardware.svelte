@@ -29,16 +29,25 @@
   let base = $state(null);
   $effect(() =>
     every(10000, async () => {
-      now = await invoke('sleep_snapshot');
+      try {
+        now = await invoke('sleep_snapshot');
+      } catch {
+        /* sonraki turda yeniden denenir */
+      }
     }),
   );
   $effect(() => {
-    invoke('sleep_baseline').then((b) => (base = b));
+    invoke('sleep_baseline').then((b) => (base = b)).catch(() => {});
   });
   async function saveBaseline() {
-    const snap = await invoke('sleep_snapshot');
-    base = await invoke('sleep_baseline', { save: snap });
-    toast('Uyku öncesi ölçüm kaydedildi. Uyuyup uyandıktan sonra bu sayfaya dönün.');
+    try {
+      const snap = await invoke('sleep_snapshot');
+      base = await invoke('sleep_baseline', { save: snap });
+      now = snap; // karşılaştırma "saat geri gitti" demesin
+      toast('Uyku öncesi ölçüm kaydedildi. Uyuyup uyandıktan sonra bu sayfaya dönün.');
+    } catch (e) {
+      toast(String(e?.message ?? e), 'bad', 7000);
+    }
   }
   const result = $derived(base && now ? compareSleep(base, now) : null);
 
@@ -46,7 +55,11 @@
   let procs = $state(null);
   $effect(() =>
     every(2500, async () => {
-      procs = await invoke('processes', { limit: 12 });
+      try {
+        procs = await invoke('processes', { limit: 12 });
+      } catch {
+        /* sonraki turda yeniden denenir */
+      }
     }),
   );
   const mb = (b) => (b == null ? '—' : b >= 1 << 30 ? `${fmt(b / (1 << 30), 2)} GB` : `${fmt(b / (1 << 20), 0)} MB`);

@@ -14,6 +14,12 @@ pub const BLACKLIST: &[&str] = &[
     "pipewire-pulse", "systemd", "dbus-daemon", "dbus-broker", "r9t-session", "sddm", "gdm", "Xorg",
 ];
 
+/// /proc/<pid>/comm is truncated to 15 bytes by the kernel, so compare each
+/// blacklist entry on the same first-15-byte prefix; long names still match.
+fn blacklisted(name: &str) -> bool {
+    BLACKLIST.iter().any(|b| name.as_bytes() == &b.as_bytes()[..b.len().min(15)])
+}
+
 pub fn comm(pid: u32) -> Option<String> {
     std::fs::read_to_string(format!("/proc/{pid}/comm")).ok().map(|s| s.trim().to_owned())
 }
@@ -42,7 +48,7 @@ pub fn gpu_processes(nvml: &Nvml) -> Value {
         .iter()
         .map(|p| {
             let name = comm(p.pid);
-            let killable = uid_of(p.pid) == Some(me) && name.as_deref().is_some_and(|n| !BLACKLIST.contains(&n));
+            let killable = uid_of(p.pid) == Some(me) && name.as_deref().is_some_and(|n| !blacklisted(n));
             json!({"pid": p.pid, "kind": if p.kind == ProcessKind::Graphics { "G" } else { "C" }, "name": name,
                    "used_mib": p.used_mib, "start_time": start_time(p.pid), "killable": killable})
         })
@@ -56,7 +62,7 @@ pub fn gpu_processes(nvml: &Nvml) -> Value {
 pub fn kill(pid: u32, expected_start: u64) -> Result<String, String> {
     let me = nix::unistd::getuid().as_raw();
     let name = comm(pid).ok_or("süreç yok")?;
-    if BLACKLIST.contains(&name.as_str()) {
+    if blacklisted(&name) {
         return Err(format!("{name} masaüstü bileşeni; kapatılmaz"));
     }
     if uid_of(pid) != Some(me) {
@@ -92,6 +98,15 @@ mod tests {
         assert!(kill(me, start_time(me).unwrap() + 1).unwrap_err().contains("değişti"));
         assert!(kill(1, start_time(1).unwrap_or(0)).is_err(), "pid 1 (systemd) blacklisted / foreign");
         assert!(kill(u32::MAX - 1, 0).is_err());
+    }
+
+    #[test]
+    fn blacklist_matches_truncated_comm() {
+        // Çekirdek comm'i 15 bayta kırpar; uzun masaüstü adları yine eşleşmeli.
+        assert!(blacklisted("xdg-desktop-por"));
+        assert!(blacklisted("polkit-kde-auth"));
+        assert!(blacklisted("Hyprland"));
+        assert!(!blacklisted("sleep"));
     }
 
     #[test]

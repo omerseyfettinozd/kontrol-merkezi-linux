@@ -72,8 +72,8 @@
         {#if s?.authority?.active_profile}<small>{s.authority.active_profile}</small>{/if}
       </div>
       <div class="chip">
-        <span class="label">{val(s?.power?.ac_online) ? 'Priz' : 'Pil'}</span>
-        <b class="num">%{fmt(val(s?.power?.battery?.percent))}</b>
+        <span class="label">{val(s?.power?.ac_online) == null ? 'Güç' : val(s?.power?.ac_online) ? 'Priz' : 'Pil'}</span>
+        <b class="num">{val(s?.power?.battery?.percent) == null ? '—' : '%' + fmt(val(s?.power?.battery?.percent))}</b>
         <small class="num">{fmt(val(s?.power?.battery?.power_w), 1, 'W')}</small>
       </div>
       <div class="chip {tempClass(val(s?.cpu?.ec_temp_c))}">

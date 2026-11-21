@@ -48,7 +48,12 @@ pub fn daemon_socket() -> PathBuf {
 }
 
 pub fn session_socket() -> PathBuf {
-    let run = std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from).unwrap_or_else(|| "/run/user/1000".into());
+    // XDG yoksa uid'i sabitleme: /proc/self sahibi bu sürecin uid'idir.
+    let run = std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from).unwrap_or_else(|| {
+        use std::os::unix::fs::MetadataExt;
+        let uid = std::fs::metadata("/proc/self").map(|m| m.uid()).unwrap_or(1000);
+        format!("/run/user/{uid}").into()
+    });
     run.join("r9t/session.sock")
 }
 

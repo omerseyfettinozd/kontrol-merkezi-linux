@@ -29,13 +29,15 @@ pub fn enabled(r: Radio) -> Option<bool> {
     let mut on = true;
     for e in std::fs::read_dir("/sys/class/rfkill").ok()?.flatten() {
         let p = e.path();
-        if std::fs::read_to_string(p.join("type")).ok()?.trim() != name {
+        // Okunamayan tek girdi tüm sonucu None yapmamalı; o girdiyi atla.
+        let Ok(t) = std::fs::read_to_string(p.join("type")) else { continue };
+        if t.trim() != name {
             continue;
         }
         seen = true;
-        let soft = std::fs::read_to_string(p.join("soft")).ok()?.trim() == "1";
-        let hard = std::fs::read_to_string(p.join("hard")).ok()?.trim() == "1";
-        on &= !soft && !hard;
+        let Ok(soft) = std::fs::read_to_string(p.join("soft")) else { continue };
+        let Ok(hard) = std::fs::read_to_string(p.join("hard")) else { continue };
+        on &= soft.trim() != "1" && hard.trim() != "1";
     }
     seen.then_some(on)
 }

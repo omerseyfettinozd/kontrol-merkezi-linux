@@ -85,7 +85,8 @@ export async function control(method, params = {}, { key = method, quiet = false
   try {
     const r = await invoke('daemon_call', { method, params });
     if (!quiet) toast(r?.message || 'Uygulandı.', r?.verified === false ? 'warn' : 'ok');
-    if (['configure', 'automation_pause', 'automation_resume', 'profile', 'apply_profile', 'curve', 'rgb', 'rgb_map', 'rgb_brightness'].includes(method)) {
+    // r9td last.json'u bu yöntemlerde de günceller; profil kaydı bayat değer okumasın.
+    if (['configure', 'automation_pause', 'automation_resume', 'profile', 'apply_profile', 'curve', 'rgb', 'rgb_map', 'rgb_brightness', 'auto', 'fan_boost', 'fan_preset', 'manual', 'scenario', 'thermal_preset', 'power', 'boost', 'temperature_target', 'temperature_target_stop'].includes(method)) {
       refreshPolicy();
     }
     return r ?? {};
@@ -217,6 +218,8 @@ export async function start() {
     const was = app.connected;
     app.connected = !!e.payload.connected;
     app.daemonError = e.payload.error ? errorText(e.payload.error) : null;
+    // Kopunca donmuş değerler canlı sanılmasın.
+    if (!app.connected && was) app.snap = null;
     if (app.connected) {
       app.hello = e.payload.hello;
       if (!was) onConnected();
@@ -235,7 +238,12 @@ export async function start() {
   try {
     app.hello = await read('hello', { protocol_version: 1, client: 'r9t-studio-ui' });
     app.connected = true;
-    app.snap = await read('status');
+    const st = await read('status');
+    // Dinleyici daha yeni bir görüntü getirmiş olabilir; ezme.
+    if (!app.snap || st.taken_at_ms >= app.snap.taken_at_ms) {
+      app.snap = st;
+      app.tick++;
+    }
     onConnected();
   } catch (e) {
     app.daemonError = errorText(e);

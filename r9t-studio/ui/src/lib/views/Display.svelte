@@ -178,7 +178,7 @@
         </label>
       {/each}
       <label class="stack lbl">Klavye ışığı boşta kapanma (sn, 0 = kapalı)
-        <input type="number" min="0" max="3600" value={doc.automation.lighting_timeout} onchange={(e) => { doc.automation.lighting_timeout = Math.max(0, Math.min(3600, Number(e.currentTarget.value) || 0)); touch(); }} />
+        <input type="number" min="0" max="3600" value={doc.automation.lighting_timeout} onchange={(e) => { doc.automation.lighting_timeout = Math.max(0, Math.min(3600, Math.round(Number(e.currentTarget.value)) || 0)); touch(); }} />
       </label>
       <label class="row tight lbl"><input type="checkbox" checked={doc.automation.low_hz_on_battery} onchange={(e) => { doc.automation.low_hz_on_battery = e.currentTarget.checked; touch(); }} /> Pilde düşük Hz</label>
     </div>

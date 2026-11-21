@@ -59,6 +59,9 @@ pub async fn run(socket: String, desktop: String, mut rx: mpsc::Receiver<Outgoin
                         while let Ok(Some(_)) = lines.next_line().await {}
                     })
                     .await;
+                    // Soket hemen kapanırsa bekleme anında biter ve continue döngü
+                    // sonundaki 2 sn uykuyu atlar; spin'i önlemek için burada bekle.
+                    tokio::time::sleep(Duration::from_secs(5)).await;
                     continue;
                 }
                 if !registered {
@@ -67,6 +70,16 @@ pub async fn run(socket: String, desktop: String, mut rx: mpsc::Receiver<Outgoin
                 }
                 connected.store(true, Ordering::Relaxed);
                 last_error.lock().unwrap_or_else(|p| p.into_inner()).clear();
+                // r9td yokken biriken kareler bayat; olayları sırayla gönderip
+                // kareleri at, böylece kuyruk taze olaylara yer açar.
+                while let Ok(out) = rx.try_recv() {
+                    if let Outgoing::Event(e) = out {
+                        let line = line(&mut next_id, "session_event", json!({"event": e}));
+                        if wr.write_all(line.as_bytes()).await.is_err() {
+                            break;
+                        }
+                    }
+                }
                 loop {
                     tokio::select! {
                         out = rx.recv() => {
