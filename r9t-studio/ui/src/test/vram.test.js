@@ -11,6 +11,7 @@ const PROCS = [
   { pid: 12, kind: 'C', name: 'pc-eye', used_mib: 774, killable: true, start_time: 1 },
   { pid: 13, kind: 'C', name: 'pc-eye', used_mib: 514, killable: true, start_time: 1 },
   { pid: 14, kind: 'C', name: 'mpvpaper', used_mib: 777, killable: true, start_time: 1 },
+  { pid: 14, kind: 'G', name: 'mpvpaper', used_mib: 777, killable: true, start_time: 1 },
 ];
 let vramUsed = 7596;
 vi.mock('@tauri-apps/api/core', () => ({
@@ -80,8 +81,9 @@ describe('VRAM uyarısı', () => {
     const { container } = render(Display);
     await settle();
     expect(container.textContent).toContain('pc-eye ×3 · 1,8 GB');
+    expect(container.textContent).toContain('mpvpaper · 0,8 GB'); // C+G tek süreç
     const names = [...container.querySelectorAll('tbody tr td:nth-child(2)')].map((td) => td.textContent);
-    expect(names.slice(0, 2)).toEqual(['mpvpaper', 'pc-eye']);
+    expect(names.slice(0, 3)).toEqual(['mpvpaper', 'mpvpaper', 'pc-eye']); // tablo C ve G satırlarını ayrı gösterir
     expect(Number(container.querySelector('tbody tr td:nth-child(3)').textContent)).toBe(14);
   });
 });

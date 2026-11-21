@@ -68,8 +68,14 @@
   // En çok VRAM tutan üstte; aynı adlı süreçler toplamıyla özetlenir.
   const sortedProcs = $derived([...(gpu?.processes ?? [])].sort((a, b) => (b.used_mib ?? 0) - (a.used_mib ?? 0)));
   const groups = $derived.by(() => {
-    const m = new Map();
+    // C+G süreç NVML'de iki satır, aynı bellekle gelir: PID başına bir kez say.
+    const byPid = new Map();
     for (const p of gpu?.processes ?? []) {
+      const prev = byPid.get(p.pid);
+      if (!prev || (p.used_mib ?? 0) > (prev.used_mib ?? 0)) byPid.set(p.pid, p);
+    }
+    const m = new Map();
+    for (const p of byPid.values()) {
       const k = p.name ?? '?';
       const g = m.get(k) ?? { name: k, count: 0, mib: 0 };
       g.count++;

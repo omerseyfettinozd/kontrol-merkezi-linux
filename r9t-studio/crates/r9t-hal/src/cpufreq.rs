@@ -76,7 +76,15 @@ impl Cpufreq {
         for (p, v) in snapshot {
             let f = Self::file(p, "scaling_max_freq");
             if let Err(e) = self.fs.write(&f, v).and_then(|_| {
-                if self.fs.read(&f)? == *v { Ok(()) } else { Err(HalError::Verify(format!("{p} scaling_max_freq"))) }
+                // Like set_max_mhz: with boost off the driver clamps to cpuinfo_max_freq
+                // (shutdown restores boost first), and the value may need a moment.
+                let want: u32 = v.trim().parse().map_err(|_| HalError::Invalid(format!("{p}: {v}")))?;
+                let expected = want.min(self.fs.parse(Self::file(p, "cpuinfo_max_freq"))?);
+                match self.settle(&f, v, expected) {
+                    Ok(()) => Ok(()),
+                    Err(actual) if actual == want => Ok(()),
+                    Err(actual) => Err(HalError::Verify(format!("{p} scaling_max_freq {actual} ≠ {expected}"))),
+                }
             }) {
                 errors.push(e.to_string());
             }

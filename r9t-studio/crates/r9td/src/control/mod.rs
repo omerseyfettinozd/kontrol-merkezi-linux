@@ -43,6 +43,9 @@ use rgb::{Inhibit, Msg as RgbMsg, RgbEngine};
 pub const RENEW: Duration = Duration::from_secs(3);
 /// A sample older than this never renews the lease.
 pub const FRESH_MS: u64 = 5000;
+/// After a fan command changes, RPM lags the reported duty while the fan spins up
+/// (e.g. EC auto → saved 100 % on start-up); stall samples wait this long.
+pub const SPINUP: Duration = Duration::from_secs(6);
 /// Start-up restore of the GPU ceiling: NVML may need minutes after boot (preflight).
 const GPU_RESTORE_RETRY: Duration = Duration::from_secs(10);
 const GPU_RESTORE_ATTEMPTS: u8 = 30;
@@ -114,6 +117,7 @@ pub struct Control {
     authority: Authority,
     stall: StallDetector,
     stall_boost_until: Option<Instant>,
+    fan_changed_at: Option<Instant>,
     last_cmd: Option<FanCommand>,
     last_write: Option<Instant>,
     baseline: PowerState,
@@ -253,6 +257,7 @@ impl Control {
             authority: Authority::with_floor(duty_floor),
             stall: StallDetector::default(),
             stall_boost_until: None,
+            fan_changed_at: None,
             last_cmd: None,
             last_write: None,
             baseline,
@@ -381,6 +386,9 @@ impl Control {
 
     fn write_fan(&mut self, cmd: FanCommand) -> Result<(), HalError> {
         self.fan.control(cmd)?;
+        if self.last_cmd != Some(cmd) {
+            self.fan_changed_at = Some(Instant::now());
+        }
         self.last_cmd = Some(cmd);
         self.last_write = Some(Instant::now());
         Ok(())
@@ -563,7 +571,11 @@ impl Control {
         };
         let action = match (duty, rpm, rpm_age) {
             ((Some(cd), Some(gd)), (Some(cr), Some(gr)), Some(age)) if age < Duration::from_secs(4) => {
-                self.stall.sample((cd, gd), (cr as i32, gr as i32), now)
+                if self.fan_changed_at.is_some_and(|t| now.saturating_duration_since(t) < SPINUP) {
+                    StallAction::None
+                } else {
+                    self.stall.sample((cd, gd), (cr as i32, gr as i32), now)
+                }
             }
             // -ERANGE clears both RPMs and refreshes `at` every sample, so a fresh
             // None means `status` is still failing: escalate after 10 s of this.
@@ -1354,6 +1366,35 @@ mod tests {
         assert_eq!(r.control_file(), "auto");
         assert!(matches!(r.c.authority.mode, Mode::Auto));
         assert!(r.c.stall_boost_until.is_none());
+    }
+
+    /// Duty artınca fan yetişene kadar (SPINUP) düşük RPM durma sayılmaz; sonra sayılır.
+    #[test]
+    fn spin_up_is_not_a_stall_but_a_real_stall_is() {
+        let mut r = Rig::new();
+        let t0 = Instant::now();
+        r.temps(Some(60.0), Some(50.0), t0);
+        r.c.authority.set_mode(Mode::Manual { cpu: 100, gpu: 100 });
+        r.c.control_step(t0);
+        assert_eq!(r.control_file(), "manual 100 100");
+        let tick = |r: &mut Rig, ms: u64, rpm: u32| {
+            let t = t0 + Duration::from_millis(ms);
+            let mut l = r.shared.live.write().unwrap();
+            l.cpu_duty.set(Some(100), t);
+            l.gpu_duty.set(Some(100), t);
+            l.cpu_rpm.set(Some(rpm), t);
+            l.gpu_rpm.set(Some(rpm), t);
+            drop(l);
+            r.c.check_stall(t);
+        };
+        // EC otomatiğindeki ~2900 RPM'den %100'e dönüş: iki düşük örnek ama SPINUP içinde.
+        tick(&mut r, 1000, 1500);
+        tick(&mut r, 4000, 2000);
+        assert!(r.c.stall_boost_until.is_none(), "dönüş sırasında yanlış alarm yok");
+        // Fan gerçekten durmuşsa SPINUP'tan sonra iki örnekte yakalanır.
+        tick(&mut r, 7000, 400);
+        tick(&mut r, 10000, 400);
+        assert!(r.c.stall_boost_until.is_some(), "gerçek durma yakalandı");
     }
 
     /// 4: çalışan hedefin üstüne yeni hedef orijinal CPU tavanlarını korur.
