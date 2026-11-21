@@ -135,8 +135,11 @@ pub fn capture<G: Gpu>(cpu: &Cpufreq, ppd: &Ppd, gpu: &GpuClocks<G>) -> PowerSta
 pub fn restore<G: Gpu>(cpu: &Cpufreq, ppd: &Ppd, gpu: &mut GpuClocks<G>, s: &PowerState) -> Result<()> {
     let mut errors = Vec::new();
     if let Some(p) = s.profile.as_deref().and_then(|p| serde_json::from_value::<PowerProfile>(p.into()).ok()) {
-        if let Err(e) = ppd.set(p) {
-            errors.push(e.to_string());
+        match ppd.set(p) {
+            // Only shutdown paths call this; since r9td is no longer ordered after ppd
+            // (systemd cycle), ppd may already be gone. The profile is restored at start.
+            Ok(()) | Err(HalError::Unsupported(_)) => {}
+            Err(e) => errors.push(e.to_string()),
         }
     }
     if let Some(b) = s.boost {
@@ -192,4 +195,18 @@ pub fn apply<G: Gpu>(cpu: &Cpufreq, ppd: &Ppd, gpu: &mut GpuClocks<G>, s: &Profi
         });
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shutdown_restore_skips_a_stopped_ppd() {
+        let dir = tempfile::tempdir().unwrap();
+        let cpu = Cpufreq::new(r9t_hal::Sysfs::new(dir.path()));
+        let mut gpu = GpuClocks::new(r9t_hal::gpu::fake::FakeGpu::default(), dir.path());
+        let s = PowerState { profile: Some("balanced".into()), boost: None, cpu_max: vec![], epp: None, gpu_mhz: None };
+        assert!(restore(&cpu, &Ppd::none(), &mut gpu, &s).is_ok(), "ppd yok: kapanış hatası sayılmaz");
+    }
 }
