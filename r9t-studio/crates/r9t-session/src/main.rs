@@ -22,7 +22,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 
@@ -208,6 +208,36 @@ fn audio_loop(agent: Arc<Agent>, generation: u64) {
     }
 }
 
+/// Largest accepted request line on the session socket.
+const MAX_REQUEST_LINE: u64 = 16 * 1024 * 1024;
+
+/// Result of [`next_line_lossy`].
+#[derive(Debug, PartialEq, Eq)]
+enum LineRead {
+    /// One line, invalid UTF-8 replaced lossily, trailing whitespace (`\r\n`) trimmed.
+    Line(String),
+    Eof,
+    /// The line exceeded the limit; the caller should drop the connection.
+    TooLong,
+}
+
+/// Reads one `\n`-terminated line. `limit` bounds the bytes read per line (`take(limit + 1)`,
+/// so unterminated input cannot grow memory without bound); `None` = unbounded.
+async fn next_line_lossy<R: AsyncBufRead + Unpin>(r: &mut R, buf: &mut Vec<u8>, limit: Option<u64>) -> std::io::Result<LineRead> {
+    buf.clear();
+    let n = match limit {
+        Some(l) => r.take(l + 1).read_until(b'\n', buf).await?,
+        None => r.read_until(b'\n', buf).await?,
+    };
+    if n == 0 {
+        return Ok(LineRead::Eof);
+    }
+    if limit.is_some_and(|l| buf.len() as u64 > l) {
+        return Ok(LineRead::TooLong);
+    }
+    Ok(LineRead::Line(String::from_utf8_lossy(buf).trim_end().to_owned()))
+}
+
 async fn serve_client(agent: Arc<Agent>, stream: UnixStream) {
     let ok = nix::sys::socket::getsockopt(&stream.as_fd(), nix::sys::socket::sockopt::PeerCredentials)
         .is_ok_and(|c| c.uid() == nix::unistd::getuid().as_raw());
@@ -222,16 +252,10 @@ async fn serve_client(agent: Arc<Agent>, stream: UnixStream) {
     loop {
         buf.clear();
         // Sınır satır başına; bağlantı ömrü toplamında 16 MiB uzun ömürlü istemciyi sessizce keser.
-        // `take` satır sonu gelmeyen girdinin belleği sınırsız büyütmesini de engeller.
-        match tokio::io::AsyncReadExt::take(&mut reader, 16 * 1024 * 1024 + 1).read_until(b'\n', &mut buf).await {
-            Ok(0) | Err(_) => break,
-            Ok(_) => {}
-        }
-        if buf.len() > 16 * 1024 * 1024 {
-            break;
-        }
-        let line = String::from_utf8_lossy(&buf);
-        let line = line.trim_end();
+        let line = match next_line_lossy(&mut reader, &mut buf, Some(MAX_REQUEST_LINE)).await {
+            Ok(LineRead::Line(l)) => l,
+            Ok(LineRead::Eof | LineRead::TooLong) | Err(_) => break,
+        };
         let resp = match decode_request(line.as_bytes()) {
             Err((id, e)) => Response::err(id, e),
             Ok((id, call)) => {
@@ -259,16 +283,15 @@ async fn hypr_events(agent: Arc<Agent>) {
     loop {
         buf.clear();
         // Geçersiz UTF-8 tek satır döngüyü bitirmemeli; yalnız EOF/IO hatasında çık.
-        match reader.read_until(b'\n', &mut buf).await {
-            Ok(0) => break,
-            Ok(_) => {}
+        let line = match next_line_lossy(&mut reader, &mut buf, None).await {
+            Ok(LineRead::Line(l)) => l,
+            Ok(LineRead::Eof | LineRead::TooLong) => break,
             Err(e) => {
                 eprintln!("r9t-session: Hyprland olay okuması: {e}");
                 break;
             }
-        }
-        let line = String::from_utf8_lossy(&buf);
-        let Some(ev) = hypr::parse_event(line.trim_end()) else { continue };
+        };
+        let Some(ev) = hypr::parse_event(&line) else { continue };
         match ev.name.as_str() {
             "openwindow" => {
                 let mut parts = ev.data.splitn(4, ',');
@@ -285,18 +308,16 @@ async fn hypr_events(agent: Arc<Agent>) {
                     }
                 }
             }
-            "closewindow" => {
-                if games.remove(&ev.data).is_some() {
-                    if games.is_empty() {
-                        *agent.game.lock().unwrap_or_else(|p| p.into_inner()) = None;
-                        // try_send: r9td bağlı değilken await bloke olup Hyprland döngüsünü kilitler.
-                        if agent.tx.try_send(daemon::Outgoing::Event(SessionEvent::GameStopped)).is_err() {
-                            eprintln!("r9t-session: r9td kuyruğu dolu; GameStopped düşürüldü");
-                        }
-                    } else if let Some(class) = games.values().next().cloned() {
-                        // Başka oyun hâlâ açık; agent.game kapanan oyunda bayat kalmasın.
-                        *agent.game.lock().unwrap_or_else(|p| p.into_inner()) = Some(class);
+            "closewindow" if games.remove(&ev.data).is_some() => {
+                if games.is_empty() {
+                    *agent.game.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                    // try_send: r9td bağlı değilken await bloke olup Hyprland döngüsünü kilitler.
+                    if agent.tx.try_send(daemon::Outgoing::Event(SessionEvent::GameStopped)).is_err() {
+                        eprintln!("r9t-session: r9td kuyruğu dolu; GameStopped düşürüldü");
                     }
+                } else if let Some(class) = games.values().next().cloned() {
+                    // Başka oyun hâlâ açık; agent.game kapanan oyunda bayat kalmasın.
+                    *agent.game.lock().unwrap_or_else(|p| p.into_inner()) = Some(class);
                 }
             }
             _ => {}
@@ -453,4 +474,73 @@ fn main() {
         agent.audio_on.store(false, Ordering::Release);
         let _ = std::fs::remove_file(&sock);
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn read(input: &[u8], limit: Option<u64>) -> Vec<LineRead> {
+        let mut r = BufReader::new(input);
+        let mut buf = Vec::new();
+        let mut out = Vec::new();
+        loop {
+            let l = next_line_lossy(&mut r, &mut buf, limit).await.unwrap();
+            let stop = matches!(l, LineRead::Eof | LineRead::TooLong);
+            out.push(l);
+            if stop {
+                return out;
+            }
+        }
+    }
+
+    fn line(s: &str) -> LineRead {
+        LineRead::Line(s.to_owned())
+    }
+
+    #[tokio::test]
+    async fn empty_input_is_eof() {
+        assert_eq!(read(b"", None).await, vec![LineRead::Eof]);
+    }
+
+    #[tokio::test]
+    async fn invalid_utf8_line_is_lossy_and_loop_continues() {
+        let got = read(b"bad\xff\xfe>>x\nopenwindow>>1\n", None).await;
+        assert_eq!(got, vec![line("bad\u{fffd}\u{fffd}>>x"), line("openwindow>>1"), LineRead::Eof]);
+    }
+
+    #[tokio::test]
+    async fn last_line_without_newline_is_returned() {
+        assert_eq!(read(b"a\nb", None).await, vec![line("a"), line("b"), LineRead::Eof]);
+    }
+
+    #[tokio::test]
+    async fn crlf_and_trailing_whitespace_are_trimmed() {
+        assert_eq!(read(b"a\r\nb  \n\n", None).await, vec![line("a"), line("b"), line(""), LineRead::Eof]);
+    }
+
+    #[tokio::test]
+    async fn line_over_limit_is_reported() {
+        // exactly at the limit (content + newline) passes; one byte more is too long
+        assert_eq!(read(b"abcd\nx\n", Some(5)).await, vec![line("abcd"), line("x"), LineRead::Eof]);
+        assert_eq!(read(b"abcde\nx\n", Some(5)).await, vec![LineRead::TooLong]);
+        // unterminated oversized input is cut off, not buffered whole
+        assert_eq!(read(&[b'a'; 100], Some(5)).await, vec![LineRead::TooLong]);
+    }
+
+    #[tokio::test]
+    async fn garbage_request_line_yields_error_response() {
+        for raw in [&b"not json"[..], b"\xff\xfe", b"[]", b"{}", b"42", b""] {
+            let l = match read(raw, None).await.remove(0) {
+                LineRead::Line(l) => l,
+                other => {
+                    assert_eq!(other, LineRead::Eof);
+                    String::new()
+                }
+            };
+            let (id, e) = decode_request(l.as_bytes()).expect_err("garbage must be rejected");
+            let r = Response::err(id, e);
+            assert!(serde_json::to_string(&r).unwrap().contains("error"));
+        }
+    }
 }

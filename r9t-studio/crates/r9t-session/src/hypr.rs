@@ -185,4 +185,22 @@ mod tests {
         assert!(parse_event("garbage").is_none());
         assert_eq!(parse_mode("2560x1600@239.96Hz"), Some((2560, 1600, 239.96)));
     }
+
+    #[test]
+    fn malformed_events() {
+        // no separator
+        assert!(parse_event("").is_none());
+        assert!(parse_event(">").is_none());
+        assert!(parse_event("openwindow>1").is_none());
+        // empty data / empty name
+        assert_eq!(parse_event("workspace>>"), Some(Event { name: "workspace".into(), data: String::new() }));
+        assert_eq!(parse_event(">>x"), Some(Event { name: String::new(), data: "x".into() }));
+        // data containing ">>" splits on the first one only
+        assert_eq!(parse_event("activewindow>>a>>b>>c"), Some(Event { name: "activewindow".into(), data: "a>>b>>c".into() }));
+        // lossy-decoded invalid UTF-8 still parses
+        let line = String::from_utf8_lossy(b"title>>caf\xe9 \xff").into_owned();
+        let ev = parse_event(&line).unwrap();
+        assert_eq!(ev.name, "title");
+        assert_eq!(ev.data, "caf\u{fffd} \u{fffd}");
+    }
 }

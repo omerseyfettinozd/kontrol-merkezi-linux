@@ -43,3 +43,32 @@ jobs:
       # compiled against an in-memory EC; no hardware is touched (fake sysfs everywhere).
       - name: Tests
         run: cargo test --workspace --locked
+
+  ui:
+    name: UI build and tests (Svelte, vitest)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: r9t-studio/ui
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # vitest/jsdom need Node >= 22.12.
+      - name: Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 26
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      # Görünüm duman testleri: bağlantı yok / sensörler null / probe okunamadı.
+      - name: Tests
+        run: npm test

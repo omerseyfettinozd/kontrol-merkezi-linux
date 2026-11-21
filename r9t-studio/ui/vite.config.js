@@ -6,4 +6,7 @@ export default defineConfig({
   clearScreen: false,
   server: { port: 5173, strictPort: true },
   build: { target: 'es2022', outDir: 'dist', emptyOutDir: true, sourcemap: false },
+  // Testlerde Svelte'nin sunucu değil tarayıcı yapısı yüklenmeli (mount/$effect).
+  resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
+  test: { environment: 'jsdom', include: ['src/**/*.test.js'], setupFiles: ['src/test/setup.js'] },
 });

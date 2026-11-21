@@ -20,7 +20,17 @@ const PPD: [(&str, &str); 2] = [
 
 impl Ppd {
     pub fn new() -> Self {
-        Self { conn: zbus::blocking::Connection::system().ok() }
+        // Kontrol iş parçacığı sınırsız beklemesin: yöntem çağrıları zaman aşımlı.
+        let conn = zbus::blocking::connection::Builder::system()
+            .ok()
+            .and_then(|b| b.method_timeout(super::DBUS_TIMEOUT).build().ok());
+        Self { conn }
+    }
+
+    /// D-Bus'sız örnek (testler gerçek PPD'ye dokunmasın).
+    #[cfg(test)]
+    pub(crate) fn none() -> Self {
+        Self { conn: None }
     }
 
     fn proxy(&self) -> Result<zbus::blocking::Proxy<'_>> {

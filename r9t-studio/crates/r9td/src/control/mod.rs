@@ -146,6 +146,11 @@ pub const BASELINE: &str = "baseline.json";
 /// Last requested settings, reapplied on restart (plan Faz 3: ≤ 5 s).
 pub const LAST: &str = "last.json";
 
+/// Yüksek frekanslı çağrılar (RGB karesi, oturum olayı) denetim kaydını doldurmasın.
+fn audited(method: &str) -> bool {
+    !matches!(method, "rgb_frame" | "session_event")
+}
+
 fn hal(e: HalError) -> RpcError {
     let c = match e {
         HalError::Permission(_) => code::UNAUTHORIZED,
@@ -165,6 +170,18 @@ impl Control {
     /// Start-up sequence for control mode. Fails (→ daemon stays read-only) when the
     /// fan bridge version is not one of `r9t_hal::fan::SUPPORTED_VERSIONS`.
     pub fn start(shared: Arc<Shared>, fs: Sysfs, state_dir: &Path, audit: Arc<Mutex<Audit>>) -> Result<(Self, ControlHandle, mpsc::Receiver<Msg>), String> {
+        Self::start_with(shared, fs, state_dir, audit, Ppd::new(), Box::new(crate::nvml_preflight))
+    }
+
+    /// `start` with injectable PPD and NVML preflight (tests keep both off the real system).
+    fn start_with(
+        shared: Arc<Shared>,
+        fs: Sysfs,
+        state_dir: &Path,
+        audit: Arc<Mutex<Audit>>,
+        ppd: Ppd,
+        preflight: r9t_hal::gpu::Preflight,
+    ) -> Result<(Self, ControlHandle, mpsc::Receiver<Msg>), String> {
         let fan = SysfsFan::new(fs.clone());
         let version = fan.version();
         if !r9t_hal::fan::supported_version(version.as_deref()) {
@@ -187,8 +204,7 @@ impl Control {
             }
         }
         let cpu = Cpufreq::new(fs.clone());
-        let ppd = Ppd::new();
-        let mut gpu = GpuClocks::new(Nvml::new(fs.clone()).with_preflight(Box::new(crate::nvml_preflight)), state_dir);
+        let mut gpu = GpuClocks::new(Nvml::new(fs.clone()).with_preflight(preflight), state_dir);
         if let Ok(true) = gpu.recover() {
             eprintln!("r9td: önceki çalıştırmadan kalan GPU saat kilidi sıfırlandı");
         }
@@ -276,7 +292,9 @@ impl Control {
                     let started = Instant::now();
                     let name = call.name();
                     let r = self.handle(call, &peer, conn_id);
-                    self.record(name, &peer, r.is_ok(), started, r.as_ref().err().map(|e| e.message.clone()).unwrap_or_default());
+                    if audited(name) {
+                        self.record(name, &peer, r.is_ok(), started, r.as_ref().err().map(|e| e.message.clone()).unwrap_or_default());
+                    }
                     let _ = reply.send(r);
                     self.publish();
                 }
@@ -940,6 +958,10 @@ impl Control {
                 ok("Klavye efekti başlatıldı (pilde, boşta ve kapak kapalıyken durur).", true)
             }
             Call::RgbFrame(p) => {
+                // polkit'siz yüksek hız yolu: yalnız kayıtlı oturumun bağlantısı.
+                if self.session.as_ref().is_none_or(|s| s.conn_id != conn_id) {
+                    return Err(RpcError::new(code::UNAUTHORIZED, "Önce session_register gerekli."));
+                }
                 let r = self.rgb.as_ref().ok_or_else(|| RpcError::new(code::UNSUPPORTED, "RGB yok"))?;
                 if p.colors.len() != r9t_hal::rgb::CHANNELS {
                     return Err(RpcError::new(code::INVALID_PARAMS, "126 renk gerekli."));
@@ -991,7 +1013,7 @@ impl Control {
                     return Err(RpcError::new(code::UNAUTHORIZED, "pid bağlantının sahibiyle eşleşmiyor."));
                 }
                 if let Some(owner) = logind_session_of(p.pid) {
-                    if !owner.ends_with(&p.logind_session_id) {
+                    if !session_matches(&owner, &p.logind_session_id) {
                         return Err(RpcError::new(code::UNAUTHORIZED, "pid bu logind oturumuna ait değil."));
                     }
                 }
@@ -1086,9 +1108,37 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     std::fs::rename(tmp, path)
 }
 
-/// logind session object path of `pid`, if logind answers.
+/// sd-bus nesne yolu etiketi kaçışı: harf/rakam/`_` dışı ve baştaki rakam `_xx` (hex) olur,
+/// örn. oturum "2" → `_32`, "c1" → `c1`. `_` kendisi de kaçar (`_5f`).
+fn bus_label_escape(id: &str) -> String {
+    if id.is_empty() {
+        return "_".into();
+    }
+    let mut out = String::new();
+    for (i, b) in id.bytes().enumerate() {
+        if b.is_ascii_alphanumeric() && !(i == 0 && b.is_ascii_digit()) {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("_{b:02x}"));
+        }
+    }
+    out
+}
+
+/// `owner` (logind oturum yolu) `id` oturumuna mı ait? Eski `ends_with(id)` "12" ile "2"yi
+/// de eşliyordu; artık son yol parçası kaçışlı kimlikle tam eşleşmeli. Boş kimlik (user
+/// birimlerinde `XDG_SESSION_ID` yok) eskisi gibi karşılaştırılmaz: kayıt yine polkit +
+/// pid-sahipliği ile korunur.
+fn session_matches(owner: &str, id: &str) -> bool {
+    id.is_empty() || owner.rsplit('/').next() == Some(bus_label_escape(id).as_str())
+}
+
+/// D-Bus çağrıları kontrol iş parçacığını en çok bu kadar bekletir.
+pub(crate) const DBUS_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// logind session object path of `pid`, if logind answers (bounded by `DBUS_TIMEOUT`).
 fn logind_session_of(pid: u32) -> Option<String> {
-    let conn = zbus::blocking::Connection::system().ok()?;
+    let conn = zbus::blocking::connection::Builder::system().ok()?.method_timeout(DBUS_TIMEOUT).build().ok()?;
     let mgr = zbus::blocking::Proxy::new(&conn, "org.freedesktop.login1", "/org/freedesktop/login1", "org.freedesktop.login1.Manager").ok()?;
     let path: zbus::zvariant::OwnedObjectPath = mgr.call("GetSessionByPID", &(pid,)).ok()?;
     Some(path.to_string())
@@ -1151,5 +1201,252 @@ mod tests {
         write_atomic(&p, b"2").unwrap();
         assert_eq!(std::fs::read(&p).unwrap(), b"2");
         assert!(!p.with_extension("tmp").exists());
+    }
+
+    // ---------------- senaryo testleri (sahte sysfs, gerçek donanım yok) ----------------
+
+    use crate::sampler::Metrics;
+    use crate::history::History;
+    use r9t_protocol::rpc::{Empty, RgbFrameParams, SessionEventParams};
+    use std::sync::atomic::AtomicBool;
+
+    const FAN: &str = "sys/module/r9t_fan";
+    const POLICY: &str = "sys/devices/system/cpu/cpufreq";
+    const STATUS_LINE: &str = "mode=0 cpu_target=100 gpu_target=100 cpu_rpm=3200 gpu_rpm=3230 cpu_temp=60 gpu_temp=55 \
+                               mode_byte=160 cpu_pwm=106 gpu_pwm=106 lease_ms=0 error=0 thermal=0";
+
+    fn put(root: &Path, rel: &str, content: &str) {
+        let p = root.join(rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, content).unwrap();
+    }
+
+    struct Rig {
+        dir: tempfile::TempDir,
+        c: Control,
+        shared: Arc<Shared>,
+        audit: Arc<Mutex<Audit>>,
+    }
+
+    impl Rig {
+        fn new() -> Self {
+            let dir = tempfile::tempdir().unwrap();
+            let r = dir.path();
+            put(r, &format!("{FAN}/version"), "0.3.0");
+            put(r, &format!("{FAN}/parameters/status"), STATUS_LINE);
+            put(r, &format!("{FAN}/parameters/control"), "init");
+            put(r, &format!("{FAN}/parameters/min_duty"), "25");
+            put(r, &format!("{FAN}/parameters/allow_low_duty"), "0");
+            for i in 0..2 {
+                let d = format!("{POLICY}/policy{i}");
+                put(r, &format!("{d}/scaling_driver"), "amd-pstate-epp");
+                put(r, &format!("{d}/amd_pstate_max_freq"), "5386028");
+                put(r, &format!("{d}/cpuinfo_max_freq"), "5386028");
+                put(r, &format!("{d}/scaling_min_freq"), "421798");
+                put(r, &format!("{d}/scaling_max_freq"), "4000000");
+                put(r, &format!("{d}/boost"), "1");
+                put(r, &format!("{d}/energy_performance_preference"), "balance_performance");
+            }
+            let state = dir.path().join("state");
+            std::fs::create_dir_all(&state).unwrap();
+            let shared = Arc::new(Shared {
+                live: Default::default(),
+                history: Mutex::new(History::default()),
+                metrics: Metrics::default(),
+                stop: AtomicBool::new(false),
+                owns_fans: AtomicBool::new(false),
+            });
+            let audit = Arc::new(Mutex::new(Audit::new(None)));
+            // NVML ön kontrolü hep başarısız: gerçek GPU'ya ve kendi exe'mizi çalıştırmaya yok.
+            let (c, _h, _rx) =
+                Control::start_with(shared.clone(), Sysfs::new(dir.path()), &state, audit.clone(), Ppd::none(), Box::new(|| false)).unwrap();
+            Self { dir, c, shared, audit }
+        }
+
+        fn control_file(&self) -> String {
+            std::fs::read_to_string(self.dir.path().join(format!("{FAN}/parameters/control"))).unwrap()
+        }
+
+        /// Sahte `control` dosyasını sentinel'e çevirir; sonraki yazma görünür olur.
+        fn clear_control(&self) {
+            put(self.dir.path(), &format!("{FAN}/parameters/control"), "sentinel");
+        }
+
+        fn temps(&self, cpu: Option<f32>, gpu: Option<f32>, at: Instant) {
+            let mut l = self.shared.live.write().unwrap();
+            l.cpu_ec_c.set(cpu, at);
+            l.gpu_ec_c.set(gpu, at);
+        }
+
+        fn cpu_max(&self) -> Vec<String> {
+            (0..2).map(|i| std::fs::read_to_string(self.dir.path().join(format!("{POLICY}/policy{i}/scaling_max_freq"))).unwrap().trim().to_owned()).collect()
+        }
+    }
+
+    fn peer() -> Peer {
+        Peer { uid: 1000, gid: 1000, pid: 1, start: None }
+    }
+
+    /// 1: bir EC sensörü null + CPU 95 °C → Boost bir kez yazılır, aynı Boost yenilenmez.
+    #[test]
+    fn one_null_sensor_with_hot_cpu_writes_boost_once() {
+        let mut r = Rig::new();
+        let t0 = Instant::now();
+        r.temps(Some(95.0), None, t0);
+        r.c.control_step(t0);
+        assert_eq!(r.control_file(), "boost");
+        r.clear_control();
+        // RENEW geçti, örnek hâlâ taze ama GPU null: aynı Boost yeniden yazılmaz.
+        r.c.control_step(t0 + RENEW + Duration::from_millis(500));
+        assert_eq!(r.control_file(), "sentinel", "bayat/eksik örnek kira yenilemez");
+    }
+
+    /// 2: taze örnekle Boost yenilenir; bayat örnekle (RENEW sonrası) yenilenmez.
+    #[test]
+    fn stale_sample_never_renews_lease() {
+        let mut r = Rig::new();
+        let t0 = Instant::now();
+        r.temps(Some(60.0), Some(50.0), t0);
+        r.c.authority.set_mode(Mode::Boost);
+        r.c.control_step(t0);
+        assert_eq!(r.control_file(), "boost");
+        r.clear_control();
+        // write_fan gerçek Instant::now() damgalar; payı bırak.
+        r.c.control_step(t0 + RENEW + Duration::from_millis(500));
+        assert_eq!(r.control_file(), "boost", "taze örnek 3 sn'de yeniler");
+        r.clear_control();
+        // Örnek 6 sn eski (FRESH_MS=5 sn): sıcaklıklar None görünür.
+        r.c.control_step(t0 + RENEW + Duration::from_secs(6));
+        assert_eq!(r.control_file(), "sentinel", "bayat örnek kira yenilemez");
+    }
+
+    /// 3: -ERANGE (rpm None, `at` taze) 10 sn → Boost, 10 sn daha → Auto.
+    #[test]
+    fn status_erange_boosts_then_auto() {
+        let mut r = Rig::new();
+        let t0 = Instant::now();
+        r.temps(Some(60.0), Some(50.0), t0);
+        r.c.authority.set_mode(Mode::Manual { cpu: 50, gpu: 50 });
+        r.c.control_step(t0);
+        assert_eq!(r.control_file(), "manual 50 50");
+        let tick = |r: &mut Rig, n: u64| {
+            let t = t0 + Duration::from_secs(n);
+            let mut l = r.shared.live.write().unwrap();
+            l.cpu_duty.set(Some(50), t);
+            l.gpu_duty.set(Some(50), t);
+            l.cpu_rpm.set(None, t);
+            l.gpu_rpm.set(None, t);
+            drop(l);
+            r.c.check_stall(t);
+        };
+        for n in 0..10 {
+            tick(&mut r, n);
+            assert!(r.c.stall_boost_until.is_none(), "{n}. sn: henüz yükseltme yok");
+        }
+        tick(&mut r, 10);
+        assert!(r.c.stall_boost_until.is_some());
+        assert_eq!(r.control_file(), "boost");
+        for n in 11..20 {
+            tick(&mut r, n);
+            assert_ne!(r.control_file(), "auto");
+        }
+        tick(&mut r, 20);
+        assert_eq!(r.control_file(), "auto");
+        assert!(matches!(r.c.authority.mode, Mode::Auto));
+        assert!(r.c.stall_boost_until.is_none());
+    }
+
+    /// 4: çalışan hedefin üstüne yeni hedef orijinal CPU tavanlarını korur.
+    #[test]
+    fn second_target_keeps_original_cpu_ceilings() {
+        let mut r = Rig::new();
+        let now = Instant::now();
+        r.temps(Some(60.0), Some(50.0), now);
+        r.c.start_target(70, 65).unwrap();
+        assert_eq!(r.cpu_max(), ["4000000", "4000000"]);
+        // Hedefin düşürdüğü tavanı taklit et.
+        r.c.cpu.set_max_mhz(2000).unwrap();
+        r.temps(Some(60.0), Some(50.0), Instant::now());
+        r.c.start_target(75, 70).unwrap();
+        let saved = r.c.target_saved.as_ref().expect("yeni hedef çalışıyor");
+        assert!(saved.cpu.iter().all(|(_, v)| v == "4000000"), "kayıtlı tavan orijinal: {:?}", saved.cpu);
+        r.c.cpu.set_max_mhz(2500).unwrap();
+        r.c.handle(Call::TemperatureTargetStop(Empty {}), &peer(), 1).unwrap();
+        assert!(r.c.target_saved.is_none());
+        assert_eq!(r.cpu_max(), ["4000000", "4000000"], "durdurunca hedef öncesi tavan");
+    }
+
+    /// 5: hedef çalışırken stall Auto hedefi bırakır, tavanlar geri gelir.
+    #[test]
+    fn stall_auto_releases_running_target() {
+        let mut r = Rig::new();
+        let now = Instant::now();
+        r.temps(Some(60.0), Some(50.0), now);
+        r.c.start_target(70, 65).unwrap();
+        r.c.cpu.set_max_mhz(2000).unwrap();
+        assert!(r.c.target_saved.is_some());
+        let t0 = now;
+        for n in [0u64, 10, 20] {
+            let t = t0 + Duration::from_secs(n);
+            let mut l = r.shared.live.write().unwrap();
+            l.cpu_duty.set(Some(50), t);
+            l.gpu_duty.set(Some(50), t);
+            l.cpu_rpm.set(None, t);
+            l.gpu_rpm.set(None, t);
+            drop(l);
+            r.c.check_stall(t);
+        }
+        assert!(r.c.target_saved.is_none(), "hedef bırakıldı");
+        assert!(matches!(r.c.authority.mode, Mode::Auto));
+        assert_eq!(r.cpu_max(), ["4000000", "4000000"], "tavanlar geri yüklendi");
+        assert_eq!(r.control_file(), "auto");
+    }
+
+    /// 7: RgbFrame yalnız kayıtlı oturumun bağlantısından kabul edilir.
+    #[test]
+    fn rgb_frame_requires_registered_session_conn() {
+        let mut r = Rig::new();
+        let frame = || Call::RgbFrame(RgbFrameParams { colors: vec![[0, 0, 0]; r9t_hal::rgb::CHANNELS] });
+        assert_eq!(r.c.handle(frame(), &peer(), 7).unwrap_err().code, code::UNAUTHORIZED, "oturum yok");
+        r.c.session = Some(SessionInfo { conn_id: 7, uid: 1000, desktop: "x".into(), id: "1".into() });
+        assert_eq!(r.c.handle(frame(), &peer(), 8).unwrap_err().code, code::UNAUTHORIZED, "başka bağlantı");
+        // Doğru bağlantı denetimi geçer; sahte sysfs'te RGB olmadığından UNSUPPORTED döner.
+        assert_eq!(r.c.handle(frame(), &peer(), 7).unwrap_err().code, code::UNSUPPORTED);
+    }
+
+    /// 8: RgbFrame/SessionEvent denetim kaydına girmez, diğer çağrılar girer.
+    #[test]
+    fn high_rate_calls_are_not_audited() {
+        assert!(!audited("rgb_frame") && !audited("session_event"));
+        assert!(audited("rgb_effect") && audited("session_register") && audited("auto"));
+        let r = Rig::new();
+        let audit = r.audit.clone();
+        // Gerçek döngüyü sür: Control'ü iş parçacığına taşı.
+        let Rig { c, dir, .. } = r;
+        let (tx, rx) = mpsc::channel();
+        let handle = ControlHandle { tx };
+        let th = std::thread::spawn(move || c.run(rx, |_| {}));
+        let _ = handle.call(Call::RgbFrame(RgbFrameParams { colors: vec![] }), peer(), 1);
+        let _ = handle.call(Call::SessionEvent(SessionEventParams { event: SessionEvent::GameStopped }), peer(), 1);
+        let _ = handle.call(Call::AutomationPause(Empty {}), peer(), 1);
+        handle.shutdown();
+        th.join().unwrap();
+        let methods: Vec<String> = audit.lock().unwrap().latest(100).into_iter().map(|e| e.method).collect();
+        assert!(methods.contains(&"automation_pause".to_string()), "{methods:?}");
+        assert!(!methods.iter().any(|m| m == "rgb_frame" || m == "session_event"), "{methods:?}");
+        drop(dir);
+    }
+
+    /// 6: oturum sahipliği son yol parçasıyla ve sd-bus kaçışıyla eşleşir.
+    #[test]
+    fn logind_session_match_is_exact_segment() {
+        let own = "/org/freedesktop/login1/session/_32";
+        assert!(session_matches(own, "2"));
+        assert!(!session_matches(own, "12"), "ends_with burada yanlış eşlerdi");
+        assert!(!session_matches("/org/freedesktop/login1/session/_312", "2"));
+        assert!(session_matches("/org/freedesktop/login1/session/c1", "c1"));
+        assert!(!session_matches("/org/freedesktop/login1/session/xc1", "c1"));
+        assert!(session_matches("/org/freedesktop/login1/session/_310", "10"));
+        assert!(session_matches(own, ""), "boş kimlik karşılaştırılmaz (user birimi)");
     }
 }
