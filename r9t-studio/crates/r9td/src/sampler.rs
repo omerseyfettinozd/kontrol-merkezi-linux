@@ -54,6 +54,40 @@ pub struct Metrics {
     pub samples: AtomicU64,
     pub nvml_calls: AtomicU64,
     pub nvml_skipped_inactive: AtomicU64,
+    /// Per-section read time of the sampler (and the status thread): a slow source
+    /// (2026-11-21: r9t_fan hwmon 1.5 s) shows up here instead of as a skewed cadence.
+    pub timings: Mutex<std::collections::BTreeMap<String, Timing>>,
+}
+
+/// A read slower than this counts as slow and is logged the first time per source.
+pub const SLOW_MS: u32 = 250;
+
+#[derive(Debug, Default, Clone, Copy, serde::Serialize)]
+pub struct Timing {
+    pub last_ms: u32,
+    pub max_ms: u32,
+    pub slow: u64,
+}
+
+impl Metrics {
+    /// Records how long `name` took since `since`.
+    pub fn record(&self, name: &str, since: Instant) {
+        let ms = u32::try_from(since.elapsed().as_millis()).unwrap_or(u32::MAX);
+        let mut t = self.timings.lock().unwrap_or_else(|p| p.into_inner());
+        let e = t.entry(name.to_owned()).or_default();
+        e.last_ms = ms;
+        e.max_ms = e.max_ms.max(ms);
+        if ms >= SLOW_MS {
+            if e.slow == 0 {
+                eprintln!("r9td: yavaş okuma: {name} {ms} ms (örnekleyici turu 1 sn)");
+            }
+            e.slow += 1;
+        }
+    }
+
+    pub fn timings_json(&self) -> serde_json::Value {
+        serde_json::to_value(&*self.timings.lock().unwrap_or_else(|p| p.into_inner())).unwrap_or_default()
+    }
 }
 
 pub struct Shared {
@@ -113,7 +147,9 @@ fn status_worker(shared: Arc<Shared>, shadow: bool, fan: SysfsFan, ec_manual: Ar
             let m = &shared.metrics;
             m.ec_ops.fetch_add(11, Ordering::Relaxed);
             m.fan_status_reads.fetch_add(1, Ordering::Relaxed);
+            let t = Instant::now();
             let r = fan.status();
+            m.record("fan_status", t);
             *slot.lock().unwrap_or_else(|p| p.into_inner()) = Some((Instant::now(), r));
         }
         std::thread::sleep(Duration::from_millis(200));
@@ -155,6 +191,7 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
         let m = &shared.metrics;
 
         // --- EC fast path ---
+        let t_ec = Instant::now();
         let owns = shared.owns_fans.load(Ordering::Relaxed);
         let ec_every: u64 = if cfg.shadow && !owns { 2 } else { 1 };
         let mut fast = None;
@@ -181,6 +218,8 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
             fast = Some((temps_r, duty_r, mode_r));
         }
 
+        m.record("ec_fast", t_ec);
+
         // --- r9t_fan status (read by the status thread) ---
         let (status_at, status) = match status_slot.lock().unwrap_or_else(|p| p.into_inner()).take() {
             Some((t, r)) => (t, Some(r)),
@@ -188,6 +227,7 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
         };
 
         // --- cheap sysfs sources ---
+        let t_hwmon = Instant::now();
         let ccds: Option<Vec<Option<f32>>> = (tick % 5 == 0)
             .then(|| ["Tccd1", "Tccd2"].iter().map(|l| Hwmon::find(&temps, "k10temp", l).and_then(|t| hwmon.read_c(t))).collect());
         for (t, slot) in temps.iter().zip(sensor_values.iter_mut()) {
@@ -197,9 +237,15 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
                 _ => 5,
             };
             if tick % every == 0 || slot.at.is_none() {
+                let t0 = Instant::now();
                 slot.set(hwmon.read_c(t), now);
+                if t0.elapsed() >= Duration::from_millis(u64::from(SLOW_MS)) {
+                    m.record(&format!("hwmon:{}/{}", t.chip, t.label), t0);
+                }
             }
         }
+        m.record("hwmon", t_hwmon);
+        let t_sysfs = Instant::now();
         // Time of the counter read, not of the tick start: slow reads earlier in the tick
         // would otherwise shift dt and swing the watts (4 ↔ 56 W at 900 MHz, 2026-11-21).
         let pkg = rapl.sample(Instant::now(), 5.0);
@@ -218,7 +264,10 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
         // Plain USB attribute, no EC traffic: 5 s so a toggle shows up quickly.
         let camera = if tick % 5 == 0 { Some(fs.read(format!("{}/authorized", r9t_hal::CAMERA_USB))) } else { None };
 
+        m.record("sysfs", t_sysfs);
+
         // --- GPU (gated) ---
+        let t_gpu = Instant::now();
         let runtime = gpu.runtime_status();
         let gpu_sample = match runtime.as_deref() {
             Ok("active") if cfg.nvml => {
@@ -232,6 +281,8 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
                 None
             }
         };
+
+        m.record("gpu", t_gpu);
 
         // --- publish ---
         {
@@ -429,6 +480,7 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
             }
         }
         notify();
+        m.record("tick", now);
         tick += 1;
         // Keep a 1 s cadence relative to start (no drift).
         let next = start + Duration::from_secs(tick);
@@ -471,4 +523,22 @@ pub fn executables(uid: u32) -> HashSet<String> {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod timing_tests {
+    use super::*;
+
+    #[test]
+    fn records_last_max_and_slow_reads() {
+        let m = Metrics::default();
+        let now = Instant::now();
+        m.record("hwmon", now);
+        m.record("hwmon", now - Duration::from_millis(400));
+        m.record("hwmon", now - Duration::from_millis(10));
+        let t = m.timings.lock().unwrap()["hwmon"];
+        assert!(t.last_ms < SLOW_MS && t.max_ms >= 400, "{t:?}");
+        assert_eq!(t.slow, 1);
+        assert!(m.timings_json()["hwmon"]["max_ms"].as_u64().unwrap() >= 400);
+    }
 }

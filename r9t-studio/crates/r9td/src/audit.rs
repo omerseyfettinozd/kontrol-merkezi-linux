@@ -55,6 +55,12 @@ impl Audit {
             }
             event.message.truncate(end);
         }
+        if self.path.is_some() {
+            // The file is root-only (0600); the journal keeps the same line readable and
+            // across boots (stop/start/stall history, 2026-11-21).
+            let who = event.uid.map(|u| format!(" uid={u}")).unwrap_or_default();
+            eprintln!("r9td: olay {} {}{who}: {}", event.method, if event.ok { "tamam" } else { "HATA" }, event.message);
+        }
         if let Some(p) = &self.path {
             if std::fs::metadata(p).is_ok_and(|m| m.len() >= MAX_BYTES) {
                 for i in (1..KEEP).rev() {

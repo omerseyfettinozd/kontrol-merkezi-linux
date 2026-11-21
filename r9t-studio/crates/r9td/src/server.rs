@@ -327,7 +327,8 @@ impl Server {
                           "scenarios": ["quiet", "balanced", "game", "turbo"],
                           "metrics": {"ec_ops": m.ec_ops.load(Relaxed), "fan_status_reads": m.fan_status_reads.load(Relaxed),
                                       "legacy_queries": m.legacy_queries.load(Relaxed), "samples": m.samples.load(Relaxed),
-                                      "nvml_calls": m.nvml_calls.load(Relaxed), "nvml_skipped_inactive": m.nvml_skipped_inactive.load(Relaxed)}}))
+                                      "nvml_calls": m.nvml_calls.load(Relaxed), "nvml_skipped_inactive": m.nvml_skipped_inactive.load(Relaxed),
+                                      "timings_ms": m.timings_json()}}))
             }
             Call::Events(p) => {
                 let a = self.audit.lock().unwrap_or_else(|p| p.into_inner());
