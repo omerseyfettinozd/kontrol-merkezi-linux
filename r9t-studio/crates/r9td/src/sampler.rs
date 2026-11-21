@@ -6,7 +6,9 @@
 //!    only while the EC is in manual (r9td or legacy driving the fans); in auto the
 //!    duty comes from the `status` read (10 s; 30 s in shadow mode).
 //!  * every 5 s: EF14 mode byte
-//!  * every 10 s in auto (3 s when r9td owns the fans): r9t_fan `status` (~11 ops)
+//!  * every 10 s in auto (3 s when r9td owns the fans): r9t_fan `status` (~11 ops),
+//!    on its own thread: the module reads the EC op by op, so the tick waits for at
+//!    most one op instead of ~0.6 s (the cadence slipped to 2 s, 2026-11-21)
 //!  * shadow mode while the legacy service has the EC in manual: no `status`; RPM is
 //!    taken from the legacy service's own `status` reply every 10 s.
 //!
@@ -26,7 +28,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use r9t_hal::cpufreq::Cpufreq;
-use r9t_hal::fan::{FanBridge, SysfsFan};
+use r9t_hal::fan::{FanBridge, FanStatus, SysfsFan};
 use r9t_hal::gpu::{Gpu, Nvml};
 use r9t_hal::hwmon::{Hwmon, HwmonTemp};
 use r9t_hal::power::Power;
@@ -89,8 +91,36 @@ impl Ec {
     }
 }
 
+/// Latest r9t_fan `status` read by [`status_worker`], with the time it was read.
+type StatusSlot = Arc<Mutex<Option<(Instant, r9t_hal::Result<FanStatus>)>>>;
+
+/// Reads `status` on the same schedule the sampler used (3 s owning the fans, 10 s in
+/// auto, 30 s in shadow; none in shadow while the legacy service has the EC manual).
+fn status_worker(shared: Arc<Shared>, shadow: bool, fan: SysfsFan, ec_manual: Arc<AtomicBool>, slot: StatusSlot) {
+    let mut last: Option<Instant> = None;
+    while !shared.stop.load(Ordering::Relaxed) {
+        let now = Instant::now();
+        let interval = match (shared.owns_fans.load(Ordering::Relaxed), shadow) {
+            (true, _) => Duration::from_secs(3),
+            (false, true) => Duration::from_secs(30),
+            (false, false) => Duration::from_secs(10),
+        };
+        let due = fan.loaded()
+            && (!shadow || !ec_manual.load(Ordering::Relaxed))
+            && last.is_none_or(|t| now.duration_since(t) >= interval);
+        if due {
+            last = Some(now);
+            let m = &shared.metrics;
+            m.ec_ops.fetch_add(11, Ordering::Relaxed);
+            m.fan_status_reads.fetch_add(1, Ordering::Relaxed);
+            let r = fan.status();
+            *slot.lock().unwrap_or_else(|p| p.into_inner()) = Some((Instant::now(), r));
+        }
+        std::thread::sleep(Duration::from_millis(200));
+    }
+}
+
 pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send + 'static) {
-    let fan = SysfsFan::new(fs.clone());
     let gpu = Nvml::new(fs.clone()).with_preflight(Box::new(crate::nvml_preflight));
     let hwmon = Hwmon::new(fs.clone());
     let cpu = Cpufreq::new(fs.clone());
@@ -106,8 +136,16 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
     let mut sensor_values: Vec<Timed<f32>> = vec![Timed::default(); temps.len()];
     let apu_path = hwmon.apu_ppt_path();
     let mut tick: u64 = 0;
-    let mut last_status: Option<Instant> = None;
     let mut ec_manual = false;
+    let ec_manual_shared = Arc::new(AtomicBool::new(false));
+    let status_slot: StatusSlot = Arc::new(Mutex::new(None));
+    {
+        let (sh, flag, slot, fan) = (shared.clone(), ec_manual_shared.clone(), status_slot.clone(), SysfsFan::new(fs.clone()));
+        let shadow = cfg.shadow;
+        if let Err(e) = std::thread::Builder::new().name("r9td-status".into()).spawn(move || status_worker(sh, shadow, fan, flag, slot)) {
+            eprintln!("r9td: status iş parçacığı başlatılamadı: {e}");
+        }
+    }
     let legacy_busy = Arc::new(AtomicBool::new(false));
     let mut last_legacy: Option<Instant> = None;
     let start = Instant::now();
@@ -143,22 +181,10 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
             fast = Some((temps_r, duty_r, mode_r));
         }
 
-        // --- r9t_fan status (full path) ---
-        let interval = match (owns, cfg.shadow) {
-            (true, _) => Duration::from_secs(3),
-            (false, true) => Duration::from_secs(30),
-            (false, false) => Duration::from_secs(10),
-        };
-        let want_status = fan.loaded()
-            && (!cfg.shadow || !ec_manual)
-            && last_status.is_none_or(|t| now.duration_since(t) >= interval);
-        let status = if want_status {
-            last_status = Some(now);
-            m.ec_ops.fetch_add(11, Ordering::Relaxed);
-            m.fan_status_reads.fetch_add(1, Ordering::Relaxed);
-            Some(fan.status())
-        } else {
-            None
+        // --- r9t_fan status (read by the status thread) ---
+        let (status_at, status) = match status_slot.lock().unwrap_or_else(|p| p.into_inner()).take() {
+            Some((t, r)) => (t, Some(r)),
+            None => (now, None),
         };
 
         // --- cheap sysfs sources ---
@@ -237,6 +263,7 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
                     live.mode_byte.set(byte, now);
                     if let Some(b) = byte {
                         ec_manual = b & 0x40 != 0;
+                        ec_manual_shared.store(ec_manual, Ordering::Relaxed);
                     }
                 }
             }
@@ -248,30 +275,31 @@ pub fn run(shared: Arc<Shared>, cfg: Config, fs: Sysfs, notify: impl Fn() + Send
                         2 => Some(FanMode::Boost),
                         _ => None,
                     };
-                    live.fan_mode.set(mode, now);
-                    live.cpu_rpm.set(u32::try_from(s.cpu_rpm).ok(), now);
-                    live.gpu_rpm.set(u32::try_from(s.gpu_rpm).ok(), now);
-                    live.lease_ms.set(u32::try_from(s.lease_ms).ok(), now);
-                    live.kernel_error.set(Some(s.error), now);
-                    live.thermal_override.set(Some(s.thermal), now);
-                    live.mode_byte.set(u8::try_from(s.mode_byte).ok(), now);
+                    live.fan_mode.set(mode, status_at);
+                    live.cpu_rpm.set(u32::try_from(s.cpu_rpm).ok(), status_at);
+                    live.gpu_rpm.set(u32::try_from(s.gpu_rpm).ok(), status_at);
+                    live.lease_ms.set(u32::try_from(s.lease_ms).ok(), status_at);
+                    live.kernel_error.set(Some(s.error), status_at);
+                    live.thermal_override.set(Some(s.thermal), status_at);
+                    live.mode_byte.set(u8::try_from(s.mode_byte).ok(), status_at);
                     ec_manual = s.mode_byte & 0x40 != 0;
+                    ec_manual_shared.store(ec_manual, Ordering::Relaxed);
                     if fast.as_ref().is_none_or(|f| f.1.is_none()) {
-                        live.cpu_duty.set(Some((s.cpu_pwm / 2) as u8), now);
-                        live.gpu_duty.set(Some((s.gpu_pwm / 2) as u8), now);
+                        live.cpu_duty.set(Some((s.cpu_pwm / 2) as u8), status_at);
+                        live.gpu_duty.set(Some((s.gpu_pwm / 2) as u8), status_at);
                     }
                     if fast.is_none() {
                         let v = s.valid_temps();
-                        live.cpu_ec_c.set(v.map(|t| t.0 as f32), now);
-                        live.gpu_ec_c.set(v.map(|t| t.1 as f32), now);
-                        live.cpu_duty.set(Some((s.cpu_pwm / 2) as u8), now);
-                        live.gpu_duty.set(Some((s.gpu_pwm / 2) as u8), now);
+                        live.cpu_ec_c.set(v.map(|t| t.0 as f32), status_at);
+                        live.gpu_ec_c.set(v.map(|t| t.1 as f32), status_at);
+                        live.cpu_duty.set(Some((s.cpu_pwm / 2) as u8), status_at);
+                        live.gpu_duty.set(Some((s.gpu_pwm / 2) as u8), status_at);
                     }
                 }
                 // -ERANGE from status means implausible EC values: "fan control unavailable".
                 Some(Err(e)) if !matches!(e, HalError::Busy(_)) => {
-                    live.cpu_rpm.set(None, now);
-                    live.gpu_rpm.set(None, now);
+                    live.cpu_rpm.set(None, status_at);
+                    live.gpu_rpm.set(None, status_at);
                 }
                 Some(Err(_)) => {}
                 None => {}
