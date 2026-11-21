@@ -114,6 +114,7 @@ input[type='checkbox'] { accent-color: var(--accent); width: 16px; height: 16px;
 }
 .note.info { border-color: var(--blue); background: #0f1a2a; color: #cfe2fb; }
 .note.bad { border-color: var(--danger); background: #261214; color: #ffd0cd; }
+.note.warn { border-color: #5a4a1c; background: #241e0d; color: #f5d27a; }
 
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }

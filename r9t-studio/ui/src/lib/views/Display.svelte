@@ -65,6 +65,19 @@
 
   // ---------- GPU Wake Inspector ----------
   let gpu = $state(null);
+  // En çok VRAM tutan üstte; aynı adlı süreçler toplamıyla özetlenir.
+  const sortedProcs = $derived([...(gpu?.processes ?? [])].sort((a, b) => (b.used_mib ?? 0) - (a.used_mib ?? 0)));
+  const groups = $derived.by(() => {
+    const m = new Map();
+    for (const p of gpu?.processes ?? []) {
+      const k = p.name ?? '?';
+      const g = m.get(k) ?? { name: k, count: 0, mib: 0 };
+      g.count++;
+      g.mib += p.used_mib ?? 0;
+      m.set(k, g);
+    }
+    return [...m.values()].filter((g) => g.mib > 0).sort((a, b) => b.mib - a.mib).slice(0, 6);
+  });
   let confirmPid = $state(null);
   $effect(() =>
     every(5000, async () => {
@@ -122,13 +135,20 @@
       <span>P-state</span><span>{val(s?.gpu?.pstate) == null ? '—' : `P${val(s.gpu.pstate)}`}</span>
       <span>Kullanım</span><span>{fmt(val(s?.gpu?.util_gpu_pct), 0, '%')}</span>
       <span>Güç</span><span>{fmt(val(s?.gpu?.power_w), 1, 'W')}</span>
+      <span>VRAM</span><span>{val(s?.gpu?.vram_used_mib) == null ? '—' : `${fmt(val(s.gpu.vram_used_mib) / 1024, 1)} / ${fmt(val(s.gpu.vram_total_mib) / 1024, 1)} GB`}</span>
     </div>
+    {#if groups.length}
+      <!-- Aynı programın çok örneği (ör. her oturumda bir MCP sunucusu) toplamda belleği doldurabilir. -->
+      <div class="row tight" style="flex-wrap:wrap;margin-bottom:8px">
+        {#each groups as g (g.name)}<span class="badge {g.mib >= 1024 ? 'warn' : ''}">{g.name}{g.count > 1 ? ` ×${g.count}` : ''} · {fmt(g.mib / 1024, 1)} GB</span>{/each}
+      </div>
+    {/if}
     {#if gpu?.processes?.length}
       <div class="scroll-x">
         <table>
           <thead><tr><th>Tür</th><th>Süreç</th><th class="r">PID</th><th class="r">VRAM</th><th></th></tr></thead>
           <tbody>
-            {#each gpu.processes as p (`${p.pid}-${p.kind}`)}
+            {#each sortedProcs as p (`${p.pid}-${p.kind}`)}
               <tr>
                 <td><span class="badge {p.kind === 'G' ? 'info' : 'warn'}">{p.kind}</span></td>
                 <td>{p.name ?? '?'}</td>

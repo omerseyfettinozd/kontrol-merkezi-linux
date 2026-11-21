@@ -19,6 +19,10 @@
 
   const current = $derived(VIEWS.find((v) => v.id === app.view) ?? VIEWS[0]);
   const s = $derived(app.snap);
+  const vramPct = $derived.by(() => {
+    const u = val(s?.gpu?.vram_used_mib), t = val(s?.gpu?.vram_total_mib);
+    return u != null && t ? (u / t) * 100 : null;
+  });
   const edp = $derived(app.session?.outputs?.find((o) => o.name.startsWith('eDP')) ?? app.session?.outputs?.[0]);
   const boostOn = $derived(val(s?.fans?.mode) === 'boost');
 
@@ -115,6 +119,13 @@
       <div class="note info banner">r9td salt okunur gölge modunda: veriler canlıdır, ayar değiştiren düğmeler devre dışıdır. Denetim için r9td etkin olmalıdır (<code>r9t-switch --trial</code>).</div>
     {:else if s?.authority?.guard_active}
       <div class="note bad banner">Termal koruma etkin: fanlar %100 (CPU ≥ 90 °C ya da GPU ≥ 84 °C). Sıcaklık düşünce bırakılır.</div>
+    {/if}
+    {#if vramPct != null && vramPct >= 90}
+      <!-- Ekran dGPU'ya bağlı: VRAM dolunca yeni pencereler boş/siyah açılır (nvidia-drm GEM ayıramaz). -->
+      <div class="note warn banner spread">
+        <span>dGPU belleği %{fmt(vramPct)} dolu ({fmt(val(s.gpu.vram_used_mib) / 1024, 1)} / {fmt(val(s.gpu.vram_total_mib) / 1024, 1)} GB). Yeni pencereler boş açılabilir.</span>
+        {#if app.view !== 'display'}<button class="small" onclick={() => (app.view = 'display')}>Belleği tutan süreçler</button>{/if}
+      </div>
     {/if}
 
     <main class="content">
