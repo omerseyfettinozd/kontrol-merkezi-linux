@@ -1,6 +1,7 @@
 <script>
   import { invoke } from '@tauri-apps/api/core';
   import { app, val, fmt, canControl, control, toast, POWER_NAMES, EPP_NAMES } from '../state.svelte.js';
+  import { bench, METRICS, startRun, stopRun } from '../bench.svelte.js';
 
   const ctl = $derived(canControl());
   const doc = $derived(app.policy?.document);
@@ -97,95 +98,11 @@
     saveDoc(next, `${added.length} profil içe aktarıldı: ${added.join(', ')}`);
   }
 
-  // ---------- 60 sn kararlılık testi ve A/B kıyas ----------
-  const METRICS = [
-    ['cpu_c', 'CPU EC sıcaklığı', '°C'],
-    ['gpu_c', 'GPU EC sıcaklığı', '°C'],
-    ['cpu_w', 'CPU paket gücü', 'W'],
-    ['gpu_w', 'NVIDIA gücü', 'W'],
-    ['cpu_mhz', 'CPU frekansı', 'MHz'],
-    ['cpu_rpm', 'CPU fanı', 'RPM'],
-    ['gpu_rpm', 'GPU fanı', 'RPM'],
-  ];
-  const DURATION = 60;
-  let run = $state(null);
-  let results = $state({ A: null, B: null });
-  let lastRun = $state(null);
-
-  function sample(s) {
-    return {
-      cpu_c: val(s.cpu.ec_temp_c),
-      gpu_c: val(s.gpu.ec_temp_c),
-      cpu_w: val(s.cpu.package_w),
-      gpu_w: val(s.gpu.power_w),
-      cpu_mhz: val(s.cpu.freq_mhz),
-      cpu_rpm: val(s.fans.cpu_rpm),
-      gpu_rpm: val(s.fans.gpu_rpm),
-      guard: !!s.authority.guard_active || !!val(s.fans.thermal_override),
-    };
-  }
-
-  function summarize(rows, label) {
-    const m = {};
-    for (const [k] of METRICS) {
-      const v = rows.map((r) => r[k]).filter((x) => x != null && Number.isFinite(x));
-      m[k] = { avg: v.length ? v.reduce((a, b) => a + b, 0) / v.length : null, peak: v.length ? Math.max(...v) : null, count: v.length };
-    }
-    // Plato: son 30 sn'de CPU ve GPU sıcaklığının aralığı ≤ 3 °C.
-    const tail = rows.slice(-30);
-    const spread = (k) => {
-      const v = tail.map((r) => r[k]).filter((x) => x != null);
-      return v.length ? Math.max(...v) - Math.min(...v) : null;
-    };
-    const missing = rows.filter((r) => r.cpu_c == null || r.gpu_c == null).length;
-    const guard = rows.filter((r) => r.guard).length;
-    const sc = spread('cpu_c'), sg = spread('gpu_c');
-    const notes = [];
-    if (guard) notes.push(`${guard} örnekte termal koruma etkindi.`);
-    if (missing > rows.length * 0.1) notes.push(`${missing} örnekte sıcaklık eksikti.`);
-    if (sc == null || sg == null || sc > 3 || sg > 3) notes.push(`Sıcaklık henüz oturmadı (son 30 sn aralığı CPU ${fmt(sc, 1)} / GPU ${fmt(sg, 1)} °C).`);
-    return {
-      label,
-      profile: app.snap?.authority?.active_profile ?? POWER_NAMES[val(app.snap?.power?.profile)] ?? '—',
-      at: new Date().toLocaleTimeString('tr-TR'),
-      samples: rows.length,
-      metrics: m,
-      stable: notes.length === 0,
-      notes,
-    };
-  }
-
-  function startRun() {
-    if (run) return;
-    const rows = [];
-    let seq = -1;
-    run = { left: DURATION, rows: 0 };
-    const t0 = Date.now();
-    const id = setInterval(() => {
-      const s = app.snap;
-      if (s && s.sequence !== seq) {
-        seq = s.sequence;
-        rows.push(sample(s));
-      }
-      const left = Math.max(0, DURATION - Math.floor((Date.now() - t0) / 1000));
-      run = { left, rows: rows.length, id };
-      if (left === 0) {
-        clearInterval(id);
-        run = null;
-        lastRun = summarize(rows, 'son');
-      }
-    }, 500);
-    run.id = id;
-  }
-  function stopRun() {
-    if (run?.id) clearInterval(run.id);
-    run = null;
-  }
-  $effect(() => () => stopRun());
+  // ---------- 60 sn kararlılık testi ve A/B kıyas (durum bench.svelte.js içinde) ----------
 
   const diff = (a, b) => (a == null || b == null ? null : b - a);
   const abWarnings = $derived.by(() => {
-    const { A, B } = results;
+    const { A, B } = bench.results;
     if (!A || !B) return [];
     const w = ['İş yükü kontrol edilmez ve FPS ölçülmez; sonuçlar yalnız bilgi amaçlıdır.'];
     if (Math.max(A.samples, B.samples) / Math.max(1, Math.min(A.samples, B.samples)) > 1.5) w.push(`A (${A.samples}) ve B (${B.samples}) örnek sayıları çok farklı.`);
@@ -194,7 +111,7 @@
   });
 
   async function exportCsv() {
-    const { A, B } = results;
+    const { A, B } = bench.results;
     const lines = [['metrik', 'birim', 'A_ort', 'B_ort', 'fark_ort', 'A_tepe', 'B_tepe', 'fark_tepe'].join(',')];
     const f = (v) => (v == null ? '' : v.toFixed(2));
     for (const [k, t, u] of METRICS) {
@@ -269,8 +186,8 @@
   <div class="spread">
     <h3>60 sn kararlılık testi</h3>
     <div class="row tight">
-      {#if run}
-        <span class="badge warn num">{run.left} sn · {run.rows} örnek</span>
+      {#if bench.run}
+        <span class="badge warn num">{bench.run.left} sn · {bench.run.rows} örnek</span>
         <button onclick={stopRun}>İptal</button>
       {:else}
         <button class="primary" disabled={!app.connected} onclick={startRun}>Ölçümü başlat</button>
@@ -278,28 +195,28 @@
     </div>
   </div>
   <p class="muted">Seçili profil ve iş yükü sırasında 60 sn boyunca sıcaklık, güç, frekans ve fanları örnekler. İş yükünü kendiniz başlatın (oyun, derleme…); test donanıma yazmaz.</p>
-  {#if lastRun}
+  {#if bench.lastRun}
     <div class="last">
       <div class="spread">
-        <b>Son ölçüm: {lastRun.profile} · {lastRun.at} · {lastRun.samples} örnek</b>
+        <b>Son ölçüm: {bench.lastRun.profile} · {bench.lastRun.at} · {bench.lastRun.samples} örnek</b>
         <div class="row tight">
-          <span class="badge {lastRun.stable ? 'ok' : 'warn'}">{lastRun.stable ? 'kararlı' : 'kararsız'}</span>
-          <button class="small" onclick={() => (results.A = { ...lastRun, label: 'A' })}>A olarak sakla</button>
-          <button class="small" onclick={() => (results.B = { ...lastRun, label: 'B' })}>B olarak sakla</button>
+          <span class="badge {bench.lastRun.stable ? 'ok' : 'warn'}">{bench.lastRun.stable ? 'kararlı' : 'kararsız'}</span>
+          <button class="small" onclick={() => (bench.results.A = { ...bench.lastRun, label: 'A' })}>A olarak sakla</button>
+          <button class="small" onclick={() => (bench.results.B = { ...bench.lastRun, label: 'B' })}>B olarak sakla</button>
         </div>
       </div>
-      {#each lastRun.notes as n (n)}<div class="note" style="margin-top:6px">{n}</div>{/each}
+      {#each bench.lastRun.notes as n (n)}<div class="note" style="margin-top:6px">{n}</div>{/each}
     </div>
   {/if}
 
-  {#if results.A || results.B}
+  {#if bench.results.A || bench.results.B}
     <div class="scroll-x" style="margin-top:12px">
       <table>
         <thead>
           <tr>
             <th>Metrik</th>
-            <th class="r">A ort. {results.A ? `(${results.A.profile})` : ''}</th>
-            <th class="r">B ort. {results.B ? `(${results.B.profile})` : ''}</th>
+            <th class="r">A ort. {bench.results.A ? `(${bench.results.A.profile})` : ''}</th>
+            <th class="r">B ort. {bench.results.B ? `(${bench.results.B.profile})` : ''}</th>
             <th class="r">Fark</th>
             <th class="r">A tepe</th>
             <th class="r">B tepe</th>
@@ -308,8 +225,8 @@
         </thead>
         <tbody>
           {#each METRICS as [k, t, u] (k)}
-            {@const a = results.A?.metrics[k]}
-            {@const b = results.B?.metrics[k]}
+            {@const a = bench.results.A?.metrics[k]}
+            {@const b = bench.results.B?.metrics[k]}
             {@const d = diff(a?.avg, b?.avg)}
             {@const dp = diff(a?.peak, b?.peak)}
             <tr>
@@ -329,8 +246,8 @@
       {#each abWarnings as w (w)}<div class="note">{w}</div>{/each}
     </div>
     <div class="row" style="margin-top:8px">
-      <button disabled={!results.A || !results.B} onclick={exportCsv}>CSV dışa aktar</button>
-      <button onclick={() => (results = { A: null, B: null })}>Temizle</button>
+      <button disabled={!bench.results.A || !bench.results.B} onclick={exportCsv}>CSV dışa aktar</button>
+      <button onclick={() => (bench.results = { A: null, B: null })}>Temizle</button>
     </div>
   {/if}
 </section>
