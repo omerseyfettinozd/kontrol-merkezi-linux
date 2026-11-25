@@ -4,7 +4,10 @@ Description=R9T Studio daemon (control)
 Documentation=file:///usr/share/doc/r9t-studio/04_ana_plan.md
 # Safety invariant 6: never next to the legacy service or the shadow.
 Conflicts=slayer-r9t.service r9td-shadow.service
-After=systemd-modules-load.service power-profiles-daemon.service dbus.service polkit.service slayer-r9t.service r9td-shadow.service
+# power-profiles-daemon is not ordered: its unit is After=multi-user.target and this one is
+# WantedBy=multi-user.target, an ordering cycle systemd broke at shutdown (docs/ileride.md).
+# ppd is D-Bus activated, and its calls here are bounded (2 s).
+After=systemd-modules-load.service dbus.service polkit.service slayer-r9t.service r9td-shadow.service
 # If r9td keeps failing, give the hardware back to the legacy service.
 OnFailure=r9t-fallback.service
 StartLimitIntervalSec=60
